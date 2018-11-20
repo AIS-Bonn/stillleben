@@ -11,6 +11,8 @@ namespace sl
 
 typedef Magnum::Matrix4x4 PoseMatrix;
 
+typedef Magnum::Vector2i ViewportSize;
+
 }
 
 #endif

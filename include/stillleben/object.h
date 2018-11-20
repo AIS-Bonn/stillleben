@@ -7,17 +7,59 @@
 #include <stillleben/math.h>
 
 #include <memory>
+#include <limits>
+
+#include <stillleben/common.h>
+
+#include <Magnum/Math/Range.h>
+#include <Magnum/Math/Vector3.h>
+#include <Magnum/Math/Color.h>
+#include <Magnum/Magnum.h>
+#include <Magnum/SceneGraph/Drawable.h>
+#include <Magnum/GL/Mesh.h>
 
 namespace sl
 {
 
 class Mesh;
 
+class Drawable;
+typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera, Drawable* drawable)> DrawCallback;
+
+class Drawable : public Magnum::SceneGraph::Drawable3D
+{
+public:
+    Drawable(Object3D& object, Magnum::SceneGraph::DrawableGroup3D& group, Magnum::GL::Mesh&& mesh, DrawCallback* cb)
+     : Magnum::SceneGraph::Drawable3D{object, &group}
+     , m_mesh{std::move(mesh)}
+     , m_cb(cb)
+    {
+    }
+
+    inline Magnum::GL::Texture2D* texture()
+    { return m_texture; }
+    void setTexture(Magnum::GL::Texture2D* texture)
+    { m_texture = texture; }
+
+    Magnum::Color4 color()
+    { return m_color; }
+    void setColor(const Magnum::Color4& color)
+    { m_color = color; }
+
+    Magnum::GL::Mesh& mesh()
+    { return m_mesh; }
+
+    void draw(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera) override;
+private:
+    Magnum::GL::Mesh m_mesh;
+    Magnum::GL::Texture2D* m_texture = nullptr;
+    Magnum::Color4 m_color{};
+    DrawCallback* m_cb = nullptr;
+};
+
 class Object
 {
 public:
-    class Private;
-
     Object();
     ~Object();
 
@@ -26,8 +68,24 @@ public:
     void setPose(const PoseMatrix& pose);
     PoseMatrix pose() const;
 
+    void setParentSceneObject(Object3D* parent);
+
+    void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
+
 private:
-    std::unique_ptr<Private> m_d;
+    void load();
+    void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);
+
+    std::shared_ptr<Mesh> m_mesh;
+
+    Object3D m_sceneObject;
+    Magnum::SceneGraph::DrawableGroup3D m_drawables;
+    Magnum::Range3D m_bbox{
+        Magnum::Vector3(std::numeric_limits<float>::infinity()),
+        Magnum::Vector3(-std::numeric_limits<float>::infinity())
+    };
+
+    DrawCallback m_cb;
 };
 
 }

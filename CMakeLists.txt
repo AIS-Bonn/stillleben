@@ -39,9 +39,12 @@ include_directories(include)
 set(CMAKE_CXX_STANDARD 14)
 
 add_library(stillleben SHARED
-    src/stillleben.cpp
+    src/context.cpp
     src/mesh.cpp
     src/object.cpp
+    src/phong_pass.cpp
+    src/scene.cpp
+    src/stillleben.cpp
     ${render_RESOURCES}
 )
 target_link_libraries(stillleben PRIVATE

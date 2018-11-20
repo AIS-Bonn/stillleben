@@ -5,6 +5,9 @@
 #define STILLLEBEN_SCENE_H
 
 #include <stillleben/math.h>
+#include <stillleben/common.h>
+
+#include <Magnum/SceneGraph/Camera.h>
 
 #include <memory>
 #include <vector>
@@ -15,13 +18,12 @@ namespace sl
 class Context;
 class Object;
 
-
 class Scene
 {
 public:
-    Scene(const std::shared_ptr<Context>& ctx);
+    Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& size);
     Scene(const Scene& other) = delete;
-    Scene(Scene&& other);
+    Scene(Scene&& other) = delete;
     ~Scene();
 
     void setCameraPose(const PoseMatrix& pose);
@@ -32,9 +34,20 @@ public:
     void addObject(const std::shared_ptr<Object>& object);
     const std::vector<std::shared_ptr<Object>>& objects() const;
 
+    ViewportSize viewport() const
+    { return m_camera->viewport(); }
+
+    Magnum::SceneGraph::Camera3D& camera()
+    { return *m_camera; }
+
 private:
-    class Private;
-    std::unique_ptr<Private> m_d;
+    std::shared_ptr<Context> m_ctx;
+
+    Scene3D m_scene;
+    Object3D m_cameraObject;
+    Magnum::SceneGraph::Camera3D* m_camera = nullptr;
+
+    std::vector<std::shared_ptr<Object>> m_objects;
 };
 
 }

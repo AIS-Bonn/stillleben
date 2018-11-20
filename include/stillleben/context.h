@@ -35,8 +35,10 @@ public:
     Context(const Context& other) = delete;
     Context(const Context&& other) = delete;
 
-    Ptr Create();
-    Ptr CreateCUDA(unsigned int device = 0);
+    static Ptr Create();
+    static Ptr CreateCUDA(unsigned int device = 0);
+
+    bool makeCurrent();
 
     std::shared_ptr<Mesh> loadMesh(const std::string& path);
 
