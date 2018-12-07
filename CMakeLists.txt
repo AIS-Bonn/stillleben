@@ -5,8 +5,8 @@ project(stillleben)
 # register CMake modules in modules/
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/")
 
-# set(OpenGL_GL_PREFERENCE GLVND)
-# find_package(OpenGL)
+set(OpenGL_GL_PREFERENCE GLVND)
+find_package(OpenGL)
 
 if(OpenGL_EGL_FOUND)
     message(STATUS "Found EGL, using that one...")
@@ -14,7 +14,7 @@ if(OpenGL_EGL_FOUND)
     set(MAGNUM_GL_APP WindowlessEglApplication)
 else()
     message(STATUS "Could not find EGL/GLVND, falling back to GLX")
-    set(MAGNUM_GL_APP GlfwApplication)
+    set(MAGNUM_GL_APP WindowlessGlxApplication)
 endif()
 
 find_package(Magnum REQUIRED COMPONENTS
@@ -23,7 +23,7 @@ find_package(Magnum REQUIRED COMPONENTS
     Shaders
     SceneGraph
     Trade
-    GlfwApplication
+    ${MAGNUM_GL_APP}
 )
 
 include_directories(${OPENGL_INCLUDE_DIR} ${OPENGL_EGL_INCLUDE_DIRS})
@@ -40,6 +40,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_library(stillleben SHARED
     src/context.cpp
+    src/exception.cpp
     src/mesh.cpp
     src/object.cpp
     src/phong_pass.cpp
@@ -58,3 +59,5 @@ target_link_libraries(stillleben PRIVATE
 #     OpenGL::EGL
 #     ${CUDA_LIBRARIES}
 )
+
+add_subdirectory(tests)

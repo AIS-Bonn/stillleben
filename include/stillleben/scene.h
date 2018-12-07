@@ -32,7 +32,8 @@ public:
     void setCameraIntrinsics(float fx, float fy, float cx, float cy);
 
     void addObject(const std::shared_ptr<Object>& object);
-    const std::vector<std::shared_ptr<Object>>& objects() const;
+    const std::vector<std::shared_ptr<Object>>& objects() const
+    { return m_objects; }
 
     ViewportSize viewport() const
     { return m_camera->viewport(); }

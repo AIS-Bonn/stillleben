@@ -71,4 +71,6 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
     obj->setParentSceneObject(&m_scene);
 }
 
+
+
 }

@@ -5,8 +5,13 @@
 
 #include <algorithm>
 
+#include <Corrade/PluginManager/PluginManager.h>
+
 #include <Magnum/GL/Context.h>
 #include <Magnum/Platform/GLContext.h>
+#include <Magnum/Trade/AbstractImporter.h>
+
+#include <cstring>
 
 #if HAVE_EGL
 #include <EGL/egl.h>
@@ -43,9 +48,15 @@ public:
     void* egl_display = nullptr;
     void* egl_context = nullptr;
 
+#if !defined(HAVE_EGL) || !HAVE_EGL
     std::unique_ptr<Platform::WindowlessGlxContext> glx_context;
+#endif
 
     std::unique_ptr<Platform::GLContext> gl_context;
+
+    std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> importerManager{
+        std::make_shared<PluginManager::Manager<Trade::AbstractImporter>>()
+    };
 };
 
 Context::Context()
@@ -58,18 +69,20 @@ Context::Ptr Context::Create()
     Context::Ptr context{new Context};
 
 #if HAVE_EGL
+    const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+    if(!extensions)
+    {
+        Error() << "Could not query EGL extensions";
+        return {};
+    }
+
+    Debug() << "Supported EGL extensions:" << extensions;
+
     // Load required extensions
     auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
     if(!eglQueryDevicesEXT)
     {
         Error() << "Could not find required eglQueryDevicesEXT";
-        return {};
-    }
-
-    auto eglQueryDeviceAttribEXT = getExtension<PFNEGLQUERYDEVICEATTRIBEXTPROC>("eglQueryDeviceAttribEXT");
-    if(!eglQueryDeviceAttribEXT)
-    {
-        Error() << "Could not find required eglQueryDeviceAttribEXT";
         return {};
     }
 
@@ -90,21 +103,47 @@ Context::Ptr Context::Create()
         return {};
     }
 
-    if(num_devices < 1)
+    EGLDisplay display = nullptr;
+
+    if(num_devices > 0)
     {
-        Error() << "Could not find an EGL device";
+        display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, devices.front(), nullptr);
+    }
+    else
+    {
+        Debug() << "Could not enumerate EGL devices, trying MESA targets with EGL_DEFAULT_DISPLAY...";
+
+        if(strstr(extensions, "EGL_MESA_platform_surfaceless"))
+        {
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
+            if(!display)
+                Debug() << "surfaceless failed";
+        }
+        if(!display && strstr(extensions, "EGL_EXT_platform_x11"))
+        {
+            Debug() << "Trying X11";
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
+            if(!display)
+                Debug() << "X11 failed";
+        }
+        if(!display && strstr(extensions, "EGL_MESA_platform_gbm"))
+        {
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_MESA, EGL_DEFAULT_DISPLAY, nullptr);
+            if(!display)
+                Debug() << "gpm failed";
+        }
+    }
+
+    if(!display)
+    {
+        Error() << "Could not create EGL display";
         return {};
     }
 
-    context->m_d->display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, devices.front(), nullptr);
-    if(!context->m_d->display)
-    {
-        Error() << "Could not get display for CUDA device";
-        return {};
-    }
+    context->m_d->egl_display = display;
 
     EGLint major, minor;
-    if(!eglInitialize(context->m_d->display, &major, &minor))
+    if(!eglInitialize(context->m_d->egl_display, &major, &minor))
     {
         Error() << "Could not initialize EGL display";
         return {};
@@ -125,7 +164,7 @@ Context::Ptr Context::Create()
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
-    if(!eglChooseConfig(context->m_d->display, configAttribs, &eglConfig, 1, &numberConfigs))
+    if(!eglChooseConfig(context->m_d->egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
     {
         Error() << "Could not call eglChooseConfig";
         return {};
@@ -137,7 +176,7 @@ Context::Ptr Context::Create()
         return {};
     }
 
-    context->m_d->egl_context = eglCreateContext(context->m_d->display, eglConfig, EGL_NO_CONTEXT, nullptr);
+    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, nullptr);
     if(!context->m_d->egl_context)
     {
         Error() << "Could not create EGL context";
@@ -173,7 +212,7 @@ Context::Ptr Context::Create()
 Context::Ptr Context::CreateCUDA(unsigned int device)
 {
 #if HAVE_EGL
-    auto context = std::make_shared<Context>();
+    std::shared_ptr<Context> context(new Context);
 
     // Load required extensions
     auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
@@ -227,19 +266,19 @@ Context::Ptr Context::CreateCUDA(unsigned int device)
 
     if(it == devices.end())
     {
-        Error() << "Could not find matching CUDA device with index" << cudaIndex;
+        Error() << "Could not find matching CUDA device with index" << device;
         return {};
     }
 
-    context->m_d->display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, *it, nullptr);
-    if(!context->m_d->display)
+    context->m_d->egl_display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, *it, nullptr);
+    if(!context->m_d->egl_display)
     {
         Error() << "Could not get display for CUDA device";
         return {};
     }
 
     EGLint major, minor;
-    if(!eglInitialize(context->m_d->display, &major, &minor))
+    if(!eglInitialize(context->m_d->egl_display, &major, &minor))
     {
         Error() << "Could not initialize EGL display";
         return {};
@@ -260,7 +299,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device)
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_NONE
     };
-    if(!eglChooseConfig(context->m_d->display, configAttribs, &eglConfig, 1, &numberConfigs))
+    if(!eglChooseConfig(context->m_d->egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
     {
         Error() << "Could not call eglChooseConfig";
         return {};
@@ -272,7 +311,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device)
         return {};
     }
 
-    context->m_d->egl_context = eglCreateContext(context->m_d->display, eglConfig, EGL_NO_CONTEXT, nullptr);
+    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, nullptr);
     if(!context->m_d->egl_context)
     {
         Error() << "Could not create EGL context";
@@ -300,9 +339,16 @@ bool Context::makeCurrent()
         Error() << "Cannot make context current";
         return false;
     }
+
+    return true;
 #else
     return m_d->glx_context->makeCurrent();
 #endif
+}
+
+std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> Context::importerPluginManager()
+{
+    return m_d->importerManager;
 }
 
 }

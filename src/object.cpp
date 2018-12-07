@@ -129,6 +129,10 @@ Object::Object()
 {
 }
 
+Object::~Object()
+{
+}
+
 std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh)
 {
     auto object = std::make_shared<Object>();
