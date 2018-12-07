@@ -1,0 +1,337 @@
+{
+  "accessors": [
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 41210,
+      "max": [
+        7.784949779510498,
+        15.433361053466797,
+        6.0336647033691406
+      ],
+      "min": [
+        -7.784949779510498,
+        0,
+        -6.0336647033691406
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 494520,
+      "componentType": 5126,
+      "count": 41210,
+      "max": [
+        0.99991673231124878,
+        0.99999171495437622,
+        0.99999874830245972
+      ],
+      "min": [
+        -0.99998050928115845,
+        -0.99999916553497314,
+        -0.99997234344482422
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 41210,
+      "max": [
+        1,
+        0.90974360704421997,
+        0.99999982118606567,
+        1
+      ],
+      "min": [
+        -1,
+        -0.90283995866775513,
+        -0.9999997615814209,
+        1
+      ],
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 41210,
+      "max": [
+        0.99904215335845947,
+        0.95292830467224121
+      ],
+      "min": [
+        0.0011244377819821239,
+        0.0010946907568722963
+      ],
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 0,
+      "componentType": 5125,
+      "count": 208353,
+      "max": [
+        41209
+      ],
+      "min": [
+        0
+      ],
+      "type": "SCALAR"
+    }
+  ],
+  "asset": {
+    "extras": {
+      "author": "001comic (https://sketchfab.com/001comic)",
+      "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+      "source": "https://sketchfab.com/models/883eec40ad724aeab2f3ca101420db33",
+      "title": "Stanford bunny"
+    },
+    "generator": "Sketchfab-3.29.3",
+    "version": "2.0"
+  },
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 833412,
+      "byteOffset": 0,
+      "name": "floatBufferViews",
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteLength": 329680,
+      "byteOffset": 833412,
+      "byteStride": 8,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 989040,
+      "byteOffset": 1163092,
+      "byteStride": 12,
+      "name": "floatBufferViews",
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 659360,
+      "byteOffset": 2152132,
+      "byteStride": 16,
+      "name": "floatBufferViews",
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 2811492,
+      "uri": "scene.bin"
+    }
+  ],
+  "images": [
+    {
+      "uri": "textures/Bunny_baseColor.png"
+    }
+  ],
+  "materials": [
+    {
+      "doubleSided": false,
+      "name": "Bunny",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0,
+        "roughnessFactor": 0.59999999999999998
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Stanford_Bunny_Bunny_0",
+      "primitives": [
+        {
+          "attributes": {
+            "NORMAL": 1,
+            "POSITION": 0,
+            "TANGENT": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 4,
+          "material": 0,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "children": [
+        1
+      ],
+      "name": "RootNode (gltf orientation matrix)",
+      "rotation": [
+        -0.70710678118654746,
+        -0,
+        -0,
+        0.70710678118654757
+      ]
+    },
+    {
+      "children": [
+        2
+      ],
+      "name": "RootNode (model correction matrix)"
+    },
+    {
+      "children": [
+        3
+      ],
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "name": "b035a2ad4dac4590b7c03aff4c7c40e3.fbx"
+    },
+    {
+      "children": [
+        4,
+        6,
+        8
+      ],
+      "name": "RootNode"
+    },
+    {
+      "children": [
+        5
+      ],
+      "name": "Stanford_Bunny"
+    },
+    {
+      "mesh": 0,
+      "name": "Stanford_Bunny_Bunny_0"
+    },
+    {
+      "children": [
+        7
+      ],
+      "matrix": [
+        0.0020474172485023256,
+        -0.057169833613569955,
+        -0.99836236818462232,
+        0,
+        0.00011724225694677987,
+        0.99836446757914854,
+        -0.057169713394912683,
+        0,
+        0.99999789716622089,
+        -2.4286128663675299e-17,
+        0.0020507713515354187,
+        0,
+        -0.48688575625419617,
+        12.105504035949707,
+        52.681686401367188,
+        1
+      ],
+      "name": "Camera"
+    },
+    {
+      "name": ""
+    },
+    {
+      "children": [
+        9
+      ],
+      "matrix": [
+        0.26047295459997211,
+        8.3266730155609191e-18,
+        0.14884168459984046,
+        0,
+        -0.1264911079042414,
+        0.15811389296659559,
+        0.22135944439906566,
+        0,
+        -0.26148818130530765,
+        -0.84983657800105949,
+        0.45760432879190682,
+        0,
+        -20,
+        25,
+        35,
+        1
+      ],
+      "name": "Area Light"
+    },
+    {
+      "children": [
+        10
+      ],
+      "matrix": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        2.2204460492503131e-16,
+        1,
+        0,
+        0,
+        -1,
+        2.2204460492503131e-16,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "name": ""
+    },
+    {
+      "name": ""
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "OSG_Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    }
+  ]
+}
+

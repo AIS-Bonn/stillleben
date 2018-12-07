@@ -32,6 +32,9 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
         .setViewport(viewportSize);
 }
 
+Scene::~Scene()
+{}
+
 void Scene::setCameraPose(const PoseMatrix& pose)
 {
     m_cameraObject.setTransformation(pose);

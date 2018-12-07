@@ -9,18 +9,6 @@
 namespace sl
 {
 
-class RenderBuffer
-{
-public:
-
-    std::size_t size();
-    void copyToMemory(void* dest);
-    void copyToCUDA(void* dest);
-
-private:
-
-};
-
 }
 
 #endif

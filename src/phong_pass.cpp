@@ -2,12 +2,14 @@
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
 #include <stillleben/phong_pass.h>
+#include <stillleben/scene.h>
 #include <stillleben/object.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/TextureFormat.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -15,7 +17,7 @@ using namespace Math::Literals;
 namespace sl
 {
 
-std::shared_ptr<RenderBuffer> PhongPass::render(Scene& scene)
+std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
 {
     // Setup the framebuffer
     // TODO: Is it worth it to recycle the framebuffer?
@@ -67,7 +69,21 @@ std::shared_ptr<RenderBuffer> PhongPass::render(Scene& scene)
         });
     }
 
-    return {};
+    // Resolve the MSAA render buffers
+    auto ret = std::make_shared<Magnum::GL::RectangleTexture>();
+
+    GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
+
+    ret->setStorage(GL::TextureFormat::RGBA8, viewport);
+
+    resolvedBuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, *ret);
+
+    framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    resolvedBuffer.mapForDraw(GL::Framebuffer::ColorAttachment{0});
+    GL::AbstractFramebuffer::blit(framebuffer, resolvedBuffer,
+        {{}, resolvedBuffer.viewport().size()}, GL::FramebufferBlit::Color);
+
+    return ret;
 }
 
 }

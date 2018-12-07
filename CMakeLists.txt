@@ -48,7 +48,7 @@ add_library(stillleben SHARED
     src/stillleben.cpp
     ${render_RESOURCES}
 )
-target_link_libraries(stillleben PRIVATE
+target_link_libraries(stillleben PUBLIC
     Magnum::GL
     Magnum::Magnum
     Magnum::SceneGraph

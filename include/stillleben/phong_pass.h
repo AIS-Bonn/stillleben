@@ -4,18 +4,21 @@
 #ifndef STILLLEBEN_PHONG_PASS_H
 #define STILLLEBEN_PHONG_PASS_H
 
-#include <stillleben/render_pass.h>
-
 #include <Magnum/GL/Renderbuffer.h>
+#include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Shaders/Phong.h>
+
+#include <memory>
 
 namespace sl
 {
 
-class PhongPass : public RenderPass
+class Scene;
+
+class PhongPass
 {
 public:
-    std::shared_ptr<RenderBuffer> render(Scene& scene);
+    std::shared_ptr<Magnum::GL::RectangleTexture> render(Scene& scene);
 private:
     unsigned int m_msaa_factor = 8;
     Magnum::GL::Renderbuffer m_msaa_rgb;
