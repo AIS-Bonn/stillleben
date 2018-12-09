@@ -49,14 +49,16 @@ void Object::load()
 
         // Recursively add all children
         for(UnsignedInt objectId : sceneData->children3D())
-            addMeshObject(m_sceneObject, objectId);
+            addMeshObject(m_meshObject, objectId);
     }
     else if(!m_mesh->meshes().empty() && m_mesh->meshes()[0])
     {
         // The format has no scene support, display just the first loaded mesh with
         // a default material and be done with it
-        addMeshObject(m_sceneObject, 0);
+        addMeshObject(m_meshObject, 0);
     }
+
+    m_meshObject.setTransformation(m_mesh->pretransform());
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -153,6 +155,11 @@ void Object::draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb)
 void Object::setParentSceneObject(Object3D* parent)
 {
     m_sceneObject.setParent(parent);
+}
+
+void Object::setPose(const PoseMatrix& matrix)
+{
+    m_sceneObject.setTransformation(matrix);
 }
 
 }

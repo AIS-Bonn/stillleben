@@ -78,7 +78,14 @@ private:
 
     std::shared_ptr<Mesh> m_mesh;
 
+    // This is the scene object that contains everything in this object.
+    // setPose() acts upon this object.
     Object3D m_sceneObject;
+
+    // This holds the actual mesh.
+    // scaleToBBoxDiagonal() acts upon this object.
+    Object3D m_meshObject{&m_sceneObject};
+
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),
@@ -86,6 +93,8 @@ private:
     };
 
     DrawCallback m_cb;
+
+    float m_scale = 1.0f;
 };
 
 }

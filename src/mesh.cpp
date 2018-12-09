@@ -16,10 +16,13 @@
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/Trade/ImageData.h>
 #include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/Trade/MeshObjectData3D.h>
+#include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
+
 
 using namespace Magnum;
 
@@ -136,6 +139,81 @@ void Mesh::load(const std::string& filename)
         m_meshes[i] = std::move(meshData);
         m_meshPoints[i] = points;
     }
+
+    // Update the bounding box
+    {
+        // Inspect the scene if available
+        if(m_importer->defaultScene() != -1)
+        {
+            auto sceneData = m_importer->scene(m_importer->defaultScene());
+            if(!sceneData)
+                throw Exception("Could not load scene data");
+
+            // Recursively inspect all children
+            for(UnsignedInt objectId : sceneData->children3D())
+                updateBoundingBox(Matrix4{}, objectId);
+        }
+        else if(!m_meshes.empty() && m_meshes[0])
+        {
+            // The format has no scene support, use first mesh
+            updateBoundingBox(Matrix4{}, 0);
+        }
+    }
+}
+
+void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int meshObjectIdx)
+{
+    std::unique_ptr<Trade::ObjectData3D> objectData = m_importer->object3D(meshObjectIdx);
+    if(!objectData)
+        return;
+
+    Magnum::Matrix4 transform = parentTransform * objectData->transformation();
+
+    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_meshes[objectData->instance()])
+    {
+        for(const auto& point : *m_meshPoints[objectData->instance()])
+        {
+            auto transformed = transform.transformPoint(point);
+
+            m_bbox.min().x() = std::min(m_bbox.min().x(), transformed.x());
+            m_bbox.min().y() = std::min(m_bbox.min().y(), transformed.y());
+            m_bbox.min().z() = std::min(m_bbox.min().z(), transformed.z());
+
+            m_bbox.max().x() = std::max(m_bbox.max().x(), transformed.x());
+            m_bbox.max().y() = std::max(m_bbox.max().y(), transformed.y());
+            m_bbox.max().z() = std::max(m_bbox.max().z(), transformed.z());
+        }
+    }
+
+    // Recurse
+    for(std::size_t idx : objectData->children())
+        updateBoundingBox(transform, idx);
+}
+
+void Mesh::centerBBox()
+{
+    m_translation = -m_bbox.center();
+    updatePretransform();
+}
+
+void Mesh::scaleToBBoxDiagonal(float targetDiagonal)
+{
+    float diagonal = m_bbox.size().length();
+    m_scale = targetDiagonal / diagonal;
+    updatePretransform();
+}
+
+void Mesh::updatePretransform()
+{
+    m_pretransform = Matrix4::scaling(Vector3(m_scale)) * Matrix4::translation(m_translation);
+}
+
+Magnum::Range3D Mesh::bbox() const
+{
+    Vector3 lower = m_pretransform.transformPoint(m_bbox.min());
+    Vector3 upper = m_pretransform.transformPoint(m_bbox.max());
+
+    return Range3D{lower, upper};
 }
 
 }

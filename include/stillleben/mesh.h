@@ -4,6 +4,7 @@
 #ifndef STILLLEBEN_MESH_H
 #define STILLLEBEN_MESH_H
 
+#include <limits>
 #include <memory>
 
 #include <stillleben/exception.h>
@@ -11,6 +12,9 @@
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/PluginManager/PluginManager.h>
+
+#include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Range.h>
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
@@ -46,6 +50,14 @@ public:
 
     void load(const std::string& filename);
 
+    Magnum::Range3D bbox() const;
+
+    void centerBBox();
+    void scaleToBBoxDiagonal(float targetDiagonal);
+
+    const Magnum::Matrix4& pretransform() const
+    { return m_pretransform; }
+
     Magnum::Trade::AbstractImporter& importer()
     { return *m_importer; }
 
@@ -62,6 +74,9 @@ public:
     { return m_materials; }
 
 private:
+    void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
+    void updatePretransform();
+
     std::shared_ptr<Context> m_ctx;
 
     std::unique_ptr<Magnum::Trade::AbstractImporter> m_importer;
@@ -70,6 +85,16 @@ private:
     PointArray m_meshPoints;
     TextureArray m_textures;
     MaterialArray m_materials;
+
+    Magnum::Range3D m_bbox{
+        Magnum::Vector3(std::numeric_limits<float>::infinity()),
+        Magnum::Vector3(-std::numeric_limits<float>::infinity())
+    };
+
+    Magnum::Vector3 m_translation{Magnum::Math::ZeroInit};
+    float m_scale = 1.0f;
+
+    Magnum::Matrix4 m_pretransform;
 };
 
 }

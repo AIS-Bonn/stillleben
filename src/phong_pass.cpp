@@ -44,6 +44,9 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
         object->draw(scene.camera(), [&](const Matrix4& transformationMatrix, SceneGraph::Camera3D& cam, Drawable* drawable){
             if(drawable->texture())
             {
+                Debug{} << "Render with texture";
+                Debug{} << transformationMatrix;
+                Debug{} << cam.projectionMatrix();
                 m_shaderTextured
                     .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
                     .setTransformationMatrix(transformationMatrix)
@@ -56,6 +59,7 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
             }
             else
             {
+                Debug{} << "Render uniform";
                 m_shaderUniform
                     .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
                     .setTransformationMatrix(transformationMatrix)
