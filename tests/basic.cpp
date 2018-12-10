@@ -65,7 +65,7 @@ TEST_CASE("basic")
     auto object = sl::Object::instantiate(mesh);
     REQUIRE(object);
 
-    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, 2.0)));
+    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, -2.0)));
 
     // Add it to the scene
     scene.addObject(object);
@@ -75,7 +75,6 @@ TEST_CASE("basic")
     auto buffer = phong.render(scene);
 
     REQUIRE(buffer);
-
     CHECK(buffer->imageSize() == Magnum::Vector2i(640, 480));
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});
@@ -85,7 +84,7 @@ TEST_CASE("basic")
             manager.loadAndInstantiate("PngImageConverter");
         if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
-        converter->exportToFile(image, "/tmp/stillleben.png");
+        CHECK(converter->exportToFile(image, "/tmp/stillleben.png"));
     }
 
     {
