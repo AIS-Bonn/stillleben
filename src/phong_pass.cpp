@@ -10,6 +10,7 @@
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/GL/Renderer.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -19,6 +20,9 @@ namespace sl
 
 std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
 {
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+
     // Setup the framebuffer
     // TODO: Is it worth it to recycle the framebuffer?
     auto viewport = scene.viewport();
@@ -35,7 +39,15 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
         })
     ;
 
-    framebuffer.clearColor(0, 0x00000000_rgbaf);
+    if(framebuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
+    {
+        Error{} << "Invalid MSAA framebuffer status:" << framebuffer.checkStatus(GL::FramebufferTarget::Draw);
+        std::abort();
+    }
+
+    framebuffer.bind();
+
+    framebuffer.clearColor(0, 0xff000000_rgbaf);
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Let the fun begin!
@@ -44,9 +56,6 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
         object->draw(scene.camera(), [&](const Matrix4& transformationMatrix, SceneGraph::Camera3D& cam, Drawable* drawable){
             if(drawable->texture())
             {
-                Debug{} << "Render with texture";
-                Debug{} << transformationMatrix;
-                Debug{} << cam.projectionMatrix();
                 m_shaderTextured
                     .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
                     .setTransformationMatrix(transformationMatrix)
@@ -59,7 +68,6 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
             }
             else
             {
-                Debug{} << "Render uniform";
                 m_shaderUniform
                     .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
                     .setTransformationMatrix(transformationMatrix)

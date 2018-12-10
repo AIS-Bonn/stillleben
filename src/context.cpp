@@ -151,6 +151,10 @@ Context::Ptr Context::Create()
 
     Debug{} << "Display initialized for EGL " << major << "." << minor;
 
+    const char* vendor = eglQueryString(display, EGL_VENDOR);
+    if(vendor)
+        Debug{} << "EGL vendor:" << vendor;
+
     if(!eglBindAPI(EGL_OPENGL_API))
     {
         Error() << "Could not bind OpenGL API";
