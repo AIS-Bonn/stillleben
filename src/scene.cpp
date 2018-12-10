@@ -74,6 +74,18 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
     obj->setParentSceneObject(&m_scene);
 }
 
+float Scene::minimumDistanceForObjectDiameter(float diameter) const
+{
+    auto P = m_camera->projectionMatrix();
 
+    // for perspective projection:
+    // P[0][0] = 1.0 / std::tan(alpha)
+    // NOTE: alpha is the half horizontal view angle.
+
+    return std::max(
+        P[0][0] * diameter / 2.0,
+        P[1][1] * diameter / 2.0
+    );
+}
 
 }

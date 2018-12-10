@@ -47,7 +47,7 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
 
     framebuffer.bind();
 
-    framebuffer.clearColor(0, 0xff000000_rgbaf);
+    framebuffer.clearColor(0, 0x00000000_rgbaf);
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Let the fun begin!

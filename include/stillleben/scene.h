@@ -26,20 +26,28 @@ public:
     Scene(Scene&& other) = delete;
     ~Scene();
 
+    //! @name Camera and viewport settings
+    //@{
     void setCameraPose(const PoseMatrix& pose);
     PoseMatrix cameraPose() const;
 
     void setCameraIntrinsics(float fx, float fy, float cx, float cy);
-
-    void addObject(const std::shared_ptr<Object>& object);
-    const std::vector<std::shared_ptr<Object>>& objects() const
-    { return m_objects; }
 
     ViewportSize viewport() const
     { return m_camera->viewport(); }
 
     Magnum::SceneGraph::Camera3D& camera()
     { return *m_camera; }
+    //@}
+
+    //! @name Object placement
+    //@{
+    float minimumDistanceForObjectDiameter(float diameter) const;
+    //@}
+
+    void addObject(const std::shared_ptr<Object>& object);
+    const std::vector<std::shared_ptr<Object>>& objects() const
+    { return m_objects; }
 
 private:
     std::shared_ptr<Context> m_ctx;

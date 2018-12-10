@@ -65,7 +65,9 @@ TEST_CASE("basic")
     auto object = sl::Object::instantiate(mesh);
     REQUIRE(object);
 
-    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, -1.0)));
+    float distance = scene.minimumDistanceForObjectDiameter(mesh->bbox().size().length());
+
+    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, -distance)));
 
     // Add it to the scene
     scene.addObject(object);
