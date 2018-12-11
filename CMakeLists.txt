@@ -20,6 +20,7 @@ endif()
 find_package(Magnum REQUIRED COMPONENTS
     GL
     MeshTools
+    Primitives
     Shaders
     SceneGraph
     Trade
@@ -31,12 +32,11 @@ include_directories(${OPENGL_INCLUDE_DIR} ${OPENGL_EGL_INCLUDE_DIRS})
 find_package(CUDA)
 # include_directories(${CUDA_INCLUDE_DIRS})
 
-# Package shaders
-corrade_add_resource(render_RESOURCES resources.conf)
-
 include_directories(include)
 
 set(CMAKE_CXX_STANDARD 14)
+
+corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
 
 add_library(stillleben SHARED
     src/context.cpp
@@ -44,9 +44,12 @@ add_library(stillleben SHARED
     src/mesh.cpp
     src/object.cpp
     src/phong_pass.cpp
+    src/render_pass.cpp
     src/scene.cpp
     src/stillleben.cpp
-    ${render_RESOURCES}
+    src/shaders/render_shader.cpp
+    src/shaders/resolve_shader.cpp
+    ${stillleben_RESOURCES}
 )
 target_link_libraries(stillleben PUBLIC
     Magnum::GL
@@ -55,6 +58,7 @@ target_link_libraries(stillleben PUBLIC
     Magnum::Shaders
     Magnum::Trade
     Magnum::MeshTools
+    Magnum::Primitives
     Magnum::${MAGNUM_GL_APP}
 #     OpenGL::EGL
 #     ${CUDA_LIBRARIES}

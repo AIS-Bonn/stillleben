@@ -10,6 +10,9 @@
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Matrix4.h>
 
+namespace sl
+{
+
 using namespace Magnum;
 
 class RenderShader : public GL::AbstractShaderProgram
@@ -41,11 +44,11 @@ public:
      */
     typedef Shaders::Generic3D::TextureCoordinates TextureCoordinates;
 
-    typedef GL::Attribute<4, Vector3> Offsets;
-
     enum: UnsignedInt {
         ColorOutput = 0,
-        WorldPositionOutput = 1
+        ObjectCoordinatesOutput = 1,
+        ClassIndexOutput = 2,
+        InstanceIndexOutput = 3
     };
 
     /**
@@ -239,17 +242,6 @@ public:
      */
     RenderShader& bindTextures(GL::Texture2D* ambient, GL::Texture2D* diffuse, GL::Texture2D* specular);
 
-    RenderShader& bindOffsets(GL::Buffer& buffer);
-
-    #ifdef MAGNUM_BUILD_DEPRECATED
-    /** @brief @copybrief bindTextures()
-     * @deprecated Use @ref bindTextures() instead.
-     */
-    CORRADE_DEPRECATED("use bindTextures() instead") RenderShader& setTextures(GL::Texture2D* ambient, GL::Texture2D* diffuse, GL::Texture2D* specular) {
-        return bindTextures(ambient, diffuse, specular);
-    }
-    #endif
-
     /**
      * @brief Set shininess
      * @return Reference to self (for method chaining)
@@ -280,8 +272,8 @@ public:
      * You need to set also @ref setNormalMatrix() with a corresponding
      * value. Initial value is an identity matrix.
      */
-    RenderShader& setTransformationMatrix(const Matrix4& matrix) {
-        setUniform(_transformationMatrixUniform, matrix);
+    RenderShader& setMeshToObjectMatrix(const Matrix4& meshToObject) {
+        setUniform(_meshToObjectMatrixUniform, meshToObject);
         return *this;
     }
 
@@ -291,19 +283,8 @@ public:
      *
      * Initial value is an identity matrix.
      */
-    RenderShader& setWorldTransformationMatrix(const Matrix4& matrix) {
-        setUniform(_worldTransformationMatrixUniform, matrix);
-        return *this;
-    }
-
-    /**
-     * @brief Set world transformation matrix
-     * @return Reference to self (for method chaining)
-     *
-     * Initial value is an identity matrix.
-     */
-    RenderShader& setPretransform(const Matrix4& matrix) {
-        setUniform(_pretransformMatrixUniform, matrix);
+    RenderShader& setObjectToCamMatrix(const Matrix4& matrix) {
+        setUniform(_objectToCamMatrixUniform, matrix);
         return *this;
     }
 
@@ -360,21 +341,24 @@ public:
 
 private:
     Flags _flags;
-    Int _transformationMatrixUniform{0},
-        _projectionMatrixUniform{1},
-        _normalMatrixUniform{2},
-        _lightPositionUniform{3},
-        _ambientColorUniform{4},
-        _diffuseColorUniform{5},
-        _specularColorUniform{6},
-        _lightColorUniform{7},
-        _shininessUniform{8},
-        _alphaMaskUniform{9},
-        _worldTransformationMatrixUniform{10},
-        _pretransformMatrixUniform{11};
+    Int _meshToObjectMatrixUniform{0},
+        _objectToCamMatrixUniform{1},
+        _projectionMatrixUniform{2},
+        _normalMatrixUniform{3},
+        _lightPositionUniform{4},
+        _ambientColorUniform{5},
+        _diffuseColorUniform{6},
+        _specularColorUniform{7},
+        _lightColorUniform{8},
+        _shininessUniform{9},
+        _alphaMaskUniform{10},
+        _classIndexUniform{11},
+        _instanceIndexUniform{12};
 };
 
-CORRADE_ENUMSET_OPERATORS(RenderShader::Flags)
+}
+
+CORRADE_ENUMSET_OPERATORS(sl::RenderShader::Flags)
 
 #endif
 

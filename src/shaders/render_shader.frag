@@ -4,16 +4,14 @@
 #define const
 #endif
 
+
+
 #ifdef AMBIENT_TEXTURE
-#ifdef EXPLICIT_TEXTURE_LAYER
 layout(binding = 0)
-#endif
 uniform lowp sampler2D ambientTexture;
 #endif
 
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 4)
-#endif
+layout(location = 5)
 uniform lowp vec4 ambientColor
     #ifndef AMBIENT_TEXTURE
     = vec4(0.0)
@@ -23,45 +21,38 @@ uniform lowp vec4 ambientColor
     ;
 
 #ifdef DIFFUSE_TEXTURE
-#ifdef EXPLICIT_TEXTURE_LAYER
 layout(binding = 1)
-#endif
 uniform lowp sampler2D diffuseTexture;
 #endif
 
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 5)
-#endif
+layout(location = 6)
 uniform lowp vec4 diffuseColor = vec4(1.0);
 
 #ifdef SPECULAR_TEXTURE
-#ifdef EXPLICIT_TEXTURE_LAYER
 layout(binding = 2)
-#endif
 uniform lowp sampler2D specularTexture;
 #endif
 
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 6)
-#endif
+layout(location = 7)
 uniform lowp vec4 specularColor = vec4(1.0);
 
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 7)
-#endif
+layout(location = 8)
 uniform lowp vec4 lightColor = vec4(1.0);
 
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 8)
-#endif
+layout(location = 9)
 uniform mediump float shininess = 80.0;
 
 #ifdef ALPHA_MASK
-#ifdef EXPLICIT_UNIFORM_LOCATION
-layout(location = 9)
-#endif
+layout(location = 10)
 uniform lowp float alphaMask = 0.5;
 #endif
+
+// Segmentation information
+layout(location = 11)
+uniform uint classIndex = 0u;
+
+layout(location = 12)
+uniform uint instanceIndex = 0u;
 
 in mediump vec3 transformedNormal;
 in highp vec3 lightDirection;
@@ -71,14 +62,18 @@ in highp vec3 cameraDirection;
 in mediump vec2 interpolatedTextureCoords;
 #endif
 
-in highp vec3 worldPosition;
+in highp vec3 objectCoordinates;
 
 out lowp vec4 color;
-out highp vec3 worldPositionOut;
+out highp vec3 objectCoordinatesOut;
+out uint classIndexOut;
+out uint instanceIndexOut;
 
 void main()
 {
-    worldPositionOut = worldPosition;
+    objectCoordinatesOut = objectCoordinates;
+    classIndexOut = classIndex;
+    instanceIndexOut = instanceIndex;
 
     lowp const vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE
@@ -115,6 +110,8 @@ void main()
         mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), shininess);
         color += finalSpecularColor*specularity;
     }
+
+    color.a = 1.0;
 
     #ifdef ALPHA_MASK
     if(color.a < alphaMask) discard;

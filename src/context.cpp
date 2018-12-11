@@ -166,6 +166,7 @@ Context::Ptr Context::Create()
     EGLint configAttribs[] = {
         EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+
         EGL_NONE
     };
     if(!eglChooseConfig(context->m_d->egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
@@ -180,10 +181,18 @@ Context::Ptr Context::Create()
         return {};
     }
 
-    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, nullptr);
+    EGLint contextAttribs[]{
+        EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+        EGL_CONTEXT_MAJOR_VERSION, 4,
+        EGL_CONTEXT_MINOR_VERSION, 5,
+
+        EGL_NONE
+    };
+
+    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, contextAttribs);
     if(!context->m_d->egl_context)
     {
-        Error() << "Could not create EGL context";
+        fprintf(stderr, "Could not create EGL context: 0x%X\n", eglGetError());
         return {};
     }
 

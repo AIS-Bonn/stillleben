@@ -2,7 +2,7 @@
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 // with parts taken from the Magnum engine
 
-#include "RenderShader.h"
+#include "render_shader.h"
 
 #include <Corrade/Utility/Resource.h>
 
@@ -13,6 +13,9 @@
 #include <Magnum/GL/Extensions.h>
 
 using namespace Magnum;
+
+namespace sl
+{
 
 namespace
 {
@@ -27,7 +30,7 @@ namespace
 RenderShader::RenderShader(const Flags flags)
  : _flags(flags)
 {
-    Utility::Resource rs("render-data");
+    Utility::Resource rs("stillleben-data");
 
     const auto version = GL::Version::GL320;
 
@@ -53,13 +56,13 @@ RenderShader::RenderShader(const Flags flags)
     vert.addSource(flags ? "#define TEXTURED\n" : "")
         .addSource(rs.get("compatibility.glsl"))
         .addSource(rs.get("generic.glsl"))
-        .addSource(rs.get("RenderShader.vert"));
+        .addSource(rs.get("render_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
         .addSource(flags & Flag::AmbientTexture ? "#define AMBIENT_TEXTURE\n" : "")
         .addSource(flags & Flag::DiffuseTexture ? "#define DIFFUSE_TEXTURE\n" : "")
         .addSource(flags & Flag::SpecularTexture ? "#define SPECULAR_TEXTURE\n" : "")
         .addSource(flags & Flag::AlphaMask ? "#define ALPHA_MASK\n" : "")
-        .addSource(rs.get("RenderShader.frag"));
+        .addSource(rs.get("render_shader.frag"));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));
 
@@ -83,7 +86,8 @@ RenderShader::RenderShader(const Flags flags)
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::explicit_uniform_location>(version))
     #endif
     {
-        _transformationMatrixUniform = uniformLocation("transformationMatrix");
+        _meshToObjectMatrixUniform = uniformLocation("meshToObject");
+        _objectToCamMatrixUniform = uniformLocation("objectToCam");
         _projectionMatrixUniform = uniformLocation("projectionMatrix");
         _normalMatrixUniform = uniformLocation("normalMatrix");
         _lightPositionUniform = uniformLocation("lightPosition");
@@ -92,8 +96,8 @@ RenderShader::RenderShader(const Flags flags)
         _specularColorUniform = uniformLocation("specularColor");
         _lightColorUniform = uniformLocation("lightColor");
         _shininessUniform = uniformLocation("shininess");
-        _worldTransformationMatrixUniform = uniformLocation("worldTransformationMatrix");
-        _pretransformMatrixUniform = uniformLocation("pretransformMatrix");
+        _classIndexUniform = uniformLocation("classIndex");
+        _instanceIndexUniform = uniformLocation("instanceIndex");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 
@@ -145,4 +149,6 @@ RenderShader& RenderShader::setAlphaMask(Float mask)
         "Shaders::RenderShader::setAlphaMask(): the shader was not created with alpha mask enabled", *this);
     setUniform(_alphaMaskUniform, mask);
     return *this;
+}
+
 }
