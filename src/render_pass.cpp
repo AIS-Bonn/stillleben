@@ -4,6 +4,7 @@
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
 #include <stillleben/object.h>
+#include <stillleben/mesh.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -11,6 +12,7 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/Image.h>
 
 #include <Magnum/MeshTools/Compile.h>
 
@@ -93,8 +95,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     framebuffer.clearColor(0, 0x00000000_rgbaf);
     framebuffer.clearColor(1, invalid);
-    framebuffer.clearColor(2, Vector4ui(-1, -1, -1, -1));
-    framebuffer.clearColor(3, Vector4ui(-1, -1, -1, -1));
+    framebuffer.clearColor(2, Vector4ui(3));
+    framebuffer.clearColor(3, Vector4ui(3));
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Let the fun begin!
@@ -103,8 +105,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         Matrix4 objectToCam = scene.camera().object().absoluteTransformationMatrix().inverted() * object->pose();
         Matrix4 objectToCamInv = objectToCam.inverted();
 
-        m_shaderTextured->setObjectToCamMatrix(objectToCam);
-        m_shaderUniform->setObjectToCamMatrix(objectToCam);
+        Debug{} << "Instance index:" << object->instanceIndex();
+        for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform)})
+        {
+            (*shader.get())
+                .setObjectToCamMatrix(objectToCam)
+                .setClassIndex(object->mesh()->classIndex())
+                .setInstanceIndex(object->instanceIndex())
+            ;
+        }
 
         object->draw(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
             Matrix4 meshToObject = objectToCamInv * meshToCam;
@@ -136,6 +145,33 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         });
     }
 
+    // DEBUG
+    {
+        GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
+
+        GL::RectangleTexture texture;
+        texture.setStorage(GL::TextureFormat::R16UI, viewport);
+
+        resolvedBuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, texture);
+
+        framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{3});
+        resolvedBuffer.mapForDraw(GL::Framebuffer::ColorAttachment{0});
+        GL::AbstractFramebuffer::blit(framebuffer, resolvedBuffer,
+        {{}, resolvedBuffer.viewport().size()}, GL::FramebufferBlit::Color);
+
+        Image2D img = texture.image({PixelFormat::R16UI});
+        {
+            unsigned int instanceCount = 0;
+
+            const auto data = reinterpret_cast<uint16_t*>(img.data().data());
+
+            printf("OpenGL resolved:\n");
+            for(int i = 0; i < 100; ++i)
+                printf("%04X ", data[i]);
+            printf("\n");
+        }
+    }
+
     // Resolve the MSAA render buffers
     // For this purpose, we render a quad with a custom shader.
 
@@ -144,9 +180,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     auto ret = std::make_shared<Result>();
 
     GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
-
-    GL::Renderbuffer depthBuffer;
-    depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
 
     ret->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
     ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
@@ -160,7 +193,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .attachTexture(GL::Framebuffer::ColorAttachment{2}, ret->classIndex)
         .attachTexture(GL::Framebuffer::ColorAttachment{3}, ret->instanceIndex)
         .attachTexture(GL::Framebuffer::ColorAttachment{4}, ret->validMask)
-        .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer)
         .mapForDraw({
             {ResolveShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {ResolveShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
@@ -172,13 +204,17 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     ;
 
     resolvedBuffer.clearColor(0, 0x00000000_rgbaf);
-    resolvedBuffer.clearColor(4, Vector4ui(0));
+    resolvedBuffer.clearColor(3, Vector4ui(1));
+    resolvedBuffer.clearColor(4, Vector4ui(6));
 
     if(resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
     {
         Error{} << "Invalid output framebuffer status:" << resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw);
         std::abort();
     }
+
+    Debug{} << "max integer samples:" << GL::AbstractTexture::maxIntegerSamples();
+    Debug{} << m_msaa_instanceIndex.imageSize();
 
     (*m_resolveShader)
         .bindRGB(m_msaa_rgb)

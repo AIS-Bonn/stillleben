@@ -20,12 +20,18 @@ layout(location = 4) out highp uint validMaskOut;
 
 highp vec4 multisampleAverage(sampler2DMS sampler, ivec2 coord)
 {
-    vec4 color = vec4(0.0);
+    highp vec4 color = vec4(0.0);
+    highp vec4 texel;
 
     for (int i = 0; i < MSAA_SAMPLES; i++)
-        color += texelFetch(sampler, coord, i);
+    {
+        texel = texelFetch(sampler, coord, i);
+        color.rgb += texel.a * texel.rgb;
+        color.a += texel.a;
+    }
 
-    color /= float(MSAA_SAMPLES);
+    color.rgb /= color.a;
+    color.a /= MSAA_SAMPLES;
 
     return color;
 }
@@ -45,11 +51,13 @@ void main()
     objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0).rgb;
     classIndexOut = texelFetch(classIndex, texCoord, 0).r;
 
-    instanceIndexOut = texelFetch(instanceIndex, texCoord, 0).r;
-    validMaskOut = 255u;
-    for(int i = 1; i < MSAA_SAMPLES; ++i)
-    {
-        if(texelFetch(instanceIndex, texCoord, i).r != instanceIndexOut)
-            validMaskOut = 0u;
-    }
+    instanceIndexOut = texelFetch(instanceIndex, ivec2(1,1), 0).r;
+//     instanceIndexOut = uint(texelFetch(rgb, texCoord, 0).r * 255);
+//     validMaskOut = 5u;
+//     validMaskOut = 255u;
+//     for(int i = 1; i < MSAA_SAMPLES; ++i)
+//     {
+//         if(texelFetch(instanceIndex, texCoord, i).r != instanceIndexOut)
+//             validMaskOut = 0u;
+//     }
 }

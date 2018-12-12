@@ -216,4 +216,12 @@ Magnum::Range3D Mesh::bbox() const
     return Range3D{lower, upper};
 }
 
+void Mesh::setClassIndex(unsigned int index)
+{
+    if(index > std::numeric_limits<uint16_t>::max())
+        throw std::invalid_argument("Mesh::setClassIndex(): out of range");
+
+    m_classIndex = index;
+}
+
 }

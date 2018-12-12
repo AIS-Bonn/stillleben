@@ -72,6 +72,10 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
     m_objects.push_back(obj);
 
     obj->setParentSceneObject(&m_scene);
+
+    // Automatically set the instance index if not set by the user already
+    if(obj->instanceIndex() == 0)
+        obj->setInstanceIndex(m_objects.size());
 }
 
 float Scene::minimumDistanceForObjectDiameter(float diameter) const

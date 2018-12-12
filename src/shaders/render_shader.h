@@ -339,6 +339,18 @@ public:
         return *this;
     }
 
+    RenderShader& setClassIndex(unsigned int classIndex)
+    {
+        setUniform(_classIndexUniform, classIndex);
+        return *this;
+    }
+
+    RenderShader& setInstanceIndex(unsigned int instanceIndex)
+    {
+        setUniform(_instanceIndexUniform, instanceIndex);
+        return *this;
+    }
+
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},

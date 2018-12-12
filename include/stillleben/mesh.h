@@ -73,6 +73,10 @@ public:
     MaterialArray& materials()
     { return m_materials; }
 
+    void setClassIndex(unsigned int index);
+    unsigned int classIndex() const
+    { return m_classIndex; }
+
 private:
     void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
     void updatePretransform();
@@ -95,6 +99,8 @@ private:
     float m_scale = 1.0f;
 
     Magnum::Matrix4 m_pretransform;
+
+    unsigned int m_classIndex = 1;
 };
 
 }

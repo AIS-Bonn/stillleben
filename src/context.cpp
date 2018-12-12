@@ -219,6 +219,12 @@ Context::Ptr Context::Create()
         return {};
     }
 
+    {
+        GLint max_samples;
+        glGetIntegerv(GL_MAX_INTEGER_SAMPLES, &max_samples);
+        Debug{} << "GL_MAX_INTEGER_SAMPLES:" << max_samples;
+    }
+
     return context;
 }
 

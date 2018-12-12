@@ -73,6 +73,13 @@ public:
 
     void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
+    void setInstanceIndex(unsigned int instanceIndex);
+    unsigned int instanceIndex() const
+    { return m_instanceIndex; }
+
+    std::shared_ptr<Mesh> mesh()
+    { return m_mesh; }
+
 private:
     void load();
     void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);
@@ -96,6 +103,8 @@ private:
     DrawCallback m_cb;
 
     float m_scale = 1.0f;
+
+    unsigned int m_instanceIndex = 0;
 };
 
 }

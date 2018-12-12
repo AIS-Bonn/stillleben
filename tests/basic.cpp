@@ -148,6 +148,9 @@ TEST_CASE("render")
     // Add it to the scene
     scene.addObject(object);
 
+    // Check that we have got a valid instance ID
+    CHECK(object->instanceIndex() == 1);
+
     // Render everything using a Phong shader
     sl::RenderPass pass;
     auto ret = pass.render(scene);
@@ -184,6 +187,7 @@ TEST_CASE("render")
     Image2D coordImage = ret->objectCoordinates.image({PixelFormat::RGBA8Unorm});
     CHECK(converter->exportToFile(coordImage, "/tmp/stillleben_coords.png"));
 
+    Debug{} << "Valid";
     Image2D validImage = ret->validMask.image({PixelFormat::R8UI});
     {
         unsigned int nonValid = 0;
@@ -203,5 +207,49 @@ TEST_CASE("render")
 
         CHECK(nonValid > 10);
         CHECK(nonValid < 0.1 * image.size().product());
+    }
+
+    Debug{} << "Class";
+    Image2D classImage = ret->classIndex.image({PixelFormat::R16UI});
+    {
+        unsigned int instanceCount = 0;
+        REQUIRE(classImage.pixelSize() == 2);
+
+        const auto data = reinterpret_cast<uint16_t*>(classImage.data().data());
+
+        for(int i = 0; i < 100; ++i)
+            printf("%04X ", data[i]);
+        printf("\n");
+
+        for(int i = 0; i < image.size().product(); ++i)
+        {
+            if(data[i] != 0)
+                instanceCount++;
+        }
+
+        CHECK(instanceCount > 10);
+        CHECK(instanceCount < 0.1 * image.size().product());
+    }
+
+    Debug{} << "Instance";
+    Image2D instanceImage = ret->instanceIndex.image({PixelFormat::R16UI});
+    {
+        unsigned int instanceCount = 0;
+        REQUIRE(instanceImage.pixelSize() == 2);
+
+        const auto data = reinterpret_cast<uint16_t*>(instanceImage.data().data());
+
+        for(int i = 0; i < 100; ++i)
+            printf("%04X ", data[i]);
+        printf("\n");
+
+        for(int i = 0; i < image.size().product(); ++i)
+        {
+            if(data[i] != 0)
+                instanceCount++;
+        }
+
+        CHECK(instanceCount > 10);
+        CHECK(instanceCount < 0.1 * image.size().product());
     }
 }

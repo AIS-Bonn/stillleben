@@ -162,4 +162,12 @@ void Object::setPose(const PoseMatrix& matrix)
     m_sceneObject.setTransformation(matrix);
 }
 
+void Object::setInstanceIndex(unsigned int index)
+{
+    if(index > std::numeric_limits<uint16_t>::max())
+        throw std::invalid_argument("Object::setInstanceIndex(): out of range");
+
+    m_instanceIndex = index;
+}
+
 }

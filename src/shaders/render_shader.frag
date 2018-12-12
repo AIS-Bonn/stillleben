@@ -64,16 +64,16 @@ in mediump vec2 interpolatedTextureCoords;
 
 in highp vec3 objectCoordinates;
 
-out lowp vec4 color;
-out highp vec3 objectCoordinatesOut;
-out uint classIndexOut;
-out uint instanceIndexOut;
+layout(location = 0) out lowp vec4 color;
+layout(location = 1) out highp vec3 objectCoordinatesOut;
+layout(location = 2) out uint classIndexOut;
+layout(location = 3) out uint instanceIndexOut;
 
 void main()
 {
     objectCoordinatesOut = objectCoordinates;
     classIndexOut = classIndex;
-    instanceIndexOut = instanceIndex;
+    instanceIndexOut = 4u;
 
     lowp const vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE
