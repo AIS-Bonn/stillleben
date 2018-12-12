@@ -32,7 +32,7 @@ highp vec4 multisampleAverage(sampler2DMS sampler, ivec2 coord)
 
 highp vec3 multisampleVec3First(sampler2DMS sampler, ivec2 coord)
 {
-    return texelFetch(sampler, coord, 0);
+    return texelFetch(sampler, coord, 0).rgb;
 }
 
 void main()
@@ -41,16 +41,15 @@ void main()
     ivec2 texCoord = ivec2(textureCoords * texSize);
 
     fragmentColor = multisampleAverage(rgb, texCoord);
-//     fragmentColor = vec4(textureCoords.xy, 0.0, 1.0);
 
     objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0).rgb;
     classIndexOut = texelFetch(classIndex, texCoord, 0).r;
 
     instanceIndexOut = texelFetch(instanceIndex, texCoord, 0).r;
-//     validMaskOut = 255u;
-//     for(int i = 1; i < MSAA_SAMPLES; ++i)
-//     {
-//         if(texelFetch(instanceIndex, texCoord, i).r != instanceIndexOut)
+    validMaskOut = 255u;
+    for(int i = 1; i < MSAA_SAMPLES; ++i)
+    {
+        if(texelFetch(instanceIndex, texCoord, i).r != instanceIndexOut)
             validMaskOut = 0u;
-//     }
+    }
 }
