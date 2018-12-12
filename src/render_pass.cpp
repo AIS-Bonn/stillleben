@@ -12,6 +12,7 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/DebugOutput.h>
 #include <Magnum/Image.h>
 
 #include <Magnum/MeshTools/Compile.h>
@@ -181,6 +182,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
 
+    GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
+    GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
+    GL::DebugOutput::setDefaultCallback();
+
     ret->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
     ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
     ret->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
@@ -222,6 +227,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .bindClassIndex(m_msaa_classIndex)
         .bindInstanceIndex(m_msaa_instanceIndex)
     ;
+
+    glActiveTexture(GL_TEXTURE3);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_quadMesh.draw(*m_resolveShader);
 
