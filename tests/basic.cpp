@@ -184,11 +184,9 @@ TEST_CASE("render")
     Image2D coordImage = ret->objectCoordinates.image({PixelFormat::RGBA8Unorm});
     CHECK(converter->exportToFile(coordImage, "/tmp/stillleben_coords.png"));
 
-    Image2D validImage = ret->validMask.image({PixelFormat::R8Unorm});
-    CHECK(converter->exportToFile(validImage, "/tmp/stillleben_valid.png"));
-
+    Image2D validImage = ret->validMask.image({PixelFormat::R8UI});
     {
-        unsigned int nonTransparent = 0;
+        unsigned int nonValid = 0;
         REQUIRE(validImage.pixelSize() == 1);
 
         const auto data = validImage.data();
@@ -197,11 +195,13 @@ TEST_CASE("render")
             printf("%02X ", (uint8_t)data[i]);
         printf("\n");
 
-//         for(int i = 0; i < image.size().product(); ++i)
-//         {
-//             uint8_t alpha = data[i*4 + 3];
-//             if(alpha != 0)
-//                 nonTransparent++;
-//         }
+        for(int i = 0; i < image.size().product(); ++i)
+        {
+            if(((uint8_t)data[i]) != 255)
+                nonValid++;
+        }
+
+        CHECK(nonValid > 10);
+        CHECK(nonValid < 0.1 * image.size().product());
     }
 }
