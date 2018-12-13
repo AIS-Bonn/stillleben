@@ -152,11 +152,18 @@ int main(int argc, char** argv)
         glGetIntegerv(GL_MAX_SAMPLES, &samples);
         printf("GL_MAX_SAMPLES: %d\n", samples);
 
-        printf("Sample counts per internal format:\n");
+        printf("Supported sample counts per internal format:\n");
         for(const auto& fmt : KNOWN_FORMATS)
         {
-            glGetInternalformativ(GL_TEXTURE_2D_MULTISAMPLE, fmt.second, GL_SAMPLES, 1, &samples);
-            printf(" - %10s: %d\n", fmt.first.c_str(), samples);
+            GLint length = 0;
+            glGetInternalformativ(GL_TEXTURE_2D_MULTISAMPLE, fmt.second, GL_NUM_SAMPLE_COUNTS, 1, &length);
+
+            std::vector<GLint> buf(length);
+            glGetInternalformativ(GL_TEXTURE_2D_MULTISAMPLE, fmt.second, GL_SAMPLES, buf.size(), buf.data());
+            printf(" - %10s:", fmt.first.c_str());
+            for(auto& v : buf)
+                printf(" %d", v);
+            printf("\n");
         }
     }
 
