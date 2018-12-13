@@ -8,14 +8,14 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/modules/")
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL)
 
-# if(OpenGL_EGL_FOUND)
-#     message(STATUS "Found EGL, using that one...")
-#     add_definitions(-DHAVE_EGL=1)
-#     set(MAGNUM_GL_APP WindowlessEglApplication)
-# else()
+if(OpenGL_EGL_FOUND)
+    message(STATUS "Found EGL, using that one...")
+    add_definitions(-DHAVE_EGL=1)
+    set(MAGNUM_GL_APP WindowlessEglApplication)
+else()
     message(STATUS "Could not find EGL/GLVND, falling back to GLX")
     set(MAGNUM_GL_APP WindowlessGlxApplication)
-# endif()
+endif()
 
 find_package(Magnum REQUIRED COMPONENTS
     GL

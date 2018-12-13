@@ -15,6 +15,7 @@
 #include <Magnum/Math/Range.h>
 
 #include <iostream>
+#include <iomanip>
 
 using namespace Corrade;
 using namespace Magnum;
@@ -187,7 +188,6 @@ TEST_CASE("render")
     Image2D coordImage = ret->objectCoordinates.image({PixelFormat::RGBA8Unorm});
     CHECK(converter->exportToFile(coordImage, "/tmp/stillleben_coords.png"));
 
-    Debug{} << "Valid";
     Image2D validImage = ret->validMask.image({PixelFormat::R8UI});
     {
         unsigned int nonValid = 0;
@@ -195,9 +195,12 @@ TEST_CASE("render")
 
         const auto data = validImage.data();
 
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0');
         for(int i = 0; i < 100; ++i)
-            printf("%02X ", (uint8_t)data[i]);
-        printf("\n");
+            ss << std::setw(2) << data[i] << ' ';
+
+        INFO("First pixels: " << ss.str());
 
         for(int i = 0; i < image.size().product(); ++i)
         {
@@ -209,7 +212,6 @@ TEST_CASE("render")
         CHECK(nonValid < 0.1 * image.size().product());
     }
 
-    Debug{} << "Class";
     Image2D classImage = ret->classIndex.image({PixelFormat::R16UI});
     {
         unsigned int instanceCount = 0;
@@ -217,9 +219,12 @@ TEST_CASE("render")
 
         const auto data = reinterpret_cast<uint16_t*>(classImage.data().data());
 
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0');
         for(int i = 0; i < 100; ++i)
-            printf("%04X ", data[i]);
-        printf("\n");
+            ss << std::setw(2) << data[i] << ' ';
+
+        INFO("First pixels: " << ss.str());
 
         for(int i = 0; i < image.size().product(); ++i)
         {
@@ -228,10 +233,9 @@ TEST_CASE("render")
         }
 
         CHECK(instanceCount > 10);
-        CHECK(instanceCount < 0.1 * image.size().product());
+        CHECK(instanceCount < 0.5 * image.size().product());
     }
 
-    Debug{} << "Instance";
     Image2D instanceImage = ret->instanceIndex.image({PixelFormat::R16UI});
     {
         unsigned int instanceCount = 0;
@@ -239,9 +243,12 @@ TEST_CASE("render")
 
         const auto data = reinterpret_cast<uint16_t*>(instanceImage.data().data());
 
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0');
         for(int i = 0; i < 100; ++i)
-            printf("%04X ", data[i]);
-        printf("\n");
+            ss << std::setw(2) << data[i] << ' ';
+
+        INFO("First pixels: " << ss.str());
 
         for(int i = 0; i < image.size().product(); ++i)
         {
@@ -250,6 +257,6 @@ TEST_CASE("render")
         }
 
         CHECK(instanceCount > 10);
-        CHECK(instanceCount < 0.1 * image.size().product());
+        CHECK(instanceCount < 0.5 * image.size().product());
     }
 }

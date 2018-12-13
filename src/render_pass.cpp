@@ -46,10 +46,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 {
     constexpr Color4 invalid{-3000.0, -3000.0, -3000.0, -3000.0};
 
-    GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
-    GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
-    GL::DebugOutput::setDefaultCallback();
-
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
@@ -61,8 +57,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
     m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
     m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
-    m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R8UI, viewport);
-    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R8UI, viewport);
+    m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
 
     framebuffer
         .attachTexture(
@@ -100,8 +96,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     framebuffer.clearColor(0, 0x00000000_rgbaf);
     framebuffer.clearColor(1, invalid);
-    framebuffer.clearColor(2, Vector4ui(3));
-    framebuffer.clearColor(3, Vector4ui(30));
+    framebuffer.clearColor(2, Vector4ui(0));
+    framebuffer.clearColor(3, Vector4ui(0));
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Let the fun begin!
@@ -110,7 +106,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         Matrix4 objectToCam = scene.camera().object().absoluteTransformationMatrix().inverted() * object->pose();
         Matrix4 objectToCamInv = objectToCam.inverted();
 
-        Debug{} << "Instance index:" << object->instanceIndex();
         for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform)})
         {
             (*shader.get())
@@ -218,9 +213,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         std::abort();
     }
 
-    Debug{} << "max integer samples:" << GL::AbstractTexture::maxIntegerSamples();
-    Debug{} << m_msaa_instanceIndex.imageSize();
-
     (*m_resolveShader)
         .bindRGB(m_msaa_rgb)
         .bindCoordinates(m_msaa_objectCoordinates)
@@ -228,19 +220,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .bindInstanceIndex(m_msaa_instanceIndex)
     ;
 
-    glActiveTexture(GL_TEXTURE2);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glActiveTexture(GL_TEXTURE3);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    Debug{} << "OPENGL error state:" << GL::Renderer::error();
-
     m_quadMesh.draw(*m_resolveShader);
-
-    Debug{} << "draw end";
 
     return ret;
 }
