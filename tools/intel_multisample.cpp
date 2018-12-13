@@ -144,24 +144,35 @@ int main(int argc, char** argv)
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(errorCallback, 0);
 
+    {
+        GLint samples;
+        glGetIntegerv(GL_MAX_INTEGER_SAMPLES, &samples);
+        printf("GL_MAX_INTEGER_SAMPLES: %d\n", samples);
+
+        glGetIntegerv(GL_MAX_SAMPLES, &samples);
+        printf("GL_MAX_SAMPLES: %d\n", samples);
+    }
+
     // Compile shaders
-    GLuint vertex_shader;
+    GLuint vertex_shader_1;
+    GLuint vertex_shader_2;
     GLuint fragment_shader_1;
     GLuint fragment_shader_2;
     GLuint program1;
     GLuint program2;
     {
-        vertex_shader = compileShader("vertex shader", GL_VERTEX_SHADER, VERTEX_SHADER);
+        vertex_shader_1 = compileShader("vertex shader", GL_VERTEX_SHADER, VERTEX_SHADER);
+        vertex_shader_2 = compileShader("vertex shader", GL_VERTEX_SHADER, VERTEX_SHADER);
         fragment_shader_1 = compileShader("fragment shader 1", GL_FRAGMENT_SHADER, FRAGMENT_SHADER_1);
         fragment_shader_2 = compileShader("fragment shader 2", GL_FRAGMENT_SHADER, FRAGMENT_SHADER_2);
 
         program1 = glCreateProgram();
-        glAttachShader(program1, vertex_shader);
+        glAttachShader(program1, vertex_shader_1);
         glAttachShader(program1, fragment_shader_1);
         glLinkProgram(program1);
 
         program2 = glCreateProgram();
-        glAttachShader(program2, vertex_shader);
+        glAttachShader(program2, vertex_shader_2);
         glAttachShader(program2, fragment_shader_2);
         glLinkProgram(program2);
     }
