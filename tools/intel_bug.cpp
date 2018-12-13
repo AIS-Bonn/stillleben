@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <vector>
 #include <string>
+#include <map>
 
 const char* VERTEX_SHADER = R"EOS(
 #version 450
@@ -20,10 +21,8 @@ void main() {
 
 const char* FRAGMENT_SHADER_1 = R"EOS(
 #version 450
-layout (location = 0) out vec4 color;
-layout (location = 1) out uint my_output;
+layout (location = 0) out uint my_output;
 void main() {
-  color = vec4(0.5);
   my_output = 5u;
 }
 )EOS";
@@ -33,8 +32,7 @@ const char* FRAGMENT_SHADER_2 = R"EOS(
 uniform usampler2DMS sampler;
 out uint my_output;
 void main() {
-//   my_output = texelFetch(sampler, ivec2(0,0), 0).r;
-  my_output = 2u;
+  my_output = texelFetch(sampler, ivec2(0,0), 0).r;
 }
 )EOS";
 
@@ -79,8 +77,32 @@ void errorCallback(
                 type, severity, message );
 }
 
+const std::map<std::string, GLenum> KNOWN_FORMATS{
+    {"GL_R32F", GL_R32F},
+    {"GL_R32UI", GL_R32UI},
+    {"GL_R16UI", GL_R16UI},
+    {"GL_R8UI", GL_R8UI}
+};
+
 int main(int argc, char** argv)
 {
+    if(argc < 2 || std::string(argv[1]) == "--help")
+    {
+        fprintf(stderr, "Usage: %s <format>\n", argv[0]);
+        fprintf(stderr, "Where format is one of: GL_R32F, GL_R32UI, GL_R8UI, GL_R16UI\n");
+        return 1;
+    }
+
+    auto it = KNOWN_FORMATS.find(argv[1]);
+    if(it == KNOWN_FORMATS.end())
+    {
+        fprintf(stderr, "Unknown format '%s'\n", argv[1]);
+        return 1;
+    }
+
+    printf("Testing format %s\n", argv[1]);
+    GLenum format = it->second;
+
     if(!glfwInit())
     {
         fprintf(stderr, "glfwInit failed\n");
@@ -131,7 +153,7 @@ int main(int argc, char** argv)
 
         program2 = glCreateProgram();
         glAttachShader(program2, vertex_shader);
-        glAttachShader(program2, fragment_shader_1);
+        glAttachShader(program2, fragment_shader_2);
         glLinkProgram(program2);
     }
 
@@ -161,20 +183,14 @@ int main(int argc, char** argv)
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-        // Create dummy color texture
-        GLuint colorTexture;
-        glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &colorTexture);
-        glTextureStorage2DMultisample(colorTexture, 4, GL_RGBA8, 640, 480, GL_FALSE);
-
         // Create multisample texture
         glCreateTextures(GL_TEXTURE_2D_MULTISAMPLE, 1, &texture);
-        glTextureStorage2DMultisample(texture, 4, GL_R8UI, 640, 480, GL_FALSE);
+        glTextureStorage2DMultisample(texture, 4, format, 640, 480, GL_FALSE);
 
-        glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, colorTexture, 0);
-        glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT1, texture, 0);
+        glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, texture, 0);
 
-        const GLenum buffers[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-        glNamedFramebufferDrawBuffers(fbo, 2, buffers);
+        const GLenum buffers[]{GL_COLOR_ATTACHMENT0};
+        glNamedFramebufferDrawBuffers(fbo, 1, buffers);
 
         GLenum status = glCheckNamedFramebufferStatus(fbo, GL_DRAW_FRAMEBUFFER);
         if(status != GL_FRAMEBUFFER_COMPLETE)
@@ -201,6 +217,9 @@ int main(int argc, char** argv)
         glTextureStorage2D(outputTexture, 1, GL_R8UI, 640, 480);
         glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, outputTexture, 0);
 
+        const GLenum buffers[]{GL_COLOR_ATTACHMENT0};
+        glNamedFramebufferDrawBuffers(fbo, 1, buffers);
+
         // bind input texture
         glBindTextureUnit(0, texture);
 
@@ -215,12 +234,27 @@ int main(int argc, char** argv)
 
         glGetTextureImage(outputTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, data.size(), data.data());
 
-        printf("Data:\n");
+        printf("First pixels (these should have value 5):\n");
         for(std::size_t i = 0; i < 100; ++i)
         {
             printf("%02X ", data[i]);
         }
         printf("\n");
+
+        bool correct = true;
+        for(auto val : data)
+        {
+            if(val != 5)
+            {
+                correct = false;
+                break;
+            }
+        }
+
+        if(correct)
+            printf("PASS\n");
+        else
+            printf("FAIL\n");
     }
 
     glfwTerminate();
