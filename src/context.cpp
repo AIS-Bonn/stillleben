@@ -107,9 +107,11 @@ Context::Ptr Context::Create()
 
     if(num_devices > 0)
     {
+        Debug{} << "Found EGL device, trying to create display...";
         display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, devices.front(), nullptr);
     }
-    else
+
+    if(!display)
     {
         Debug() << "Could not enumerate EGL devices, trying MESA targets with EGL_DEFAULT_DISPLAY...";
 

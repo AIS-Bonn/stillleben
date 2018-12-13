@@ -51,9 +51,9 @@ void main()
     objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0).rgb;
     classIndexOut = texelFetch(classIndex, texCoord, 0).r;
 
-    instanceIndexOut = texelFetch(instanceIndex, ivec2(1,1), 0).r;
+    instanceIndexOut = uint(texelFetch(instanceIndex, ivec2(0), 0).r);
 //     instanceIndexOut = uint(texelFetch(rgb, texCoord, 0).r * 255);
-//     validMaskOut = 5u;
+//     validMaskOut = texelFetch(instanceIndex, ivec2(1,1), 0).r;
 //     validMaskOut = 255u;
 //     for(int i = 1; i < MSAA_SAMPLES; ++i)
 //     {

@@ -95,6 +95,7 @@ sl::ResolveShader& ResolveShader::bindClassIndex(GL::MultisampleTexture2D& textu
 
 sl::ResolveShader& ResolveShader::bindInstanceIndex(GL::MultisampleTexture2D& texture)
 {
+    Debug{} << "Binding instance index texture to" << InstanceIndexLayer;
     texture.bind(InstanceIndexLayer);
     return *this;
 }

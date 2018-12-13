@@ -35,7 +35,7 @@ public:
 
     std::shared_ptr<Result> render(Scene& scene);
 private:
-    unsigned int m_msaa_factor = 8;
+    unsigned int m_msaa_factor = 4;
     Magnum::GL::MultisampleTexture2D m_msaa_rgb;
     Magnum::GL::MultisampleTexture2D m_msaa_depth;
     Magnum::GL::MultisampleTexture2D m_msaa_objectCoordinates;

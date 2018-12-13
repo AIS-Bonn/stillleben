@@ -57,8 +57,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
     m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
     m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
-    m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R16UI, viewport);
-    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R16UI, viewport);
+    m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R8UI, viewport);
+    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
 
     framebuffer
         .attachTexture(
@@ -97,7 +97,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     framebuffer.clearColor(0, 0x00000000_rgbaf);
     framebuffer.clearColor(1, invalid);
     framebuffer.clearColor(2, Vector4ui(3));
-    framebuffer.clearColor(3, Vector4ui(3));
+    framebuffer.clearColor(3, Vector4ui(30));
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Let the fun begin!
@@ -147,31 +147,31 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     }
 
     // DEBUG
-    {
-        GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
-
-        GL::RectangleTexture texture;
-        texture.setStorage(GL::TextureFormat::R16UI, viewport);
-
-        resolvedBuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, texture);
-
-        framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{3});
-        resolvedBuffer.mapForDraw(GL::Framebuffer::ColorAttachment{0});
-        GL::AbstractFramebuffer::blit(framebuffer, resolvedBuffer,
-        {{}, resolvedBuffer.viewport().size()}, GL::FramebufferBlit::Color);
-
-        Image2D img = texture.image({PixelFormat::R16UI});
-        {
-            unsigned int instanceCount = 0;
-
-            const auto data = reinterpret_cast<uint16_t*>(img.data().data());
-
-            printf("OpenGL resolved:\n");
-            for(int i = 0; i < 100; ++i)
-                printf("%04X ", data[i]);
-            printf("\n");
-        }
-    }
+//     {
+//         GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
+//
+//         GL::RectangleTexture texture;
+//         texture.setStorage(GL::TextureFormat::R8UI, viewport);
+//
+//         resolvedBuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, texture);
+//
+//         framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{3});
+//         resolvedBuffer.mapForDraw(GL::Framebuffer::ColorAttachment{0});
+//         GL::AbstractFramebuffer::blit(framebuffer, resolvedBuffer,
+//         {{}, resolvedBuffer.viewport().size()}, GL::FramebufferBlit::Color);
+//
+//         Image2D img = texture.image({PixelFormat::R8UI});
+//         {
+//             unsigned int instanceCount = 0;
+//
+//             const auto data = reinterpret_cast<uint8_t*>(img.data().data());
+//
+//             printf("OpenGL resolved:\n");
+//             for(int i = 0; i < 100; ++i)
+//                 printf("%04X ", data[i]);
+//             printf("\n");
+//         }
+//     }
 
     // Resolve the MSAA render buffers
     // For this purpose, we render a quad with a custom shader.
@@ -188,8 +188,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     ret->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
     ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
-    ret->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
-    ret->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
+    ret->classIndex.setStorage(GL::TextureFormat::R8UI, viewport);
+    ret->instanceIndex.setStorage(GL::TextureFormat::R8UI, viewport);
     ret->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
 
     resolvedBuffer
@@ -228,9 +228,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .bindInstanceIndex(m_msaa_instanceIndex)
     ;
 
+    glActiveTexture(GL_TEXTURE2);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
     glActiveTexture(GL_TEXTURE3);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    Debug{} << "OPENGL error state:" << GL::Renderer::error();
 
     m_quadMesh.draw(*m_resolveShader);
 
