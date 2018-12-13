@@ -151,6 +151,13 @@ int main(int argc, char** argv)
 
         glGetIntegerv(GL_MAX_SAMPLES, &samples);
         printf("GL_MAX_SAMPLES: %d\n", samples);
+
+        printf("Sample counts per internal format:\n");
+        for(const auto& fmt : KNOWN_FORMATS)
+        {
+            glGetInternalformativ(GL_TEXTURE_2D_MULTISAMPLE, fmt.second, GL_SAMPLES, 1, &samples);
+            printf(" - %10s: %d\n", fmt.first.c_str(), samples);
+        }
     }
 
     // Compile shaders
