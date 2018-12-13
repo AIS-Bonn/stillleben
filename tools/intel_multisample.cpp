@@ -1,3 +1,9 @@
+// This is a two-stage test: First, we render to a multisample texture
+// of the specified format. The contents are then read in a second shader run
+// using texelFetch() and written into an GL_R8UI texture.
+
+// Compilation:
+// g++ -std=c++11 -o intel_multisample intel_multisample.cpp -lglfw -lGL -lGLEW
 
 #include <GL/glew.h>
 
@@ -11,7 +17,7 @@
 #include <map>
 
 const char* VERTEX_SHADER = R"EOS(
-#version 450
+#version 330
 layout (location = 0) in vec2 position;
 
 void main() {
@@ -20,7 +26,7 @@ void main() {
 )EOS";
 
 const char* FRAGMENT_SHADER_1 = R"EOS(
-#version 450
+#version 330
 layout (location = 0) out uint my_output;
 void main() {
   my_output = 5u;
@@ -28,7 +34,7 @@ void main() {
 )EOS";
 
 const char* FRAGMENT_SHADER_2 = R"EOS(
-#version 450
+#version 330
 uniform usampler2DMS sampler;
 out uint my_output;
 void main() {
@@ -72,7 +78,7 @@ void errorCallback(
     const GLchar* message,
     const void* userParam)
 {
-    fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+    fprintf( stderr, "GL DEBUG message: %s type = 0x%x, severity = 0x%x, message = %s\n",
             ( type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "" ),
                 type, severity, message );
 }
@@ -89,7 +95,10 @@ int main(int argc, char** argv)
     if(argc < 2 || std::string(argv[1]) == "--help")
     {
         fprintf(stderr, "Usage: %s <format>\n", argv[0]);
-        fprintf(stderr, "Where format is one of: GL_R32F, GL_R32UI, GL_R8UI, GL_R16UI\n");
+        fprintf(stderr, "Where format is one of:");
+        for(auto& fmt : KNOWN_FORMATS)
+            fprintf(stderr, " %s", fmt.first.c_str());
+        fprintf(stderr, "\n");
         return 1;
     }
 
@@ -109,8 +118,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     GLFWwindow* window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
     if(!window)
     {
