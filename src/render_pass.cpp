@@ -46,6 +46,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 {
     constexpr Color4 invalid{-3000.0, -3000.0, -3000.0, -3000.0};
 
+    GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
+    GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
+    GL::DebugOutput::setDefaultCallback();
+
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
@@ -58,7 +62,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
     m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
     m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R8UI, viewport);
-    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R8UI, viewport);
 
     framebuffer
         .attachTexture(
@@ -182,14 +186,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
 
-    GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
-    GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
-    GL::DebugOutput::setDefaultCallback();
-
     ret->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
     ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
-    ret->classIndex.setStorage(GL::TextureFormat::R8UI, viewport);
-    ret->instanceIndex.setStorage(GL::TextureFormat::R8UI, viewport);
+    ret->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
+    ret->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
     ret->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
 
     resolvedBuffer
@@ -239,6 +239,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     Debug{} << "OPENGL error state:" << GL::Renderer::error();
 
     m_quadMesh.draw(*m_resolveShader);
+
+    Debug{} << "draw end";
 
     return ret;
 }

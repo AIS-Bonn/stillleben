@@ -32,7 +32,7 @@ RenderShader::RenderShader(const Flags flags)
 {
     Utility::Resource rs("stillleben-data");
 
-    const auto version = GL::Version::GL320;
+    const auto version = GL::Version::GL450;
 
     GL::Shader vert{version, GL::Shader::Type::Vertex},
         frag{version, GL::Shader::Type::Fragment};
