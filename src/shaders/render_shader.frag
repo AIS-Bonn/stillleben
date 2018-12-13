@@ -73,7 +73,7 @@ void main()
 {
     objectCoordinatesOut = objectCoordinates;
     classIndexOut = classIndex;
-    instanceIndexOut = 4u;
+    instanceIndexOut = instanceIndex;
 
     lowp const vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE

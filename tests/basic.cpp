@@ -152,6 +152,8 @@ TEST_CASE("render")
     // Check that we have got a valid instance ID
     CHECK(object->instanceIndex() == 1);
 
+    object->setInstanceIndex(0xFFFF);
+
     // Render everything using a Phong shader
     sl::RenderPass pass;
     auto ret = pass.render(scene);
@@ -214,7 +216,7 @@ TEST_CASE("render")
 
     Image2D classImage = ret->classIndex.image({PixelFormat::R16UI});
     {
-        unsigned int instanceCount = 0;
+        unsigned int classCount = 0;
         REQUIRE(classImage.pixelSize() == 2);
 
         const auto data = reinterpret_cast<uint16_t*>(classImage.data().data());
@@ -229,11 +231,11 @@ TEST_CASE("render")
         for(int i = 0; i < image.size().product(); ++i)
         {
             if(data[i] != 0)
-                instanceCount++;
+                classCount++;
         }
 
-        CHECK(instanceCount > 10);
-        CHECK(instanceCount < 0.5 * image.size().product());
+        CHECK(classCount > 10);
+        CHECK(classCount < 0.5 * image.size().product());
     }
 
     Image2D instanceImage = ret->instanceIndex.image({PixelFormat::R16UI});
@@ -246,14 +248,18 @@ TEST_CASE("render")
         std::stringstream ss;
         ss << std::hex << std::setfill('0');
         for(int i = 0; i < 100; ++i)
-            ss << std::setw(2) << data[i] << ' ';
+            ss << std::setw(4) << data[i] << ' ';
 
         INFO("First pixels: " << ss.str());
 
         for(int i = 0; i < image.size().product(); ++i)
         {
-            if(data[i] != 0)
+            if(data[i] == 65535)
                 instanceCount++;
+            else if(data[i] != 0)
+            {
+                std::cout << "got: " << std::hex << data[i] << "\n";
+            }
         }
 
         CHECK(instanceCount > 10);
