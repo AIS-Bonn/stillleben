@@ -25,11 +25,13 @@ template<std::size_t size, class T>
 std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Vector<size, T>& value)
 {
     Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
+    return stream;
 }
 template<class T>
 std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Range3D<T>& value)
 {
     Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
+    return stream;
 }
 
 #include "catch.hpp"
