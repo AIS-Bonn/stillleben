@@ -30,7 +30,10 @@ find_package(Magnum REQUIRED COMPONENTS
 include_directories(${OPENGL_INCLUDE_DIR} ${OPENGL_EGL_INCLUDE_DIRS})
 
 find_package(CUDA)
-# include_directories(${CUDA_INCLUDE_DIRS})
+if(CUDA_FOUND)
+    include_directories(${CUDA_INCLUDE_DIRS})
+    add_definitions(-DHAVE_CUDA=1)
+endif()
 
 include_directories(include)
 
@@ -40,6 +43,7 @@ corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
 
 add_library(stillleben SHARED
     src/context.cpp
+    src/cuda_interop.cpp
     src/exception.cpp
     src/mesh.cpp
     src/object.cpp
@@ -60,8 +64,14 @@ target_link_libraries(stillleben PUBLIC
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::${MAGNUM_GL_APP}
-#     OpenGL::EGL
-#     ${CUDA_LIBRARIES}
+)
+
+install(TARGETS stillleben
+    LIBRARY DESTINATION lib
+)
+install(DIRECTORY
+    include/object_rendering/
+    DESTINATION include/object_rendering
 )
 
 add_subdirectory(tests)
