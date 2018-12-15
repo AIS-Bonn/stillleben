@@ -60,12 +60,12 @@ CUDAMapper::CUDAMapper(GL::RectangleTexture& texture, std::size_t bytesPerPixel)
 CUDAMapper::~CUDAMapper()
 {
 #if HAVE_CUDA
-    if(cudaGraphicsUnmapResources(1, m_d->cuda_resource) != cudaSuccess)
+    if(cudaGraphicsUnmapResources(1, &m_d->cuda_resource) != cudaSuccess)
     {
         Error{} << "Could not map render buffers for CUDA";
         std::abort();
     }
-    if(cudaGraphicsUnregisterResource(&m_d->cuda_resource) != cudaSuccess)
+    if(cudaGraphicsUnregisterResource(m_d->cuda_resource) != cudaSuccess)
     {
         Error{} << "Could not unregister texture with CUDA";
         std::abort();
