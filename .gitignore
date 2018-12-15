@@ -1,4 +1,5 @@
 *.kdev4*
 *~
-build
+build/
+tmp_install/
 

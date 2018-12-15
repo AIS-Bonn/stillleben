@@ -17,6 +17,9 @@ else()
     set(MAGNUM_GL_APP WindowlessGlxApplication)
 endif()
 
+# Build Corrade & Magnum
+add_subdirectory(contrib)
+
 find_package(Magnum REQUIRED COMPONENTS
     GL
     MeshTools
@@ -67,12 +70,18 @@ target_link_libraries(stillleben PUBLIC
     Magnum::${MAGNUM_GL_APP}
 )
 
+if(CUDA_FOUND)
+    target_link_libraries(stillleben PUBLIC
+        ${CUDA_LIBRARIES}
+    )
+endif()
+
 install(TARGETS stillleben
     LIBRARY DESTINATION lib
 )
 install(DIRECTORY
-    include/object_rendering/
-    DESTINATION include/object_rendering
+    include/stillleben/
+    DESTINATION include/stillleben
 )
 
 add_subdirectory(tests)
