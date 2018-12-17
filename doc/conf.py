@@ -190,3 +190,9 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
 }
+
+autodoc_default_options = {
+    'member-order': 'groupwise',
+    'special-members': '__init__',
+}
+
