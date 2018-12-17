@@ -1,7 +1,7 @@
 // Python/C++ bridge
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
@@ -70,7 +70,7 @@ static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("init", &init, "Init without CUDA support");
-    m.def("initCUDA", &init, "Init with CUDA support", py::arg("device_index") = 0);
+    m.def("initCUDA", &initCUDA, "Init with CUDA support", py::arg("device_index") = 0);
 
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
@@ -106,7 +106,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 target_diagonal (float): Target diagonal
         )EOS", py::arg("target_diagonal"))
 
-        .def_property_readonly("pretransform", &sl::Mesh::pretransform, R"EOS(
+        .def_property_readonly("pretransform", &Mesh_pretransform, R"EOS(
             The current pretransform matrix. Initialized to identity and
             modified by :func:`center_bbox` and :func:`scale_to_bbox_diagonal`.
         )EOS")

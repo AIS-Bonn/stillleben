@@ -2,4 +2,12 @@
 *~
 build/
 tmp_install/
+cpp_build/
+stillleben/bin
+stillleben/include
+stillleben/lib
+stillleben/share
+stillleben.egg-info
+__pycache__
+dist/
 

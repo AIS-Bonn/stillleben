@@ -1,12 +1,13 @@
 
 # Magnum options
-set(WITH_WINDOWLESSEGLAPPLICATION ON)
-set(WITH_ANYIMAGEIMPORTER ON)
+set(WITH_WINDOWLESSEGLAPPLICATION ON CACHE BOOL "With WindowlessEglApplication")
+set(WITH_ANYIMAGEIMPORTER ON CACHE BOOL "With AnyImageImporter")
+set(WITH_EGLCONTEXT ON)
 
 # magnum-plugins options
-set(WITH_ASSIMPIMPORTER ON)
-set(WITH_JPEGIMPORTER ON)
-set(WITH_PNGIMPORTER ON)
+set(WITH_ASSIMPIMPORTER ON CACHE BOOL "With AssimpImporter")
+set(WITH_JPEGIMPORTER ON CACHE BOOL "With JPEGImporter")
+set(WITH_PNGIMPORTER ON CACHE BOOL "With PNGImporter")
 
 add_subdirectory(corrade)
 add_subdirectory(magnum)
