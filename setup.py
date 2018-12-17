@@ -95,7 +95,7 @@ setuptools.setup(
             name='stillleben._C',
             sources=['stillleben/bridge.cpp'],
             extra_compile_args=[
-                '-I' + os.path.join(os.getcwd(), 'install', 'include')
+                '-I' + os.path.join(os.getcwd(), 'stillleben', 'include')
             ],
             extra_link_args=[
                 os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),

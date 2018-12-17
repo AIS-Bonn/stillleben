@@ -10,4 +10,5 @@ stillleben/share
 stillleben.egg-info
 __pycache__
 dist/
+doc/_*
 

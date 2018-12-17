@@ -5,6 +5,7 @@
 
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
+#include <stillleben/object.h>
 
 static thread_local std::shared_ptr<sl::Context> g_context;
 
@@ -68,9 +69,20 @@ static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)
     return magnumToTorch(mesh->pretransform());
 }
 
+// Object
+static std::shared_ptr<sl::Object> Object_factory(const std::shared_ptr<sl::Mesh>& mesh)
+{
+    return sl::Object::instantiate(mesh);
+}
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("init", &init, "Init without CUDA support");
-    m.def("initCUDA", &initCUDA, "Init with CUDA support", py::arg("device_index") = 0);
+    m.def("initCUDA", &initCUDA, R"EOS(
+        Init with CUDA support.
+
+        Args:
+            device_index (int): Index of CUDA device to use for rendering
+    )EOS", py::arg("device_index") = 0);
 
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
@@ -115,5 +127,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             &sl::Mesh::classIndex, &sl::Mesh::setClassIndex, R"EOS(
             Class index for training semantic segmentation.
         )EOS")
+    ;
+
+    py::class_<sl::Object, std::shared_ptr<sl::Object>>(m, "Object", R"EOS(
+            An instantiated mesh with associated pose and other instance
+            properties.
+        )EOS")
+
+        .def(py::init(&Object_factory), R"EOS(
+            Constructor
+
+            Args:
+                mesh (Mesh): Mesh to instantiate
+        )EOS", py::arg("mesh"))
     ;
 }
