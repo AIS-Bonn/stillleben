@@ -12,4 +12,6 @@ __all__ = [
     'Scene',
     'Mesh',
     'Object',
+    'RenderPass',
+    'RenderPassResult'
 ]
