@@ -35,18 +35,16 @@ public:
     Context(const Context& other) = delete;
     Context(const Context&& other) = delete;
 
-    static Ptr Create();
-    static Ptr CreateCUDA(unsigned int device = 0);
+    static Ptr Create(const std::string& installPrefix = {});
+    static Ptr CreateCUDA(unsigned int device = 0, const std::string& installPrefix = {});
 
     bool makeCurrent();
-
-    std::shared_ptr<Mesh> loadMesh(const std::string& path);
 
     std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> importerPluginManager();
 private:
     class Private;
 
-    Context();
+    Context(const std::string& installPrefix = {});
 
     std::unique_ptr<Private> m_d;
 };

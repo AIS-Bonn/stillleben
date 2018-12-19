@@ -32,10 +32,13 @@ using namespace Magnum;
 namespace sl
 {
 
+using ImporterManager = PluginManager::Manager<Trade::AbstractImporter>;
+
 class Context::Private
 {
 public:
-    Private()
+    Private(const std::string& installPrefix = {})
+     : importerManager{std::make_shared<ImporterManager>(installPrefix + "/lib/magnum/importers")}
     {
         int argc = 3;
         std::vector<const char*> argv{
@@ -54,19 +57,17 @@ public:
 
     std::unique_ptr<Platform::GLContext> gl_context;
 
-    std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> importerManager{
-        std::make_shared<PluginManager::Manager<Trade::AbstractImporter>>()
-    };
+    std::shared_ptr<ImporterManager> importerManager;
 };
 
-Context::Context()
- : m_d{std::make_unique<Private>()}
+Context::Context(const std::string& installPrefix)
+ : m_d{std::make_unique<Private>(installPrefix)}
 {
 }
 
-Context::Ptr Context::Create()
+Context::Ptr Context::Create(const std::string& installPrefix)
 {
-    Context::Ptr context{new Context};
+    Context::Ptr context{new Context(installPrefix)};
 
 #if HAVE_EGL
     const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
@@ -230,10 +231,10 @@ Context::Ptr Context::Create()
     return context;
 }
 
-Context::Ptr Context::CreateCUDA(unsigned int device)
+Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& installPrefix)
 {
 #if HAVE_EGL
-    std::shared_ptr<Context> context(new Context);
+    std::shared_ptr<Context> context(new Context(installPrefix));
 
     // Load required extensions
     auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");

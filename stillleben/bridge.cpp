@@ -11,8 +11,9 @@
 
 #include <Magnum/Image.h>
 
-static thread_local std::shared_ptr<sl::Context> g_context;
-static thread_local bool g_cudaEnabled = false;
+static std::shared_ptr<sl::Context> g_context;
+static bool g_cudaEnabled = false;
+static std::string g_installPrefix;
 
 // Conversion functions
 static at::Tensor magnumToTorch(const Magnum::Matrix4& mat)
@@ -61,8 +62,8 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
         texture.image(*img);
 
         at::Tensor tensor = torch::from_blob(img->data(),
-            {img->size().y(), img->size().y(), channels},
-            [&](void*){delete img;},
+            {img->size().y(), img->size().x(), channels},
+            [=](void*){ delete img; },
             opts
         );
 
@@ -94,18 +95,23 @@ static at::Tensor readShortTensor(Magnum::GL::RectangleTexture& texture)
 
 static void init()
 {
-    g_context = sl::Context::Create();
+    g_context = sl::Context::Create(g_installPrefix);
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
 }
 
 static void initCUDA(unsigned int cudaIndex)
 {
-    g_context = sl::Context::CreateCUDA(cudaIndex);
+    g_context = sl::Context::CreateCUDA(cudaIndex, g_installPrefix);
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
 
     g_cudaEnabled = true;
+}
+
+static void setInstallPrefix(const std::string& path)
+{
+    g_installPrefix = path;
 }
 
 static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
@@ -187,12 +193,14 @@ static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& sce
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("init", &init, "Init without CUDA support");
-    m.def("initCUDA", &initCUDA, R"EOS(
+    m.def("init_cuda", &initCUDA, R"EOS(
         Init with CUDA support.
 
         Args:
             device_index (int): Index of CUDA device to use for rendering
     )EOS", py::arg("device_index") = 0);
+
+    m.def("_set_install_prefix", &setInstallPrefix, "set Magnum install prefix");
 
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
@@ -262,7 +270,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 >>> obj = Object(Mesh("mesh.gltf"))
                 >>> obj.pose()
         )EOS")
-        .def("setPose", &Object_setPose, R"EOS(
+        .def("set_pose", &Object_setPose, R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global
             points.
 
@@ -297,10 +305,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 viewport_size (int,int): Size of the rendered image (W,H)
         )EOS", py::arg("viewport_size"))
 
-        .def("cameraPose", &Scene_cameraPose, R"EOS(
+        .def("camera_pose", &Scene_cameraPose, R"EOS(
             Retrieve current camera pose (see :func:`setCameraPose`).
         )EOS")
-        .def("setCameraPose", &Scene_setCameraPose, R"EOS(
+        .def("set_camera_pose", &Scene_setCameraPose, R"EOS(
             Set the camera pose within the scene. For most applications, leaving
             this at identity is a good idea - that way your object poses are
             expressed in camera coordinates.
@@ -310,18 +318,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     global coordinates.
         )EOS", py::arg("pose"))
 
-        .def("setCameraIntrinsics", &sl::Scene::setCameraIntrinsics, R"EOS(
+        .def("set_camera_intrinsics", &sl::Scene::setCameraIntrinsics, R"EOS(
             Set the camera intrinsics assuming a pinhole camera with focal
-            lengths $f_x$, $f_y$, and projection center $p_x$, $p_y$.
+            lengths :math:`f_x`, :math:`f_y`, and projection center :math:`p_x`, :math:`p_y`.
 
             Note: Magnum may slightly modify the resulting matrix, I have not
             checked the accuracy of this method.
 
             Args:
-                fx (float): $f_x$
-                fy (float): $f_y$
-                cx (float): $c_x$
-                cy (float): $c_y$
+                fx (float): :math:`f_x`
+                fy (float): :math:`f_y`
+                cx (float): :math:`c_x`
+                cy (float): :math:`c_y`
         )EOS", py::arg("fx"), py::arg("fy"), py::arg("cx"), py::arg("cy"))
 
         .def_property_readonly("viewport", &Scene_viewport, R"EOS(
@@ -336,7 +344,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 diameter (float): Diameter of the object.
         )EOS", py::arg("diameter"))
 
-        .def("addObject", &sl::Scene::addObject, R"EOS(
+        .def("add_object", &sl::Scene::addObject, R"EOS(
             Adds an object to the scene.
 
             Args:
@@ -419,6 +427,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     py::class_<sl::RenderPass>(m, "RenderPass", R"EOS(
             Renders a :class:`Scene`.
         )EOS")
+
+        .def(py::init(), "Constructor")
 
         .def("render", &sl::RenderPass::render, R"EOS(
             Render a scene.

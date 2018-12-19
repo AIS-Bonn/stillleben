@@ -87,7 +87,8 @@ setuptools.setup(
     packages=['stillleben'],
     package_data={
         'stillleben': [
-            'lib/*.so*'
+            'lib/*.so*',
+            'lib/magnum/importers/*',
         ]
     },
     ext_modules=[

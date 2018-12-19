@@ -33,7 +33,14 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 }
 
 Scene::~Scene()
-{}
+{
+    // The SceneObject destructor of this instance will delete child objects,
+    // but they are reference counted using shared_ptr => first release them
+    for(auto& obj : m_objects)
+    {
+        obj->setParentSceneObject(nullptr);
+    }
+}
 
 void Scene::setCameraPose(const PoseMatrix& pose)
 {
