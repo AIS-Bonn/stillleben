@@ -8,6 +8,7 @@ set(WITH_EGLCONTEXT ON)
 set(WITH_ASSIMPIMPORTER ON CACHE BOOL "With AssimpImporter")
 set(WITH_JPEGIMPORTER ON CACHE BOOL "With JPEGImporter")
 set(WITH_PNGIMPORTER ON CACHE BOOL "With PNGImporter")
+set(WITH_PNGIMAGECONVERTER ON CACHE BOOL "With PNGConverter")
 
 add_subdirectory(corrade)
 add_subdirectory(magnum)

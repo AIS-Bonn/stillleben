@@ -80,6 +80,9 @@ public:
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
 
+    Magnum::SceneGraph::DrawableGroup3D& debugDrawables()
+    { return m_debugDrawables; }
+
 private:
     void load();
     void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);
@@ -95,6 +98,7 @@ private:
     Object3D m_meshObject{&m_sceneObject};
 
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
+    Magnum::SceneGraph::DrawableGroup3D m_debugDrawables;
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),
         Magnum::Vector3(-std::numeric_limits<float>::infinity())

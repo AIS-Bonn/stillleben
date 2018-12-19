@@ -24,12 +24,13 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 {
     // Every scene needs a camera
     const Rad FOV_X = Deg(58.0);
-    auto projection = Matrix4::perspectiveProjection(FOV_X, 1.0f, 0.01f, 1000.0f);
+
     m_cameraObject.setParent(&m_scene);
     (*(m_camera = new SceneGraph::Camera3D{m_cameraObject}))
         .setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
-        .setProjectionMatrix(projection)
         .setViewport(viewportSize);
+
+    setCameraFromFOV(FOV_X);
 }
 
 Scene::~Scene()
@@ -66,12 +67,25 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
     // Caution, this is column-major
     Matrix4 P{
         {2.0f*fx/cx, 0.0f, 0.0f, 0.0f},
-        {0.0f, -2.0f*fy/cy, 0.0f, 0.0f},
-        {1.0f - 2.0f*cx/W, 2.0f*cy/H - 1.0f, (f+n)/(n-f), -1.0f},
+        {0.0f, 2.0f*fy/cy, 0.0f, 0.0f},
+        {1.0f - 2.0f*cx/W, 1.0f - 2.0f*cy/H, -(f+n)/(n-f), 1.0f},
         {0.0f, 0.0f, 2.0f*f*n/(n-f), 0.0f}
     };
 
     m_camera->setProjectionMatrix(P);
+}
+
+void Scene::setCameraFromFOV(Magnum::Rad fov)
+{
+    const float H = m_camera->viewport().y();
+    const float W = m_camera->viewport().x();
+
+    const float cx = W/2;
+    const float cy = H/2;
+    const float fx = cx / (2.0 * Magnum::Math::tan(fov/2.0));
+    const float fy = cy / (2.0 * Magnum::Math::tan(fov/2.0));
+
+    setCameraIntrinsics(fx, fy, cx, cy);
 }
 
 void Scene::addObject(const std::shared_ptr<Object>& obj)

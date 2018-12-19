@@ -7,6 +7,8 @@
 
 #include <limits>
 
+#include <Magnum/DebugTools/ObjectRenderer.h>
+
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
@@ -59,6 +61,8 @@ void Object::load()
     }
 
     m_meshObject.setTransformation(m_mesh->pretransform());
+
+    new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)

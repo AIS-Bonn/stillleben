@@ -121,7 +121,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             if(drawable->texture())
             {
                 (*m_shaderTextured)
-                    .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
+                    .setLightPosition({0.0f, 0.0f, 0.0f})
                     .setMeshToObjectMatrix(meshToObject)
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
@@ -133,7 +133,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             else
             {
                 (*m_shaderUniform)
-                    .setLightPosition(cam.cameraMatrix().transformPoint({-3.0f, 10.0f, 10.0f}))
+                    .setLightPosition({0.0f, 0.0f, 0.0f})
                     .setMeshToObjectMatrix(meshToObject)
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())

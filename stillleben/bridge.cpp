@@ -8,6 +8,7 @@
 #include <stillleben/object.h>
 #include <stillleben/scene.h>
 #include <stillleben/render_pass.h>
+#include <stillleben/debug.h>
 
 #include <Magnum/Image.h>
 
@@ -190,6 +191,14 @@ static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& sce
 
 // RenderPass
 
+// Debug
+
+static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
+{
+    auto texture = sl::renderDebugImage(*scene);
+    return readRGBATensor(*texture);
+}
+
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("init", &init, "Init without CUDA support");
@@ -201,6 +210,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     )EOS", py::arg("device_index") = 0);
 
     m.def("_set_install_prefix", &setInstallPrefix, "set Magnum install prefix");
+
+    m.def("render_debug_image", &renderDebugImage, R"EOS(
+        Render a debug image with object coordinate systems
+    )EOS");
 
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(

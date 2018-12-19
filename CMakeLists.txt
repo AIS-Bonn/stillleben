@@ -27,6 +27,7 @@ find_package(Magnum REQUIRED COMPONENTS
     Shaders
     SceneGraph
     Trade
+    DebugTools
     ${MAGNUM_GL_APP}
 )
 
@@ -48,6 +49,7 @@ corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
 add_library(stillleben SHARED
     src/context.cpp
     src/cuda_interop.cpp
+    src/debug.cpp
     src/exception.cpp
     src/mesh.cpp
     src/object.cpp
@@ -67,6 +69,7 @@ target_link_libraries(stillleben PUBLIC
     Magnum::Trade
     Magnum::MeshTools
     Magnum::Primitives
+    Magnum::DebugTools
     Magnum::${MAGNUM_GL_APP}
 )
 

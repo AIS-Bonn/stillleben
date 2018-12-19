@@ -32,6 +32,7 @@ public:
     PoseMatrix cameraPose() const;
 
     void setCameraIntrinsics(float fx, float fy, float cx, float cy);
+    void setCameraFromFOV(Magnum::Rad fov);
 
     ViewportSize viewport() const
     { return m_camera->viewport(); }

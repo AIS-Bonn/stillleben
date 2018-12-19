@@ -71,7 +71,7 @@ TEST_CASE("basic")
 
     float distance = scene.minimumDistanceForObjectDiameter(mesh->bbox().size().length());
 
-    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, -distance)));
+    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
 
     // Add it to the scene
     scene.addObject(object);
@@ -146,7 +146,7 @@ TEST_CASE("render")
 
     float distance = scene.minimumDistanceForObjectDiameter(mesh->bbox().size().length());
 
-    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, -distance)));
+    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
 
     // Add it to the scene
     scene.addObject(object);
@@ -202,7 +202,7 @@ TEST_CASE("render")
         std::stringstream ss;
         ss << std::hex << std::setfill('0');
         for(int i = 0; i < 100; ++i)
-            ss << std::setw(2) << data[i] << ' ';
+            ss << std::setw(2) << static_cast<unsigned int>(data[i]) << ' ';
 
         INFO("First pixels: " << ss.str());
 

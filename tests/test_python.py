@@ -30,7 +30,7 @@ class PythonTest(unittest.TestCase):
         scene.add_object(object)
 
         pose = torch.eye(4)
-        pose[2,3] = -2.0
+        pose[2,3] = 0.5
         object.set_pose(pose)
 
         renderer = sl.RenderPass()
@@ -45,6 +45,12 @@ class PythonTest(unittest.TestCase):
 
         img = Image.fromarray(rgb_np, mode='RGBA')
         img.save('/tmp/stillleben.png')
+
+        dbg = sl.render_debug_image(scene)
+        dbg_np = dbg.cpu().numpy()
+
+        dbg_img = Image.fromarray(dbg_np, mode='RGBA')
+        dbg_img.save('/tmp/stillleben_debug.png')
 
 if __name__ == "__main__":
     unittest.main()

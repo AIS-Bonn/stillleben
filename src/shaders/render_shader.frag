@@ -94,7 +94,7 @@ void main()
     /* Ambient color */
     color = finalAmbientColor;
 
-    mediump vec3 normalizedTransformedNormal = normalize(transformedNormal);
+    mediump vec3 normalizedTransformedNormal = -normalize(transformedNormal);
     if(!gl_FrontFacing)
         normalizedTransformedNormal = -normalizedTransformedNormal;
 

@@ -11,6 +11,8 @@
 #include <Magnum/Platform/GLContext.h>
 #include <Magnum/Trade/AbstractImporter.h>
 
+#include <Magnum/DebugTools/ResourceManager.h>
+
 #include <cstring>
 
 #if HAVE_EGL
@@ -38,7 +40,6 @@ class Context::Private
 {
 public:
     Private(const std::string& installPrefix = {})
-     : importerManager{std::make_shared<ImporterManager>(installPrefix + "/lib/magnum/importers")}
     {
         int argc = 3;
         std::vector<const char*> argv{
@@ -46,6 +47,11 @@ public:
             "--magnum-log", "quiet"
         };
         gl_context.reset(new Platform::GLContext{NoCreate, argc, argv.data()});
+
+        if(!installPrefix.empty())
+            importerManager = std::make_shared<ImporterManager>(installPrefix + "/lib/magnum/importers");
+        else
+            importerManager = std::make_shared<ImporterManager>();
     }
 
     void* egl_display = nullptr;
@@ -58,6 +64,8 @@ public:
     std::unique_ptr<Platform::GLContext> gl_context;
 
     std::shared_ptr<ImporterManager> importerManager;
+
+    DebugTools::ResourceManager resourceManager;
 };
 
 Context::Context(const std::string& installPrefix)
