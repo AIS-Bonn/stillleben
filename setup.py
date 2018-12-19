@@ -2,10 +2,11 @@
 import setuptools
 import setuptools.command.install
 from setuptools import setup
-from torch.utils.cpp_extension import CppExtension, BuildExtension
+from torch.utils.cpp_extension import CppExtension, BuildExtension, CUDAExtension
 import subprocess
 import os
 import sys
+import torch
 
 BUILD_PATH = os.path.join(os.getcwd(), 'cpp_build')
 INSTALL_PATH = os.path.join(os.getcwd(), 'stillleben')
@@ -81,6 +82,15 @@ cmdclass = {
     'install': install,
 }
 
+if torch.version.cuda is None:
+    print('CUDA detected!')
+    ExtensionType = CppExtension
+    extra_defs = []
+else:
+    print('No CUDA found, interop disabled...')
+    ExtensionType = CUDAExtension
+    extra_defs = ['-DHAVE_CUDA=1']
+
 setuptools.setup(
     name='stillleben',
     cmdclass=cmdclass,
@@ -92,12 +102,12 @@ setuptools.setup(
         ]
     },
     ext_modules=[
-        CppExtension(
+        ExtensionType(
             name='stillleben._C',
             sources=['stillleben/bridge.cpp'],
             extra_compile_args=[
                 '-I' + os.path.join(os.getcwd(), 'stillleben', 'include')
-            ],
+            ] + extra_defs,
             extra_link_args=[
                 os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
                 make_relative_rpath('lib')

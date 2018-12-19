@@ -9,6 +9,7 @@
 #include <stillleben/scene.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/debug.h>
+#include <stillleben/cuda_interop.h>
 
 #include <Magnum/Image.h>
 
@@ -51,12 +52,12 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
 
         auto size = texture.imageSize();
         at::Tensor tensor = torch::empty({size.y(), size.x(), channels}, opts);
-        mapper.readInto(tensor.data());
+        mapper.readInto(tensor.data<uint8_t>());
 
         return tensor;
     }
     else
-#else
+#endif
     {
         Magnum::Image2D* img = new Magnum::Image2D{format};
 
@@ -70,7 +71,6 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
 
         return tensor;
     }
-#endif
 }
 
 static at::Tensor readRGBATensor(Magnum::GL::RectangleTexture& texture)

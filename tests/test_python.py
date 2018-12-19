@@ -6,8 +6,6 @@ import stillleben as sl
 
 import os
 
-import cv2
-
 from PIL import Image
 
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
