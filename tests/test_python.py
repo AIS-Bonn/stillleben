@@ -4,6 +4,9 @@ import unittest
 import torch
 import stillleben as sl
 
+from stillleben.camera_model import process_image
+from stillleben.profiling import Timer
+
 import os
 
 from PIL import Image
@@ -50,5 +53,11 @@ class PythonTest(unittest.TestCase):
         dbg_img = Image.fromarray(dbg_np, mode='RGBA')
         dbg_img.save('/tmp/stillleben_debug.png')
 
+        rgb_noise = process_image(rgb.permute(2, 0, 1)[:3].float() / 255.0)
+        rgb_noise_np = (rgb_noise * 255).byte().permute(1,2,0).contiguous().numpy()
+        noise_img = Image.fromarray(rgb_noise_np, mode='RGB')
+        noise_img.save('/tmp/stillleben_noise.png')
+
 if __name__ == "__main__":
+    Timer.enabled = True
     unittest.main()
