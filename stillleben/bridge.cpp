@@ -11,6 +11,7 @@
 #include <stillleben/debug.h>
 #include <stillleben/cuda_interop.h>
 
+#include <Corrade/Utility/Debug.h>
 #include <Magnum/Image.h>
 
 static std::shared_ptr<sl::Context> g_context;
@@ -41,6 +42,23 @@ static Magnum::Matrix4 torchToMagnum(const at::Tensor& tensor)
     memcpy(mat.data(), data, 16*sizeof(float));
 
     return mat;
+}
+
+static at::Tensor magnumToTorch(const Magnum::Vector3& vec)
+{
+    return torch::from_blob(const_cast<float*>(vec.data()), {3}, at::kFloat).clone();
+}
+static Magnum::Vector3 torchToMagnumVector3D(const at::Tensor& tensor)
+{
+    auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous();
+    if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 3)
+        throw std::invalid_argument("A vector tensor must have size 3");
+
+    const float* data = cpuTensor.data<float>();
+    Magnum::Vector3 vec{Magnum::Math::NoInit};
+    memcpy(vec.data(), data, 3*sizeof(float));
+
+    return vec;
 }
 
 at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
@@ -127,25 +145,22 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
     return mesh;
 }
 
-static at::Tensor Mesh_bbox(const std::shared_ptr<sl::Mesh>& mesh)
-{
-    auto bbox = mesh->bbox();
-
-    auto min = bbox.min();
-    auto max = bbox.max();
-
-    float data[]{
-        min.x(), max.x(),
-        min.y(), max.y(),
-        min.z(), max.z()
-    };
-
-    return torch::from_blob(data, {3,2}).clone();
-}
-
 static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)
 {
     return magnumToTorch(mesh->pretransform());
+}
+
+static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
+{
+    sl::Mesh::Scale mode;
+    if(modeStr == "exact")
+        mode = sl::Mesh::Scale::Exact;
+    else if(modeStr == "order_of_magnitude")
+        mode = sl::Mesh::Scale::OrderOfMagnitude;
+    else
+        throw std::invalid_argument("invalid value '" + modeStr + "' for mode argument");
+
+    mesh->scaleToBBoxDiagonal(diagonal, mode);
 }
 
 // Object
@@ -215,6 +230,35 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         Render a debug image with object coordinate systems
     )EOS");
 
+    // Basic geometric types
+    py::class_<Magnum::Range3D>(m, "Range3D", R"EOS(
+            An axis-aligned 3D range (bounding box).
+        )EOS")
+
+        .def_property("min",
+            [](const Magnum::Range3D& range){ return magnumToTorch(range.min()); },
+            [](Magnum::Range3D& range, at::Tensor min){ range.min() = torchToMagnumVector3D(min); }
+        )
+        .def_property("max",
+            [](const Magnum::Range3D& range){ return magnumToTorch(range.max()); },
+            [](Magnum::Range3D& range, at::Tensor max){ range.max() = torchToMagnumVector3D(max); }
+        )
+        .def_property_readonly("center",
+            [](const Magnum::Range3D& range){ return magnumToTorch(range.center()); }
+        )
+        .def_property_readonly("size",
+            [](const Magnum::Range3D& range){ return magnumToTorch(range.size()); }
+        )
+
+        .def("__repr__", [](const Magnum::Range3D& range){
+            using Corrade::Utility::Debug;
+            std::ostringstream ss;
+            Debug{&ss, Debug::Flag::NoNewlineAtTheEnd}
+                << "Range3D(" << range.min() << "," << range.max() << ")";
+            return ss.str();
+        })
+    ;
+
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
             Represents a loaded mesh file. A Mesh can be seen as an object template.
@@ -232,8 +276,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 >>> m = Mesh("path/to/my/mesh.gltf")
         )EOS", py::arg("filename"))
 
-        .def_property_readonly("bbox", &Mesh_bbox, R"EOS(
-            Mesh bounding box (3 x 2 tensor with min/max in each dimension)
+        .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
+            Mesh bounding box.
         )EOS")
 
         .def("center_bbox", &sl::Mesh::centerBBox, R"EOS(
@@ -241,13 +285,17 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             (see `bbox`) is centered at the origin.
         )EOS")
 
-        .def("scale_to_bbox_diagonal", &sl::Mesh::scaleToBBoxDiagonal, R"EOS(
+        .def("scale_to_bbox_diagonal", &Mesh_scaleToBBoxDiagonal, R"EOS(
             Modifies the pretransform such that the bounding box diagonal
             (see `bbox`) is equal to :attr:`target_diagonal`.
 
             Args:
                 target_diagonal (float): Target diagonal
-        )EOS", py::arg("target_diagonal"))
+                mode (str): Scaling mode (default 'exact').
+                    If 'order_of_magnitude', the resulting scale factor is the
+                    nearest power of 10 that fits. This is useful for detecting
+                    the scale of arbitrary mesh files.
+        )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
         .def_property_readonly("pretransform", &Mesh_pretransform, R"EOS(
             The current pretransform matrix. Initialized to identity and

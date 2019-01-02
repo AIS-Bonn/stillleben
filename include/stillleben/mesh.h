@@ -43,6 +43,12 @@ public:
         using Exception::Exception;
     };
 
+    enum class Scale
+    {
+        Exact,
+        OrderOfMagnitude,
+    };
+
     Mesh(const std::shared_ptr<Context>& ctx);
     Mesh(const Mesh& other) = delete;
     Mesh(Mesh&& other);
@@ -53,7 +59,7 @@ public:
     Magnum::Range3D bbox() const;
 
     void centerBBox();
-    void scaleToBBoxDiagonal(float targetDiagonal);
+    void scaleToBBoxDiagonal(float targetDiagonal, Scale mode = Scale::Exact);
 
     const Magnum::Matrix4& pretransform() const
     { return m_pretransform; }

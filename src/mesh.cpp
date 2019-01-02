@@ -196,10 +196,22 @@ void Mesh::centerBBox()
     updatePretransform();
 }
 
-void Mesh::scaleToBBoxDiagonal(float targetDiagonal)
+void Mesh::scaleToBBoxDiagonal(float targetDiagonal, Scale mode)
 {
     float diagonal = m_bbox.size().length();
-    m_scale = targetDiagonal / diagonal;
+
+    float scale = targetDiagonal / diagonal;
+
+    switch(mode)
+    {
+        case Scale::Exact:
+            m_scale = scale;
+            break;
+        case Scale::OrderOfMagnitude:
+            m_scale = std::pow(10, std::round(std::log10(scale)));
+            break;
+    }
+
     updatePretransform();
 }
 

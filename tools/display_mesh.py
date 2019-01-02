@@ -18,8 +18,15 @@ if __name__ == "__main__":
     scene = sl.Scene((640,480))
 
     mesh = sl.Mesh(args.mesh)
+
+    print("Loaded mesh with bounding box:", mesh.bbox)
+    print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
+
     mesh.center_bbox()
-    mesh.scale_to_bbox_diagonal(0.5)
+    mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+
+    print("normalized:", mesh.bbox)
+    print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
     object = sl.Object(mesh)
     scene.add_object(object)
