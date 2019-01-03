@@ -137,6 +137,9 @@ def noise(rgb, a, b):
 @profiling.Timer('camera_model.process_image')
 def process_image(rgb):
 
+    assert rgb.dim() == 3
+    assert rgb.size(0) == 3
+
     rgb = chromatic_aberration(rgb,
         translations=torch.empty(3,2).uniform_(-0.002, 0.002),
         scaling=torch.empty(3).uniform_(0.998, 1.002)

@@ -8,8 +8,11 @@
 #include <Corrade/PluginManager/PluginManager.h>
 
 #include <Magnum/GL/Context.h>
+#include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Platform/GLContext.h>
 #include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/ImageData.h>
 
 #include <Magnum/DebugTools/ResourceManager.h>
 
@@ -379,6 +382,37 @@ bool Context::makeCurrent()
 std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> Context::importerPluginManager()
 {
     return m_d->importerManager;
+}
+
+Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
+{
+    std::unique_ptr<Trade::AbstractImporter> importer{
+        m_d->importerManager->loadAndInstantiate("AnyImageImporter")
+    };
+
+    if(!importer)
+        throw std::logic_error("Could not load AnyImageImporter plugin");
+
+    if(!importer->openFile(path))
+        throw std::runtime_error("Could not open image file");
+
+    auto image = importer->image2D(0);
+    if(!image)
+        throw std::runtime_error("Could not load image");
+
+    GL::TextureFormat format;
+    if(image->format() == PixelFormat::RGB8Unorm)
+        format = GL::TextureFormat::RGB8;
+    else if(image->format() == PixelFormat::RGBA8Unorm)
+        format = GL::TextureFormat::RGBA8;
+    else
+        throw std::runtime_error("Unsupported texture format");
+
+    GL::RectangleTexture texture;
+    texture.setStorage(format, image->size());
+    texture.setSubImage({}, *image);
+
+    return texture;
 }
 
 }

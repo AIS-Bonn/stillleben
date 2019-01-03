@@ -57,6 +57,7 @@ add_library(stillleben SHARED
     src/render_pass.cpp
     src/scene.cpp
     src/stillleben.cpp
+    src/shaders/background_shader.cpp
     src/shaders/render_shader.cpp
     src/shaders/resolve_shader.cpp
     ${stillleben_RESOURCES}

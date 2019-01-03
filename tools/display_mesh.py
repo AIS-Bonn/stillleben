@@ -2,13 +2,19 @@
 import torch
 import stillleben as sl
 
+from stillleben import camera_model
+
 from PIL import Image
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='display a mesh')
-    parser.add_argument('mesh', metavar='PATH', type=str,
+    parser.add_argument('--background', metavar='PATH', type=str,
+                    help='Background image')
+    parser.add_argument('--noise', action='store_true',
+                    help='Apply noise model')
+    parser.add_argument('mesh', metavar='PATH', nargs='+', type=str,
                     help='Mesh file to display')
 
     args = parser.parse_args()
@@ -17,30 +23,46 @@ if __name__ == "__main__":
 
     scene = sl.Scene((640,480))
 
-    mesh = sl.Mesh(args.mesh)
+    if args.background:
+        scene.background_image = sl.Texture(args.background)
 
-    print("Loaded mesh with bounding box:", mesh.bbox)
-    print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
+    for mesh_file in args.mesh:
+        mesh = sl.Mesh(mesh_file)
 
-    mesh.center_bbox()
-    mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        print("Loaded mesh with bounding box:", mesh.bbox)
+        print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
-    print("normalized:", mesh.bbox)
-    print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
+        mesh.center_bbox()
+        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
-    object = sl.Object(mesh)
-    scene.add_object(object)
+        print("normalized:", mesh.bbox)
+        print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
 
-    pose = torch.eye(4)
-    pose[2,3] = scene.min_dist_for_object_diameter(0.5)
-    object.set_pose(pose)
+        object = sl.Object(mesh)
+        scene.add_object(object)
+
+        if True:
+            pose = scene.place_object_randomly(mesh.bbox.diagonal)
+        else:
+            pose = torch.eye(4)
+            pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
+
+        object.set_pose(pose)
 
     renderer = sl.RenderPass()
     result = renderer.render(scene)
 
     rgb = result.rgb()
+    rgb = rgb[:,:,:3]
+
+    if args.noise:
+        rgb_float = rgb.permute(2,0,1).float() / 255.0
+        rgb_float = camera_model.process_image(rgb_float)
+        rgb = (rgb_float * 255.0).byte().permute(1,2,0)
+
+    print(rgb.size())
     rgb_np = rgb.cpu().numpy()
 
-    img = Image.fromarray(rgb_np, mode='RGBA')
+    img = Image.fromarray(rgb_np, mode='RGB')
     img.show()
 

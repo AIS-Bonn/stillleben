@@ -5,8 +5,10 @@
 
 #include <stillleben/object.h>
 
+#include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
+#include <Magnum/Math/Quaternion.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Camera.h>
@@ -31,6 +33,9 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
         .setViewport(viewportSize);
 
     setCameraFromFOV(FOV_X);
+
+    std::random_device dev;
+    m_randomGenerator.seed(dev());
 }
 
 Scene::~Scene()
@@ -111,6 +116,59 @@ float Scene::minimumDistanceForObjectDiameter(float diameter) const
         P[0][0] * diameter / 2.0,
         P[1][1] * diameter / 2.0
     );
+}
+
+template<class Generator>
+Magnum::Quaternion randomQuaternion(Generator& g)
+{
+    std::normal_distribution<float> normalDist;
+    Quaternion q{
+        Vector3{normalDist(g), normalDist(g), normalDist(g)},
+        normalDist(g)
+    };
+
+    return q.normalized();
+}
+
+Magnum::Matrix4 Scene::placeObjectRandomly(float diameter)
+{
+    const auto P = m_camera->projectionMatrix();
+    const float fullyVisible = minimumDistanceForObjectDiameter(diameter);
+
+    Debug{} << "fully visible z:" << fullyVisible;
+
+    std::uniform_real_distribution<float> zDist(0.8 * fullyVisible, 2.0 * fullyVisible);
+
+    const float z = zDist(m_randomGenerator);
+
+    // P[0][0] = 1.0 / std::tan(alpha)
+
+    const float x_range = 0.8 * z / P[0][0];
+    const float y_range = 0.8 * z / P[1][1];
+
+    std::uniform_real_distribution<float> xDist(-x_range, x_range);
+    std::uniform_real_distribution<float> yDist(-y_range, y_range);
+
+    Vector3 translation(
+        xDist(m_randomGenerator),
+        yDist(m_randomGenerator),
+        z
+    );
+    Debug{} << "Calculated translation:" << translation;
+
+    Quaternion orientation = randomQuaternion(m_randomGenerator);
+
+    Matrix4 pose = Matrix4::from(orientation.toMatrix(), translation);
+
+    Matrix4 worldPose = m_camera->cameraMatrix().invertedOrthogonal() * pose;
+    Debug{} << "pose in world coords:" << worldPose;
+
+    return worldPose;
+}
+
+void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& texture)
+{
+    m_backgroundImage = texture;
 }
 
 }

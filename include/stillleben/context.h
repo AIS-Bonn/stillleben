@@ -5,6 +5,7 @@
 #define STILLLEBEN_CONTEXT_H
 
 #include <memory>
+#include <string>
 
 namespace Corrade
 {
@@ -19,6 +20,10 @@ namespace Magnum
     namespace Trade
     {
         class AbstractImporter;
+    }
+    namespace GL
+    {
+        class RectangleTexture;
     }
 }
 
@@ -41,6 +46,8 @@ public:
     bool makeCurrent();
 
     std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> importerPluginManager();
+
+    Magnum::GL::RectangleTexture loadTexture(const std::string& path);
 private:
     class Private;
 

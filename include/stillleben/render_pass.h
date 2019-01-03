@@ -14,6 +14,7 @@
 namespace sl
 {
 
+class BackgroundShader;
 class RenderShader;
 class ResolveShader;
 class Scene;
@@ -46,6 +47,8 @@ private:
     std::unique_ptr<RenderShader> m_shaderUniform;
 
     std::unique_ptr<ResolveShader> m_resolveShader;
+
+    std::unique_ptr<BackgroundShader> m_backgroundShader;
 
     Magnum::GL::Mesh m_quadMesh;
 };

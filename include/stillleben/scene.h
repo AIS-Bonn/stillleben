@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <vector>
+#include <random>
 
 namespace sl
 {
@@ -41,9 +42,15 @@ public:
     { return *m_camera; }
     //@}
 
+    void setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& texture);
+    const std::shared_ptr<Magnum::GL::RectangleTexture>& backgroundImage() const
+    { return m_backgroundImage; }
+
     //! @name Object placement
     //@{
     float minimumDistanceForObjectDiameter(float diameter) const;
+
+    Magnum::Matrix4 placeObjectRandomly(float diameter);
     //@}
 
     void addObject(const std::shared_ptr<Object>& object);
@@ -58,6 +65,10 @@ private:
     Magnum::SceneGraph::Camera3D* m_camera = nullptr;
 
     std::vector<std::shared_ptr<Object>> m_objects;
+
+    std::mt19937 m_randomGenerator;
+
+    std::shared_ptr<Magnum::GL::RectangleTexture> m_backgroundImage;
 };
 
 }

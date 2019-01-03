@@ -23,6 +23,7 @@
 
 #include "shaders/render_shader.h"
 #include "shaders/resolve_shader.h"
+#include "shaders/background_shader.h"
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -34,6 +35,7 @@ RenderPass::RenderPass()
  : m_shaderTextured{std::make_unique<RenderShader>(RenderShader::Flag::DiffuseTexture)}
  , m_shaderUniform{std::make_unique<RenderShader>()}
  , m_resolveShader{std::make_unique<ResolveShader>(m_msaa_factor)}
+ , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
 }
@@ -44,6 +46,10 @@ RenderPass::~RenderPass()
 
 std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 {
+//     GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
+//     GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
+//     GL::DebugOutput::setDefaultCallback();
+
     constexpr Color4 invalid{-3000.0, -3000.0, -3000.0, -3000.0};
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
@@ -99,6 +105,16 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     framebuffer.clearColor(2, Vector4ui(0));
     framebuffer.clearColor(3, Vector4ui(0));
     framebuffer.clear(GL::FramebufferClear::Depth);
+
+    // Do we have a background texture?
+    if(scene.backgroundImage())
+    {
+        m_backgroundShader->bindRGB(*scene.backgroundImage());
+        m_quadMesh.draw(*m_backgroundShader);
+
+        // Draw on top
+        framebuffer.clear(GL::FramebufferClear::Depth);
+    }
 
     // Let the fun begin!
     for(auto& object : scene.objects())

@@ -21,9 +21,10 @@ static std::string g_installPrefix;
 // Conversion functions
 static at::Tensor magnumToTorch(const Magnum::Matrix4& mat)
 {
-    auto tensor = torch::CPU(at::kFloat).tensorFromBlob(
+    auto tensor = torch::from_blob(
         const_cast<float*>(mat.data()),
-        {4,4}
+        {4,4},
+        at::kFloat
     );
 
     // NOTE: Magnum matrices are column-major
@@ -249,6 +250,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_property_readonly("size",
             [](const Magnum::Range3D& range){ return magnumToTorch(range.size()); }
         )
+        .def_property_readonly("diagonal",
+            [](const Magnum::Range3D& range){ return range.size().length(); }
+        )
 
         .def("__repr__", [](const Magnum::Range3D& range){
             using Corrade::Utility::Debug;
@@ -257,6 +261,23 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 << "Range3D(" << range.min() << "," << range.max() << ")";
             return ss.str();
         })
+    ;
+
+    py::class_<Magnum::GL::RectangleTexture, std::shared_ptr<Magnum::GL::RectangleTexture>>(
+        m, "Texture", R"EOS(
+            An RGBA texture.
+        )EOS")
+
+        .def(py::init([](const std::string& path){
+            if(!g_context)
+                throw std::logic_error("Create a context object before");
+
+            return std::make_shared<Magnum::GL::RectangleTexture>(
+                g_context->loadTexture(path)
+            );
+        }), R"EOS(
+            Load the texture from the specified path.
+        )EOS", py::arg("path"))
     ;
 
     // sl::Mesh
@@ -397,6 +418,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             The current viewport size (W,H) as set in the constructor.
         )EOS")
 
+        .def_property("background_image",
+            &sl::Scene::backgroundImage, &sl::Scene::setBackgroundImage, R"EOS(
+            The background image. If None (default), a transparent background
+            is used.
+        )EOS")
+
         .def("min_dist_for_object_diameter", &sl::Scene::minimumDistanceForObjectDiameter, R"EOS(
             Calculates the minimum Z distance from the camera to have an object
             of diameter :attr:`diameter` fully visible in the camera frustrum.
@@ -404,6 +431,21 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Args:
                 diameter (float): Diameter of the object.
         )EOS", py::arg("diameter"))
+
+        .def("place_object_randomly", [](const std::shared_ptr<sl::Scene>& s, float diameter) {
+            return magnumToTorch(s->placeObjectRandomly(diameter));
+            },
+            R"EOS(
+                Generates a random pose for an object of given diameter.
+
+                The pose obeys the following constraints (relative to the camera
+                coordinate system):
+                * :math:`z` is between `0.8*min_dist_for_object_diameter()` and
+                `2.0*min_dist_for_object_diameter()`, and
+                * :math:`x` and :math:`y` are choosen such that the object center is
+                inside 80% of the camera frustrum in each axis.
+            )EOS", py::arg("diameter")
+        )
 
         .def("add_object", &sl::Scene::addObject, R"EOS(
             Adds an object to the scene.
