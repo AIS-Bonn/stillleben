@@ -16,6 +16,7 @@
 
 static std::shared_ptr<sl::Context> g_context;
 static bool g_cudaEnabled = false;
+static unsigned int g_cudaIndex = 0;
 static std::string g_installPrefix;
 
 // Conversion functions
@@ -70,7 +71,10 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
         sl::CUDAMapper mapper(texture, Magnum::pixelSize(format));
 
         auto size = texture.imageSize();
-        at::Tensor tensor = torch::empty({size.y(), size.x(), channels}, opts);
+        at::Tensor tensor = torch::empty(
+            {size.y(), size.x(), channels},
+            opts.device(at::kCUDA(g_cudaIndex))
+        );
         mapper.readInto(tensor.data<uint8_t>());
 
         return tensor;
@@ -126,6 +130,7 @@ static void initCUDA(unsigned int cudaIndex)
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
 
+    g_cudaIndex = cudaIndex;
     g_cudaEnabled = true;
 }
 
