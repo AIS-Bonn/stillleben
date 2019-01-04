@@ -133,14 +133,14 @@ Magnum::Quaternion randomQuaternion(Generator& g)
 Magnum::Matrix4 Scene::placeObjectRandomly(float diameter)
 {
     const auto P = m_camera->projectionMatrix();
+
+    // Step 1: Produce a suitable z coordinate
     const float fullyVisible = minimumDistanceForObjectDiameter(diameter);
-
-    Debug{} << "fully visible z:" << fullyVisible;
-
     std::uniform_real_distribution<float> zDist(0.8 * fullyVisible, 2.0 * fullyVisible);
 
     const float z = zDist(m_randomGenerator);
 
+    // Step 2: Choose x,y
     // P[0][0] = 1.0 / std::tan(alpha)
 
     const float x_range = 0.8 * z / P[0][0];
@@ -154,14 +154,14 @@ Magnum::Matrix4 Scene::placeObjectRandomly(float diameter)
         yDist(m_randomGenerator),
         z
     );
-    Debug{} << "Calculated translation:" << translation;
 
+    // Step 3: Choose random orientation
     Quaternion orientation = randomQuaternion(m_randomGenerator);
 
+    // ... and now combine
     Matrix4 pose = Matrix4::from(orientation.toMatrix(), translation);
 
     Matrix4 worldPose = m_camera->cameraMatrix().invertedOrthogonal() * pose;
-    Debug{} << "pose in world coords:" << worldPose;
 
     return worldPose;
 }
