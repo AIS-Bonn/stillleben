@@ -26,6 +26,7 @@ if __name__ == "__main__":
     if args.background:
         scene.background_image = sl.Texture(args.background)
 
+    meshes = []
     for mesh_file in args.mesh:
         mesh = sl.Mesh(mesh_file)
 
@@ -37,7 +38,11 @@ if __name__ == "__main__":
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
+        meshes.append(mesh)
 
+    print("Meshes loaded.")
+
+    for mesh in meshes:
         object = sl.Object(mesh)
         scene.add_object(object)
 

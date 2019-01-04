@@ -5,6 +5,7 @@ The stillleben package.
 
 import torch # important, otherwise we get undefined references during ._C import
 import os
+from . import camera_model
 from ._C import init, init_cuda, Scene, Mesh, Object, RenderPass, \
     RenderPassResult, Texture, _set_install_prefix, render_debug_image
 
@@ -19,6 +20,8 @@ __all__ = [
     'RenderPass',
     'RenderPassResult',
     'Texture',
+
+    'camera_model',
 ]
 
 
