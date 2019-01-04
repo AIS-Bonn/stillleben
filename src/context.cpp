@@ -357,6 +357,12 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
+    if(!context->m_d->gl_context->tryCreate())
+    {
+        Error() << "Could not create Platform::GLContext";
+        return {};
+    }
+
     return context;
 #else
     Error() << "Called Context::createCUDA() without EGL support";
