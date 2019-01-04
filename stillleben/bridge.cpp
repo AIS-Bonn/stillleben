@@ -73,9 +73,9 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
         auto size = texture.imageSize();
         at::Tensor tensor = torch::empty(
             {size.y(), size.x(), channels},
-            opts.device(at::kCUDA(g_cudaIndex))
+            opts.device(torch::kCUDA, g_cudaIndex)
         );
-        mapper.readInto(tensor.data<uint8_t>());
+        mapper.readInto(static_cast<uint8_t*>(tensor.data_ptr()));
 
         return tensor;
     }

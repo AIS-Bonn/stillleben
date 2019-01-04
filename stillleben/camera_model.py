@@ -35,7 +35,7 @@ def chromatic_aberration(rgb, translations, scaling):
     transformations[:,1,1] = scaling
     transformations[:,0:2,2] = translations
 
-    grid = torch.nn.functional.affine_grid(transformations, (3,1,rgb.size(1),rgb.size(2)))
+    grid = torch.nn.functional.affine_grid(transformations.to(rgb.device), (3,1,rgb.size(1),rgb.size(2)))
 
     sampled = torch.nn.functional.grid_sample(rgb.unsqueeze(1), grid,
         mode='bilinear', padding_mode='reflection'
@@ -87,7 +87,8 @@ def blur(rgb, sigma):
         tensor: 3xHxW output RGB image
     """
 
-    return torch.nn.functional.conv2d(rgb.unsqueeze(1), _gaussian(sigma),
+    return torch.nn.functional.conv2d(
+        rgb.unsqueeze(1), _gaussian(sigma).to(rgb.device),
         padding=2, # needs to be filter_size/2 for equal output size
     )[:,0]
 
