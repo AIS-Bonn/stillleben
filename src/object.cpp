@@ -83,9 +83,7 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
     {
         const Int materialId = static_cast<Trade::MeshObjectData3D*>(objectData.get())->material();
 
-        auto mesh = MeshTools::compile(*m_mesh->meshes()[objectData->instance()]);
-
-        auto drawable = new Drawable{*object, m_drawables, std::move(mesh), &m_cb};
+        auto drawable = new Drawable{*object, m_drawables, m_mesh->meshes()[objectData->instance()], &m_cb};
 
         if(materialId == -1 || !m_mesh->materials()[materialId])
         {
@@ -106,22 +104,6 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
         {
             // Color-only material
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
-        }
-
-        // Update bbox
-        auto trans = object->absoluteTransformation();
-
-        for(const auto& point : *m_mesh->meshPoints()[objectData->instance()])
-        {
-            auto transformed = trans.transformPoint(point);
-
-            m_bbox.min().x() = std::min(m_bbox.min().x(), transformed.x());
-            m_bbox.min().y() = std::min(m_bbox.min().y(), transformed.y());
-            m_bbox.min().z() = std::min(m_bbox.min().z(), transformed.z());
-
-            m_bbox.max().x() = std::max(m_bbox.max().x(), transformed.x());
-            m_bbox.max().y() = std::max(m_bbox.max().y(), transformed.y());
-            m_bbox.max().z() = std::max(m_bbox.max().z(), transformed.z());
         }
     }
 

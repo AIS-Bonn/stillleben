@@ -29,9 +29,9 @@ typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::
 class Drawable : public Magnum::SceneGraph::Drawable3D
 {
 public:
-    Drawable(Object3D& object, Magnum::SceneGraph::DrawableGroup3D& group, Magnum::GL::Mesh&& mesh, DrawCallback* cb)
+    Drawable(Object3D& object, Magnum::SceneGraph::DrawableGroup3D& group, const std::shared_ptr<Magnum::GL::Mesh>& mesh, DrawCallback* cb)
      : Magnum::SceneGraph::Drawable3D{object, &group}
-     , m_mesh{std::move(mesh)}
+     , m_mesh{mesh}
      , m_cb(cb)
     {
     }
@@ -47,11 +47,11 @@ public:
     { m_color = color; }
 
     Magnum::GL::Mesh& mesh()
-    { return m_mesh; }
+    { return *m_mesh; }
 
     void draw(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera) override;
 private:
-    Magnum::GL::Mesh m_mesh;
+    std::shared_ptr<Magnum::GL::Mesh> m_mesh;
     Magnum::GL::Texture2D* m_texture = nullptr;
     Magnum::Color4 m_color{};
     DrawCallback* m_cb = nullptr;
@@ -99,10 +99,6 @@ private:
 
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
     Magnum::SceneGraph::DrawableGroup3D m_debugDrawables;
-    Magnum::Range3D m_bbox{
-        Magnum::Vector3(std::numeric_limits<float>::infinity()),
-        Magnum::Vector3(-std::numeric_limits<float>::infinity())
-    };
 
     DrawCallback m_cb;
 

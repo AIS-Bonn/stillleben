@@ -33,7 +33,7 @@ class Context;
 class Mesh
 {
 public:
-    using MeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
+    using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;

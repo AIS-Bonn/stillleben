@@ -10,6 +10,7 @@
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Mesh.h>
+#include <Magnum/MeshTools/Compile.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/SceneGraph.h>
 #include <Magnum/SceneGraph/Scene.h>
@@ -118,7 +119,7 @@ void Mesh::load(const std::string& filename)
     }
 
     // Load all meshes. Meshes that fail to load will be NullOpt.
-    m_meshes = Containers::Array<Containers::Optional<Trade::MeshData3D>>{m_importer->mesh3DCount()};
+    m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
@@ -136,7 +137,9 @@ void Mesh::load(const std::string& filename)
             std::copy(array.begin(), array.end(), std::back_inserter(points));
         }
 
-        m_meshes[i] = std::move(meshData);
+        m_meshes[i] = std::make_shared<GL::Mesh>(
+            MeshTools::compile(*meshData)
+        );
         m_meshPoints[i] = points;
     }
 
