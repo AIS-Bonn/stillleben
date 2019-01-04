@@ -7,3 +7,6 @@
 [submodule "contrib/magnum-plugins"]
 	path = contrib/magnum-plugins
 	url = https://github.com/mosra/magnum-plugins.git
+[submodule "contrib/magnum-integration"]
+	path = contrib/magnum-integration
+	url = https://github.com/mosra/magnum-integration.git
