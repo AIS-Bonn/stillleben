@@ -25,6 +25,8 @@
 
 #include <Magnum/GL/Texture.h>
 
+class btCollisionShape;
+
 namespace sl
 {
 
@@ -35,6 +37,7 @@ class Mesh
 public:
     using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
+    using CollisionArray = Corrade::Containers::Array<std::shared_ptr<btCollisionShape>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
 
@@ -93,6 +96,7 @@ private:
 
     MeshArray m_meshes;
     PointArray m_meshPoints;
+    CollisionArray m_collisionShapes;
     TextureArray m_textures;
     MaterialArray m_materials;
 

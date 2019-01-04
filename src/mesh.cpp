@@ -4,6 +4,8 @@
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
 
+#include <btBulletDynamicsCommon.h>
+
 #include <Corrade/Utility/Configuration.h>
 
 #include <Magnum/GL/TextureFormat.h>
@@ -24,11 +26,60 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
 
-
 using namespace Magnum;
 
 namespace sl
 {
+
+/**
+ * @brief Create bullet collision shape from Trade::MeshData3D
+ *
+ * @warning The resulting collision shape references the original mesh data,
+ *   so the MeshData3D instance needs to be kept around!
+ **/
+static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
+    const Trade::MeshData3D& meshData, bool convexHull = true)
+{
+    // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
+
+    if(meshData.primitive() != MeshPrimitive::Triangles)
+    {
+        Error() << "Cannot load collision mesh, skipping";
+        return {};
+    }
+
+    if(convexHull)
+    {
+        return std::make_shared<btConvexHullShape>(
+            reinterpret_cast<const float*>(meshData.positions(0).data()),
+            meshData.positions(0).size(),
+            sizeof(Vector3)
+        );
+    }
+    else
+    {
+        btIndexedMesh bulletMesh;
+        bulletMesh.m_numTriangles = meshData.indices().size()/3;
+        bulletMesh.m_triangleIndexBase = reinterpret_cast<const unsigned char *>(meshData.indices().data());
+        bulletMesh.m_triangleIndexStride = 3 * sizeof(UnsignedInt);
+        bulletMesh.m_numVertices = meshData.positions(0).size();
+        bulletMesh.m_vertexBase = reinterpret_cast<const unsigned char *>(meshData.positions(0).data());
+        bulletMesh.m_vertexStride = sizeof(Vector3);
+        bulletMesh.m_indexType = PHY_INTEGER;
+        bulletMesh.m_vertexType = PHY_FLOAT;
+
+        auto tivArray = new btTriangleIndexVertexArray();
+        tivArray->addIndexedMesh(bulletMesh, PHY_INTEGER);
+
+        return std::shared_ptr<btBvhTriangleMeshShape>(
+            new btBvhTriangleMeshShape(tivArray, true),
+            [&](btBvhTriangleMeshShape* b) {
+                delete b;
+                delete tivArray;
+            }
+        );
+    }
+}
 
 Mesh::Mesh(const std::shared_ptr<Context>& ctx)
  : m_ctx{ctx}
@@ -121,6 +172,7 @@ void Mesh::load(const std::string& filename)
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -141,6 +193,8 @@ void Mesh::load(const std::string& filename)
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
+
+        m_collisionShapes[i] = collisionShapeFromMeshData(*meshData);
     }
 
     // Update the bounding box

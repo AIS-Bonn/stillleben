@@ -71,6 +71,7 @@ target_link_libraries(stillleben PUBLIC
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::DebugTools
+    MagnumIntegration::Bullet
     Magnum::${MAGNUM_GL_APP}
 )
 
