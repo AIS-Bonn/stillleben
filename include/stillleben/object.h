@@ -18,6 +18,8 @@
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/GL/Mesh.h>
 
+class btCompoundShape;
+
 namespace sl
 {
 
@@ -105,6 +107,8 @@ private:
     float m_scale = 1.0f;
 
     unsigned int m_instanceIndex = 0;
+
+    std::unique_ptr<btCompoundShape> m_collisionShape;
 };
 
 }

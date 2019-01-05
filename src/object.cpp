@@ -1,6 +1,9 @@
 // Scene object
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
+#include <btBulletDynamicsCommon.h>
+
 #include <stillleben/object.h>
 
 #include <stillleben/mesh.h>
@@ -24,6 +27,8 @@
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/MeshObjectData3D.h>
 
+#include <Magnum/BulletIntegration/Integration.h>
+
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -35,6 +40,15 @@ void Drawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& c
     auto& cb = *m_cb;
     if(cb)
         cb(transformationMatrix, camera, this);
+}
+
+Object::Object()
+ : m_collisionShape{std::make_unique<btCompoundShape>()}
+{
+}
+
+Object::~Object()
+{
 }
 
 void Object::load()
@@ -105,20 +119,18 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             // Color-only material
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
+
+        // our scene object is not attached yet, so just ask for absolute
+        // transformation.
+        auto magnumTransform = object->absoluteTransformation();
+        btTransform bulletTransform(magnumTransform);
+
+        m_collisionShape->addChildShape(bulletTransform, m_mesh->collisionShapes()[objectData->instance()].get());
     }
 
     // Recursively add children
     for(std::size_t id: objectData->children())
         addMeshObject(*object, id);
-}
-
-
-Object::Object()
-{
-}
-
-Object::~Object()
-{
 }
 
 std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh)

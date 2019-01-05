@@ -76,6 +76,9 @@ public:
     PointArray& meshPoints()
     { return m_meshPoints; }
 
+    CollisionArray& collisionShapes()
+    { return m_collisionShapes; }
+
     TextureArray& textures()
     { return m_textures; }
 
