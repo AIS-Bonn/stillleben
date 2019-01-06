@@ -274,7 +274,8 @@ void Mesh::scaleToBBoxDiagonal(float targetDiagonal, Scale mode)
 
 void Mesh::updatePretransform()
 {
-    m_pretransform = Matrix4::scaling(Vector3(m_scale)) * Matrix4::translation(m_translation);
+    m_pretransformRigid = Matrix4::translation(m_translation);
+    m_pretransform = Matrix4::scaling(Vector3(m_scale)) * m_pretransformRigid;
 }
 
 Magnum::Range3D Mesh::bbox() const

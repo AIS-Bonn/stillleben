@@ -13,7 +13,8 @@ namespace sl
 
 class Scene;
 
-std::shared_ptr<Magnum::GL::RectangleTexture> renderDebugImage(Scene& scene);
+Magnum::GL::RectangleTexture renderDebugImage(Scene& scene);
+Magnum::GL::RectangleTexture renderPhysicsDebugImage(Scene& scene);
 
 }
 

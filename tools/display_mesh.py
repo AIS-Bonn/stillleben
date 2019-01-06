@@ -11,11 +11,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='display a mesh')
     parser.add_argument('--background', metavar='PATH', type=str,
-                    help='Background image')
+        help='Background image')
     parser.add_argument('--noise', action='store_true',
-                    help='Apply noise model')
+        help='Apply noise model')
     parser.add_argument('mesh', metavar='PATH', nargs='+', type=str,
-                    help='Mesh file to display')
+        help='Mesh file to display')
+    parser.add_argument('--debug', action='store_true',
+        help='Render debug image with object poses')
+    parser.add_argument('--physics-debug', action='store_true',
+        help='Render physics debug image with collision wireframes')
 
     args = parser.parse_args()
 
@@ -34,7 +38,7 @@ if __name__ == "__main__":
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
         mesh.center_bbox()
-        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        #mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
@@ -70,4 +74,16 @@ if __name__ == "__main__":
 
     img = Image.fromarray(rgb_np, mode='RGB')
     img.show()
+
+    if args.debug:
+        dbg_rgb = sl.render_debug_image(scene)
+        dbg_img = Image.fromarray(dbg_rgb.cpu().numpy(), mode='RGBA')
+        dbg_img.show()
+
+    if args.physics_debug:
+        dbg_rgb = sl.render_physics_debug_image(scene)
+        dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
+        dbg_img.show()
+
+
 

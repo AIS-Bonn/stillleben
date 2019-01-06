@@ -19,6 +19,8 @@
 #include <Magnum/GL/Mesh.h>
 
 class btCompoundShape;
+class btRigidBody;
+class btDiscreteDynamicsWorld;
 
 namespace sl
 {
@@ -72,6 +74,7 @@ public:
     { return m_sceneObject.transformationMatrix(); }
 
     void setParentSceneObject(Object3D* parent);
+    void setPhysicsWorld(btDiscreteDynamicsWorld* world);
 
     void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
@@ -96,7 +99,7 @@ private:
     Object3D m_sceneObject;
 
     // This holds the actual mesh.
-    // scaleToBBoxDiagonal() acts upon this object.
+    // Mesh::scaleToBBoxDiagonal() acts upon this object.
     Object3D m_meshObject{&m_sceneObject};
 
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
@@ -109,6 +112,7 @@ private:
     unsigned int m_instanceIndex = 0;
 
     std::unique_ptr<btCompoundShape> m_collisionShape;
+    std::unique_ptr<btRigidBody> m_rigidBody;
 };
 
 }

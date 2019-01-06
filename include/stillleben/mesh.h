@@ -64,6 +64,12 @@ public:
     void centerBBox();
     void scaleToBBoxDiagonal(float targetDiagonal, Scale mode = Scale::Exact);
 
+    const Magnum::Matrix4& pretransformRigid() const
+    { return m_pretransformRigid; }
+
+    float pretransformScale() const
+    { return m_scale; }
+
     const Magnum::Matrix4& pretransform() const
     { return m_pretransform; }
 
@@ -111,6 +117,7 @@ private:
     Magnum::Vector3 m_translation{Magnum::Math::ZeroInit};
     float m_scale = 1.0f;
 
+    Magnum::Matrix4 m_pretransformRigid;
     Magnum::Matrix4 m_pretransform;
 
     unsigned int m_classIndex = 1;

@@ -217,7 +217,13 @@ static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& sce
 static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
 {
     auto texture = sl::renderDebugImage(*scene);
-    return readRGBATensor(*texture);
+    return readRGBATensor(texture);
+}
+
+static at::Tensor renderPhysicsDebugImage(const std::shared_ptr<sl::Scene>& scene)
+{
+    auto texture = sl::renderPhysicsDebugImage(*scene);
+    return readRGBATensor(texture);
 }
 
 
@@ -234,6 +240,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     m.def("render_debug_image", &renderDebugImage, R"EOS(
         Render a debug image with object coordinate systems
+    )EOS");
+
+    m.def("render_physics_debug_image", &renderPhysicsDebugImage, R"EOS(
+        Render a physics debug image with collision wireframes
     )EOS");
 
     // Basic geometric types

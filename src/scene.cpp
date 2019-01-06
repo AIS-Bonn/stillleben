@@ -5,6 +5,9 @@
 
 #include <stillleben/object.h>
 
+#include <btBulletDynamicsCommon.h>
+
+#include <Magnum/BulletIntegration/DebugDraw.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
@@ -23,6 +26,7 @@ namespace sl
 
 Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSize)
  : m_ctx{ctx}
+ , m_physicsDebugDraw{std::make_unique<BulletIntegration::DebugDraw>()}
 {
     // Every scene needs a camera
     const Rad FOV_X = Deg(58.0);
@@ -36,6 +40,19 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     std::random_device dev;
     m_randomGenerator.seed(dev());
+
+    auto* broadphase = new btDbvtBroadphase;
+    auto* collisionConfiguration = new btDefaultCollisionConfiguration;
+    auto* dispatcher = new btCollisionDispatcher{collisionConfiguration};
+    auto* solver = new btSequentialImpulseConstraintSolver;
+    m_physicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
+        dispatcher, broadphase, solver, collisionConfiguration
+    );
+
+    m_physicsWorld->setGravity({0.0, 0.0, -10.0f});
+
+    m_physicsDebugDraw->setMode(BulletIntegration::DebugDraw::Mode::DrawWireframe);
+    m_physicsWorld->setDebugDrawer(m_physicsDebugDraw.get());
 }
 
 Scene::~Scene()
@@ -98,6 +115,7 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
     m_objects.push_back(obj);
 
     obj->setParentSceneObject(&m_scene);
+    obj->setPhysicsWorld(m_physicsWorld.get());
 
     // Automatically set the instance index if not set by the user already
     if(obj->instanceIndex() == 0)
@@ -169,6 +187,16 @@ Magnum::Matrix4 Scene::placeObjectRandomly(float diameter)
 void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& texture)
 {
     m_backgroundImage = texture;
+}
+
+void Scene::drawPhysicsDebug()
+{
+    m_physicsWorld->stepSimulation(1e-2, 1);
+
+    m_physicsDebugDraw->setTransformationProjectionMatrix(
+        m_camera->projectionMatrix() * m_camera->cameraMatrix()
+    );
+    m_physicsWorld->debugDrawWorld();
 }
 
 }

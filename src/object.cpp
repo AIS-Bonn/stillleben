@@ -28,6 +28,7 @@
 #include <Magnum/Trade/MeshObjectData3D.h>
 
 #include <Magnum/BulletIntegration/Integration.h>
+#include <Magnum/BulletIntegration/MotionState.h>
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -53,6 +54,13 @@ Object::~Object()
 
 void Object::load()
 {
+    // pretransform is handled differently for Magnum & Bullet:
+    // For Magnum, we just use the pretransform directly, while for Bullet
+    // we have to split it into the rigid part (see addMeshObject()) and
+    // the scaling part below.
+    m_meshObject.setTransformation(m_mesh->pretransform());
+    m_collisionShape->setLocalScaling(btVector3(Vector3(m_mesh->pretransformScale())));
+
     // Load the scene
     auto& importer = m_mesh->importer();
     if(importer.defaultScene() != -1)
@@ -74,9 +82,15 @@ void Object::load()
         addMeshObject(m_meshObject, 0);
     }
 
-    m_meshObject.setTransformation(m_mesh->pretransform());
-
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
+
+    // Setup bullet integration
+    auto motionState = new Magnum::BulletIntegration::MotionState{m_sceneObject};
+
+    btRigidBody::btRigidBodyConstructionInfo info{
+        1.0, &motionState->btMotionState(), m_collisionShape.get()
+    };
+    m_rigidBody = std::make_unique<btRigidBody>(info);
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -120,12 +134,20 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
 
-        // our scene object is not attached yet, so just ask for absolute
-        // transformation.
-        auto magnumTransform = object->absoluteTransformation();
-        btTransform bulletTransform(magnumTransform);
+        // This is a bit tricky: Bullet can only handle rigid transforms
+        // here. So we ask for the relative transform to m_meshObject
+        // (which is rigid), and then apply the rigid part of the pretransform.
+        // Scaling is then handled by scaling the entire bullet collision shape.
+        auto magnumTransform = m_meshObject.absoluteTransformationMatrix().inverted() * object->absoluteTransformationMatrix();
 
-        m_collisionShape->addChildShape(bulletTransform, m_mesh->collisionShapes()[objectData->instance()].get());
+        btTransform bulletTransform(
+            m_mesh->pretransformRigid() * magnumTransform
+        );
+
+        m_collisionShape->addChildShape(
+            bulletTransform,
+            m_mesh->collisionShapes()[objectData->instance()].get()
+        );
     }
 
     // Recursively add children
@@ -153,6 +175,11 @@ void Object::draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb)
 void Object::setParentSceneObject(Object3D* parent)
 {
     m_sceneObject.setParent(parent);
+}
+
+void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
+{
+    world->addRigidBody(m_rigidBody.get());
 }
 
 void Object::setPose(const PoseMatrix& matrix)

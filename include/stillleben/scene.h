@@ -13,6 +13,13 @@
 #include <vector>
 #include <random>
 
+class btDiscreteDynamicsWorld;
+
+namespace Magnum
+{
+namespace BulletIntegration { class DebugDraw; }
+}
+
 namespace sl
 {
 
@@ -57,6 +64,8 @@ public:
     const std::vector<std::shared_ptr<Object>>& objects() const
     { return m_objects; }
 
+    void drawPhysicsDebug();
+
 private:
     std::shared_ptr<Context> m_ctx;
 
@@ -69,6 +78,11 @@ private:
     std::mt19937 m_randomGenerator;
 
     std::shared_ptr<Magnum::GL::RectangleTexture> m_backgroundImage;
+
+    std::unique_ptr<btDiscreteDynamicsWorld> m_physicsWorld;
+
+    // Keep Bullet dependency isolated -> unique_ptr here
+    std::unique_ptr<Magnum::BulletIntegration::DebugDraw> m_physicsDebugDraw;
 };
 
 }
