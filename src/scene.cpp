@@ -51,7 +51,10 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     m_physicsWorld->setGravity({0.0, 0.0, -10.0f});
 
-    m_physicsDebugDraw->setMode(BulletIntegration::DebugDraw::Mode::DrawWireframe);
+    m_physicsDebugDraw->setMode(
+        BulletIntegration::DebugDraw::Mode::DrawWireframe
+        | BulletIntegration::DebugDraw::Mode::DrawFrames
+    );
     m_physicsWorld->setDebugDrawer(m_physicsDebugDraw.get());
 }
 
@@ -94,6 +97,11 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
         {0.0f, 0.0f, 2.0f*f*n/(n-f), 0.0f}
     };
 
+    m_camera->setProjectionMatrix(P);
+}
+
+void Scene::setCameraProjection(const Magnum::Matrix4& P)
+{
     m_camera->setProjectionMatrix(P);
 }
 
@@ -191,8 +199,6 @@ void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& te
 
 void Scene::drawPhysicsDebug()
 {
-    m_physicsWorld->stepSimulation(1e-2, 1);
-
     m_physicsDebugDraw->setTransformationProjectionMatrix(
         m_camera->projectionMatrix() * m_camera->cameraMatrix()
     );

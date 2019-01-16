@@ -204,6 +204,11 @@ static void Scene_setCameraPose(const std::shared_ptr<sl::Scene>& scene, at::Ten
     scene->setCameraPose(torchToMagnum(tensor));
 }
 
+static void Scene_setCameraProjection(const std::shared_ptr<sl::Scene>& scene, at::Tensor& tensor)
+{
+    scene->setCameraProjection(torchToMagnum(tensor));
+}
+
 static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& scene)
 {
     auto vp = scene->viewport();
@@ -428,6 +433,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 cx (float): :math:`c_x`
                 cy (float): :math:`c_y`
         )EOS", py::arg("fx"), py::arg("fy"), py::arg("cx"), py::arg("cy"))
+
+        .def("set_camera_projection", &Scene_setCameraProjection, R"EOS(
+            Set the camera intrinsics from a 4x4 matrix.
+
+            Args:
+                P (tensor): The matrix.
+        )EOS", py::arg("P"))
 
         .def_property_readonly("viewport", &Scene_viewport, R"EOS(
             The current viewport size (W,H) as set in the constructor.
