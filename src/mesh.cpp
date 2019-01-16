@@ -68,6 +68,12 @@ static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
         bulletMesh.m_indexType = PHY_INTEGER;
         bulletMesh.m_vertexType = PHY_FLOAT;
 
+        Debug{} << "Creating btBvhTriangleMeshShape with numTriangles:"
+                << bulletMesh.m_numTriangles
+                << "and numVertices:"
+                << bulletMesh.m_numVertices
+        ;
+
         auto tivArray = new btTriangleIndexVertexArray();
         tivArray->addIndexedMesh(bulletMesh, PHY_INTEGER);
 

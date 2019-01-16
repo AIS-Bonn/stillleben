@@ -88,7 +88,7 @@ GL::RectangleTexture renderPhysicsDebugImage(Scene& scene)
 
     framebuffer.bind();
 
-    framebuffer.clearColor(0, 0x00000000_rgbaf);
+    framebuffer.clearColor(0, 0x101010ff_rgbaf);
     framebuffer.clear(GL::FramebufferClear::Depth);
 
     scene.drawPhysicsDebug();

@@ -59,7 +59,6 @@ void Object::load()
     // we have to split it into the rigid part (see addMeshObject()) and
     // the scaling part below.
     m_meshObject.setTransformation(m_mesh->pretransform());
-    m_collisionShape->setLocalScaling(btVector3(Vector3(m_mesh->pretransformScale())));
 
     // Load the scene
     auto& importer = m_mesh->importer();
@@ -85,12 +84,23 @@ void Object::load()
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
 
     // Setup bullet integration
+
+    // NOTE: This call has to be after the child shapes are added.
+    // Bullet is horrible...
+    m_collisionShape->setLocalScaling(btVector3{Vector3{m_mesh->pretransformScale()}});
+
     auto motionState = new Magnum::BulletIntegration::MotionState{m_sceneObject};
 
-    btRigidBody::btRigidBodyConstructionInfo info{
-        1.0, &motionState->btMotionState(), m_collisionShape.get()
-    };
+    const auto mass = 1.0f;
+
+    btVector3 bInertia(0.0f, 0.0f, 0.0f);
+    m_collisionShape->calculateLocalInertia(mass, bInertia);
+
+    btRigidBody::btRigidBodyConstructionInfo info(
+        mass, &motionState->btMotionState(), m_collisionShape.get(), bInertia
+    );
     m_rigidBody = std::make_unique<btRigidBody>(info);
+    m_rigidBody->forceActivationState(DISABLE_DEACTIVATION);
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -138,10 +148,10 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
         // here. So we ask for the relative transform to m_meshObject
         // (which is rigid), and then apply the rigid part of the pretransform.
         // Scaling is then handled by scaling the entire bullet collision shape.
-        auto magnumTransform = m_meshObject.absoluteTransformationMatrix().inverted() * object->absoluteTransformationMatrix();
-
         btTransform bulletTransform(
-            m_mesh->pretransformRigid() * magnumTransform
+            m_mesh->pretransformRigid()
+             * m_meshObject.absoluteTransformationMatrix().inverted()
+             * object->absoluteTransformationMatrix()
         );
 
         m_collisionShape->addChildShape(
@@ -185,6 +195,11 @@ void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
 void Object::setPose(const PoseMatrix& matrix)
 {
     m_sceneObject.setTransformation(matrix);
+
+    // Stupid, but hey, it works!
+    btTransform transform;
+    m_rigidBody->getMotionState()->getWorldTransform(transform);
+    m_rigidBody->setWorldTransform(transform);
 }
 
 void Object::setInstanceIndex(unsigned int index)
