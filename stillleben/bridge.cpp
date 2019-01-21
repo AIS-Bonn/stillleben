@@ -499,6 +499,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Returns:
                 bool: True if a non-colliding pose was found.
         )EOS", py::arg("object"), py::arg("max_iterations")=10)
+
+        .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
+            Resolve collisions by forward-simulation using the physics engine.
+        )EOS")
     ;
 
     py::class_<sl::RenderPass::Result, std::shared_ptr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

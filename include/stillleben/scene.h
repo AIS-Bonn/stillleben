@@ -14,6 +14,7 @@
 #include <random>
 
 class btDiscreteDynamicsWorld;
+class btDynamicsWorld;
 
 namespace Magnum
 {
@@ -72,9 +73,13 @@ public:
     bool performCollisionCheck() const;
 
     bool findNonCollidingPose(const std::shared_ptr<Object>& object, int maxIterations = 10);
+
+    bool resolveCollisions();
     //@}
 
 private:
+    static void constrainingTickCallback(btDynamicsWorld* world, float timeStep);
+
     std::shared_ptr<Context> m_ctx;
 
     Scene3D m_scene;

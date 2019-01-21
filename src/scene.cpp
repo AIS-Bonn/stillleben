@@ -262,4 +262,68 @@ bool Scene::findNonCollidingPose(const std::shared_ptr<Object>& object, int maxI
     return false;
 }
 
+constexpr float ANGULAR_VELOCITY_LIMIT = 10.0 / 180.0 * M_PI;
+constexpr float LINEAR_VELOCITY_LIMIT = 0.05;
+
+void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
+{
+    Scene* self = reinterpret_cast<Scene*>(world->getWorldUserInfo());
+
+    for(auto& obj : self->m_objects)
+    {
+        auto& rigidBody = obj->rigidBody();
+
+        btVector3 angularVelocity = rigidBody.getAngularVelocity();
+
+        float angVelNorm = angularVelocity.norm();
+        if(angVelNorm > ANGULAR_VELOCITY_LIMIT)
+            angularVelocity = angularVelocity / angVelNorm * ANGULAR_VELOCITY_LIMIT;
+
+        rigidBody.setAngularVelocity(angularVelocity);
+
+        btVector3 linearVelocity = rigidBody.getLinearVelocity();
+
+        float linVelNorm = linearVelocity.norm();
+        if(linVelNorm > LINEAR_VELOCITY_LIMIT)
+            linearVelocity = linearVelocity / linVelNorm * LINEAR_VELOCITY_LIMIT;
+
+        rigidBody.setLinearVelocity(linearVelocity);
+    }
+}
+
+bool Scene::resolveCollisions()
+{
+    constexpr int maxIterations = 10;
+
+    m_physicsWorld->performDiscreteCollisionDetection();
+
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        int numContacts = 0;
+        {
+            auto* dispatcher = m_physicsWorld->getDispatcher();
+
+            int numManifolds = dispatcher->getNumManifolds();
+            for(int i = 0; i < numManifolds; ++i)
+            {
+                auto* manifold = dispatcher->getManifoldByIndexInternal(i);
+
+                numContacts += manifold->getNumContacts();
+            }
+        }
+
+        if(numContacts == 0)
+        {
+            Debug{} << "Resolved contacts after" << i << "iterations";
+            return true;
+        }
+
+        m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
+        m_physicsWorld->stepSimulation(0.1, 1, 0.1);
+    }
+
+    Debug{} << "Could not resolve contacts :-(";
+    return false;
+}
+
 }
