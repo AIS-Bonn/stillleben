@@ -82,7 +82,7 @@ cmdclass = {
     'install': install,
 }
 
-if torch.version.cuda is None:
+if torch.version.cuda is not None:
     print('CUDA detected!')
     ExtensionType = CppExtension
     extra_defs = []
