@@ -50,11 +50,15 @@ static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
 
     if(convexHull)
     {
-        return std::make_shared<btConvexHullShape>(
+        auto shape = std::make_shared<btConvexHullShape>(
             reinterpret_cast<const float*>(meshData.positions(0).data()),
             meshData.positions(0).size(),
             sizeof(Vector3)
         );
+
+        shape->optimizeConvexHull();
+
+        return shape;
     }
     else
     {
