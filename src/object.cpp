@@ -210,4 +210,12 @@ void Object::setInstanceIndex(unsigned int index)
     m_instanceIndex = index;
 }
 
+btRigidBody& Object::rigidBody()
+{
+    if(!m_rigidBody)
+        throw std::logic_error("Access of rigidBody() before object is loaded");
+
+    return *m_rigidBody;
+}
+
 }

@@ -88,6 +88,8 @@ public:
     Magnum::SceneGraph::DrawableGroup3D& debugDrawables()
     { return m_debugDrawables; }
 
+    btRigidBody& rigidBody();
+
 private:
     void load();
     void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);

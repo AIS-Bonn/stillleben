@@ -487,6 +487,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Returns:
                 bool: True if there is at least one collision
         )EOS")
+
+        .def("find_noncolliding_pose", &sl::Scene::findNonCollidingPose, R"EOS(
+            Finds a non-colliding random pose for an object. The object should
+            already have been added using add_object().
+
+            Args:
+                object (stillleben.object): The object to place
+                max_iterations (int): Maximum number of attempts
+
+            Returns:
+                bool: True if a non-colliding pose was found.
+        )EOS", py::arg("object"), py::arg("max_iterations")=10)
     ;
 
     py::class_<sl::RenderPass::Result, std::shared_ptr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

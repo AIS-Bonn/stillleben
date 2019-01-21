@@ -70,6 +70,8 @@ public:
     void drawPhysicsDebug();
 
     bool performCollisionCheck() const;
+
+    bool findNonCollidingPose(const std::shared_ptr<Object>& object, int maxIterations = 10);
     //@}
 
 private:

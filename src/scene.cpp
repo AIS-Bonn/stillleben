@@ -4,6 +4,7 @@
 #include <stillleben/scene.h>
 
 #include <stillleben/object.h>
+#include <stillleben/mesh.h>
 
 #include <btBulletDynamicsCommon.h>
 
@@ -223,6 +224,42 @@ bool Scene::performCollisionCheck() const
     Debug{} << "performCollisionCheck: found" << numContacts << "in" << numManifolds << "manifolds.";
 
     return numContacts != 0;
+}
+
+// Ancient C++
+namespace
+{
+    struct CollisionCallback : public btCollisionWorld::ContactResultCallback
+    {
+        btScalar addSingleResult(btManifoldPoint &, const btCollisionObjectWrapper *, int, int, const btCollisionObjectWrapper *, int, int) override
+        {
+            m_numContacts++;
+            return 0; // apparently unused (*argh*)
+        }
+
+        inline int numContacts() const
+        { return m_numContacts; }
+    private:
+        int m_numContacts = 0;
+    };
+}
+
+bool Scene::findNonCollidingPose(const std::shared_ptr<Object>& object, int maxIterations)
+{
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        // Sample new pose
+        object->setPose(placeObjectRandomly(object->mesh()->bbox().size().length()));
+
+        // Check if collides with other objects
+        CollisionCallback counter;
+        m_physicsWorld->contactTest(&object->rigidBody(), counter);
+
+        if(counter.numContacts() == 0)
+            return true; // success!
+    }
+
+    return false;
 }
 
 }
