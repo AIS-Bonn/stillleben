@@ -84,12 +84,12 @@ cmdclass = {
 
 if torch.version.cuda is not None:
     print('CUDA detected!')
-    ExtensionType = CppExtension
-    extra_defs = []
-else:
-    print('No CUDA found, interop disabled...')
     ExtensionType = CUDAExtension
     extra_defs = ['-DHAVE_CUDA=1']
+else:
+    print('No CUDA found, interop disabled...')
+    ExtensionType = CppExtension
+    extra_defs = []
 
 setuptools.setup(
     name='stillleben',
