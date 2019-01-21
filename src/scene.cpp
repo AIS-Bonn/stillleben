@@ -209,9 +209,20 @@ bool Scene::performCollisionCheck() const
 {
     m_physicsWorld->performDiscreteCollisionDetection();
 
-    auto dispatcher = m_physicsWorld->getDispatcher();
+    auto* dispatcher = m_physicsWorld->getDispatcher();
 
-    return dispatcher->getNumManifolds() != 0;
+    int numManifolds = dispatcher->getNumManifolds();
+    int numContacts = 0;
+    for(int i = 0; i < numManifolds; ++i)
+    {
+        auto* manifold = dispatcher->getManifoldByIndexInternal(i);
+
+        numContacts += manifold->getNumContacts();
+    }
+
+    Debug{} << "performCollisionCheck: found" << numContacts << "in" << numManifolds << "manifolds.";
+
+    return numContacts != 0;
 }
 
 }
