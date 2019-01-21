@@ -38,7 +38,7 @@ if __name__ == "__main__":
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
         mesh.center_bbox()
-        #mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     if args.debug:
         dbg_rgb = sl.render_debug_image(scene)
-        dbg_img = Image.fromarray(dbg_rgb.cpu().numpy(), mode='RGBA')
+        dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
         dbg_img.show()
 
     if args.physics_debug:

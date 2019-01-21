@@ -205,4 +205,13 @@ void Scene::drawPhysicsDebug()
     m_physicsWorld->debugDrawWorld();
 }
 
+bool Scene::performCollisionCheck() const
+{
+    m_physicsWorld->performDiscreteCollisionDetection();
+
+    auto dispatcher = m_physicsWorld->getDispatcher();
+
+    return dispatcher->getNumManifolds() != 0;
+}
+
 }

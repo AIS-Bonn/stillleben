@@ -65,7 +65,12 @@ public:
     const std::vector<std::shared_ptr<Object>>& objects() const
     { return m_objects; }
 
+    //! @name Physics
+    //@{
     void drawPhysicsDebug();
+
+    bool performCollisionCheck() const;
+    //@}
 
 private:
     std::shared_ptr<Context> m_ctx;

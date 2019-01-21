@@ -480,6 +480,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Args:
                 object (Object): Object to be added.
         )EOS", py::arg("object"))
+
+        .def("perform_collision_check", &sl::Scene::performCollisionCheck, R"EOS(
+            Checks if the current arrangement of objects is in collision.
+
+            Returns:
+                bool: True if there is at least one collision
+        )EOS")
     ;
 
     py::class_<sl::RenderPass::Result, std::shared_ptr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(
