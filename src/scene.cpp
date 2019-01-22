@@ -355,16 +355,12 @@ bool Scene::resolveCollisions()
         }
 
         if(numContacts == 0)
-        {
-            Debug{} << "Resolved contacts after" << i << "iterations";
             return true;
-        }
 
         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
         m_physicsWorld->stepSimulation(0.1, 1, 0.1);
     }
 
-    Debug{} << "Could not resolve contacts :-(";
     return false;
 }
 
