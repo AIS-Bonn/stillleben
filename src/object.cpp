@@ -91,7 +91,7 @@ void Object::load()
 
     auto motionState = new Magnum::BulletIntegration::MotionState{m_sceneObject};
 
-    const auto mass = 1.0f;
+    const auto mass = 0.2f;
 
     btVector3 bInertia(0.0f, 0.0f, 0.0f);
     m_collisionShape->calculateLocalInertia(mass, bInertia);

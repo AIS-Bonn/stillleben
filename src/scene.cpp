@@ -269,11 +269,15 @@ void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
 {
     Scene* self = reinterpret_cast<Scene*>(world->getWorldUserInfo());
 
+    int i = 0;
+
     for(auto& obj : self->m_objects)
     {
         auto& rigidBody = obj->rigidBody();
 
+//	Debug{} << "Object" << (i++);
         btVector3 angularVelocity = rigidBody.getAngularVelocity();
+//	Debug{} << "angular:" << angularVelocity.getX() << angularVelocity.getY() << angularVelocity.getZ();
 
         float angVelNorm = angularVelocity.norm();
         if(angVelNorm > ANGULAR_VELOCITY_LIMIT)
@@ -282,6 +286,7 @@ void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
         rigidBody.setAngularVelocity(angularVelocity);
 
         btVector3 linearVelocity = rigidBody.getLinearVelocity();
+//	Debug{} << "linear:" << linearVelocity.getX() << linearVelocity.getY() << linearVelocity.getZ();
 
         float linVelNorm = linearVelocity.norm();
         if(linVelNorm > LINEAR_VELOCITY_LIMIT)
@@ -322,7 +327,7 @@ namespace
 
 bool Scene::resolveCollisions()
 {
-    constexpr int maxIterations = 10;
+    constexpr int maxIterations = 40;
 
     // Remove gravity
     auto grav = m_physicsWorld->getGravity();
