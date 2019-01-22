@@ -263,7 +263,7 @@ bool Scene::findNonCollidingPose(const std::shared_ptr<Object>& object, int maxI
 }
 
 constexpr float ANGULAR_VELOCITY_LIMIT = 10.0 / 180.0 * M_PI;
-constexpr float LINEAR_VELOCITY_LIMIT = 0.05;
+constexpr float LINEAR_VELOCITY_LIMIT = 0.01;
 
 void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
 {
@@ -274,6 +274,7 @@ void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
     for(auto& obj : self->m_objects)
     {
         auto& rigidBody = obj->rigidBody();
+	rigidBody.setDamping(0.5, 0.5);
 
 //	Debug{} << "Object" << (i++);
         btVector3 angularVelocity = rigidBody.getAngularVelocity();
