@@ -25,8 +25,17 @@ using namespace Math::Literals;
 namespace sl
 {
 
+struct Scene::BulletStuff
+{
+    std::unique_ptr<btDbvtBroadphase> broadphase;
+    std::unique_ptr<btDefaultCollisionConfiguration> collisionConfig;
+    std::unique_ptr<btCollisionDispatcher> dispatcher;
+    std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
+};
+
 Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSize)
  : m_ctx{ctx}
+ , m_bulletStuff{std::make_unique<BulletStuff>()}
  , m_physicsDebugDraw{std::make_unique<BulletIntegration::DebugDraw>()}
 {
     // Every scene needs a camera
@@ -42,12 +51,15 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
     std::random_device dev;
     m_randomGenerator.seed(dev());
 
-    auto* broadphase = new btDbvtBroadphase;
-    auto* collisionConfiguration = new btDefaultCollisionConfiguration;
-    auto* dispatcher = new btCollisionDispatcher{collisionConfiguration};
-    auto* solver = new btSequentialImpulseConstraintSolver;
+    m_bulletStuff->broadphase = std::make_unique<btDbvtBroadphase>();
+    m_bulletStuff->collisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
+    m_bulletStuff->dispatcher = std::make_unique<btCollisionDispatcher>(m_bulletStuff->collisionConfig.get());
+    m_bulletStuff->solver = std::make_unique<btSequentialImpulseConstraintSolver>();
     m_physicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
-        dispatcher, broadphase, solver, collisionConfiguration
+        m_bulletStuff->dispatcher.get(),
+        m_bulletStuff->broadphase.get(),
+        m_bulletStuff->solver.get(),
+        m_bulletStuff->collisionConfig.get()
     );
 
     m_physicsWorld->setGravity({0.0, 0.0, -10.0f});

@@ -78,6 +78,8 @@ public:
     //@}
 
 private:
+    struct BulletStuff;
+
     static void constrainingTickCallback(btDynamicsWorld* world, float timeStep);
 
     std::shared_ptr<Context> m_ctx;
@@ -92,6 +94,7 @@ private:
 
     std::shared_ptr<Magnum::GL::RectangleTexture> m_backgroundImage;
 
+    std::unique_ptr<BulletStuff> m_bulletStuff;
     std::unique_ptr<btDiscreteDynamicsWorld> m_physicsWorld;
 
     // Keep Bullet dependency isolated -> unique_ptr here
