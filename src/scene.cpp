@@ -336,10 +336,10 @@ bool Scene::resolveCollisions()
     // Set it back when we exit
     auto _ = finally([&](){m_physicsWorld->setGravity(grav);});
 
-    m_physicsWorld->performDiscreteCollisionDetection();
-
     for(int i = 0; i < maxIterations; ++i)
     {
+        m_physicsWorld->performDiscreteCollisionDetection();
+
         int numContacts = 0;
         {
             auto* dispatcher = m_physicsWorld->getDispatcher();
