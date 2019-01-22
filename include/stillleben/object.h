@@ -22,6 +22,8 @@ class btCompoundShape;
 class btRigidBody;
 class btDiscreteDynamicsWorld;
 
+namespace Magnum { namespace BulletIntegration { class MotionState; } }
+
 namespace sl
 {
 
@@ -115,6 +117,9 @@ private:
 
     std::unique_ptr<btCompoundShape> m_collisionShape;
     std::unique_ptr<btRigidBody> m_rigidBody;
+    btDiscreteDynamicsWorld* m_physicsWorld = 0;
+
+    std::unique_ptr<Magnum::BulletIntegration::MotionState> m_motionState;
 };
 
 }

@@ -50,6 +50,8 @@ Object::Object()
 
 Object::~Object()
 {
+    if(m_physicsWorld)
+        m_physicsWorld->removeCollisionObject(m_rigidBody.get());
 }
 
 void Object::load()
@@ -89,7 +91,7 @@ void Object::load()
     // Bullet is horrible...
     m_collisionShape->setLocalScaling(btVector3{Vector3{m_mesh->pretransformScale()}});
 
-    auto motionState = new Magnum::BulletIntegration::MotionState{m_sceneObject};
+    m_motionState = std::make_unique<Magnum::BulletIntegration::MotionState>(m_sceneObject);
 
     const auto mass = 0.2f;
 
@@ -97,7 +99,7 @@ void Object::load()
     m_collisionShape->calculateLocalInertia(mass, bInertia);
 
     btRigidBody::btRigidBodyConstructionInfo info(
-        mass, &motionState->btMotionState(), m_collisionShape.get(), bInertia
+        mass, &m_motionState->btMotionState(), m_collisionShape.get(), bInertia
     );
     m_rigidBody = std::make_unique<btRigidBody>(info);
     m_rigidBody->forceActivationState(DISABLE_DEACTIVATION);
@@ -189,6 +191,7 @@ void Object::setParentSceneObject(Object3D* parent)
 
 void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
 {
+    m_physicsWorld = world;
     world->addRigidBody(m_rigidBody.get());
 }
 
