@@ -291,9 +291,45 @@ void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
     }
 }
 
+namespace
+{
+    template<class F>
+    struct Caller
+    {
+        Caller(F&& f)
+         : m_cb(f)
+        {
+        }
+
+        Caller(Caller<F>&& other)
+         : m_cb(std::move(other.m_cb))
+        {}
+
+        ~Caller()
+        {
+            m_cb();
+        }
+    private:
+        F m_cb;
+    };
+
+    template<class F>
+    Caller<F> finally(F&& f)
+    {
+        return {std::move(f)};
+    }
+}
+
 bool Scene::resolveCollisions()
 {
     constexpr int maxIterations = 10;
+
+    // Remove gravity
+    auto grav = m_physicsWorld->getGravity();
+    m_physicsWorld->setGravity(btVector3(0, 0, 0));
+
+    // Set it back when we exit
+    auto _ = finally([&](){m_physicsWorld->setGravity(grav);});
 
     m_physicsWorld->performDiscreteCollisionDetection();
 
