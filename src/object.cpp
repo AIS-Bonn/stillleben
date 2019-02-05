@@ -50,8 +50,7 @@ Object::Object()
 
 Object::~Object()
 {
-    if(m_physicsWorld)
-        m_physicsWorld->removeCollisionObject(m_rigidBody.get());
+    setPhysicsWorld(nullptr);
 }
 
 void Object::load()
@@ -191,8 +190,13 @@ void Object::setParentSceneObject(Object3D* parent)
 
 void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
 {
+    if(m_physicsWorld)
+        m_physicsWorld->removeRigidBody(m_rigidBody.get());
+
+    if(world)
+        world->addRigidBody(m_rigidBody.get());
+
     m_physicsWorld = world;
-    world->addRigidBody(m_rigidBody.get());
 }
 
 void Object::setPose(const PoseMatrix& matrix)

@@ -78,6 +78,7 @@ Scene::~Scene()
     for(auto& obj : m_objects)
     {
         obj->setParentSceneObject(nullptr);
+        obj->setPhysicsWorld(nullptr);
     }
 }
 
