@@ -103,12 +103,24 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
     const float H = m_camera->viewport().y();
     const float W = m_camera->viewport().x();
 
-    // Caution, this is column-major
+/*    // Caution, this is column-major
     Matrix4 P{
-        {2.0f*fx/cx, 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f*fy/cy, 0.0f, 0.0f},
+        {2.0f*fx/W, 0.0f, 0.0f, 0.0f},
+        {0.0f, 2.0f*fy/H, 0.0f, 0.0f},
         {1.0f - 2.0f*cx/W, 1.0f - 2.0f*cy/H, -(f+n)/(n-f), 1.0f},
         {0.0f, 0.0f, 2.0f*f*n/(n-f), 0.0f}
+    };*/
+
+    const float L = -cx * n / fx;
+    const float R = (W-cx) * n / fx;
+    const float T = -cy * n / fy;
+    const float B = (H-cy) * n / fy;
+
+    Matrix4 P{
+        {2.0f*n/(R-L), 0.0f, 0.0f, 0.0f},
+        {0.0f, 2.0f*n/(B-T), 0.0f, 0.0f},
+	{(R+L)/(L-R), (T+B)/(T-B), (f+n)/(f-n), 1.0f},
+	{0.0f, 0.0f, (2.0f * f * n) / (n-f), 0.0f}
     };
 
     m_camera->setProjectionMatrix(P);
