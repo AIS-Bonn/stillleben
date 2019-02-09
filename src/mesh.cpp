@@ -126,11 +126,9 @@ void Mesh::load(const std::string& filename)
 
     // Load file
     {
-        std::stringstream ss;
-        Corrade::Utility::Error redirect{&ss};
         if(!m_importer->openFile(filename))
         {
-            throw LoadException(ss.str() + "\nCould not load file");
+            throw LoadException("Could not load file");
         }
     }
 
