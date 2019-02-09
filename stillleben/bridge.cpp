@@ -10,9 +10,12 @@
 #include <stillleben/render_pass.h>
 #include <stillleben/debug.h>
 #include <stillleben/cuda_interop.h>
+#include <stillleben/contrib/ctpl_stl.h>
 
 #include <Corrade/Utility/Debug.h>
 #include <Magnum/Image.h>
+
+#include <future>
 
 static std::shared_ptr<sl::Context> g_context;
 static bool g_cudaEnabled = false;
@@ -149,6 +152,23 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
     mesh->load(filename);
 
     return mesh;
+}
+
+static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(const std::vector<std::string>& filenames)
+{
+    using Future = std::future<std::shared_ptr<sl::Mesh>>;
+
+    ctpl::thread_pool pool(std::thread::hardware_concurrency());
+
+    std::vector<Future> results;
+    for(const auto& filename : filenames)
+        results.push_back(pool.push(std::bind(Mesh_factory, filename)));
+
+    std::vector<std::shared_ptr<sl::Mesh>> ret;
+    for(auto& future : results)
+        ret.push_back(future.get());
+
+    return ret;
 }
 
 static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)
@@ -316,6 +336,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Examples:
                 >>> m = Mesh("path/to/my/mesh.gltf")
         )EOS", py::arg("filename"))
+
+        .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
+            Load multiple meshes using a thread pool.
+
+            Args:
+                filenames (list): List of file names to load
+
+            Returns:
+                list: List of mesh instances
+        )EOS")
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.
