@@ -168,6 +168,9 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
 
 std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh)
 {
+    if(!mesh)
+        throw std::invalid_argument("Got nullptr mesh");
+
     auto object = std::make_shared<Object>();
 
     object->m_mesh = mesh;
