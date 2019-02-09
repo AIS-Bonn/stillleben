@@ -7,13 +7,7 @@
 #include <memory>
 #include <string>
 
-namespace Corrade
-{
-    namespace PluginManager
-    {
-        template<class> class Manager;
-    }
-}
+#include <Corrade/Containers/Pointer.h>
 
 namespace Magnum
 {
@@ -45,7 +39,8 @@ public:
 
     bool makeCurrent();
 
-    std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> importerPluginManager();
+    using Importer = Magnum::Trade::AbstractImporter;
+    Corrade::Containers::Pointer<Importer> instantiateImporter();
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
 private:

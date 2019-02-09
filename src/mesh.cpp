@@ -105,10 +105,9 @@ Mesh::~Mesh()
 void Mesh::load(const std::string& filename)
 {
     // Load a scene importer plugin
-    auto pluginManager = m_ctx->importerPluginManager();
-    m_importer = pluginManager->loadAndInstantiate("AssimpImporter");
+    m_importer = m_ctx->instantiateImporter();
     if(!m_importer)
-        std::exit(1);
+        std::abort();
 
     // Set up postprocess options if using AssimpImporter
     auto group = m_importer->configuration().group("postprocess");

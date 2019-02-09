@@ -52,9 +52,15 @@ public:
         gl_context.reset(new Platform::GLContext{NoCreate, argc, argv.data()});
 
         if(!installPrefix.empty())
-            importerManager = std::make_shared<ImporterManager>(installPrefix + "/lib/magnum/importers");
+            importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum/importers");
         else
-            importerManager = std::make_shared<ImporterManager>();
+            importerManager = std::make_unique<ImporterManager>();
+
+        auto loadState = importerManager->load("AssimpImporter");
+        if(loadState != Corrade::PluginManager::LoadState::Loaded)
+        {
+            throw std::runtime_error("Could not load AssimpImporter plugin");
+        }
     }
 
     void* egl_display = nullptr;
@@ -66,7 +72,7 @@ public:
 
     std::unique_ptr<Platform::GLContext> gl_context;
 
-    std::shared_ptr<ImporterManager> importerManager;
+    std::unique_ptr<ImporterManager> importerManager;
 
     DebugTools::ResourceManager resourceManager;
 };
@@ -385,9 +391,9 @@ bool Context::makeCurrent()
 #endif
 }
 
-std::shared_ptr<Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>> Context::importerPluginManager()
+Corrade::Containers::Pointer<Context::Importer> Context::instantiateImporter()
 {
-    return m_d->importerManager;
+    return m_d->importerManager->instantiate("AssimpImporter");
 }
 
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
