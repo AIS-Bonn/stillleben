@@ -148,7 +148,6 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
         throw std::logic_error("You need to call init() first!");
 
     auto mesh = std::make_shared<sl::Mesh>(g_context);
-
     mesh->load(filename);
 
     return mesh;

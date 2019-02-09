@@ -26,6 +26,8 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
 
+#include <sstream>
+
 using namespace Magnum;
 
 namespace sl
@@ -123,9 +125,13 @@ void Mesh::load(const std::string& filename)
     }
 
     // Load file
-    if(!m_importer->openFile(filename))
     {
-        throw LoadException("Could not load file");
+        std::stringstream ss;
+        Corrade::Utility::Error redirect{&ss};
+        if(!m_importer->openFile(filename))
+        {
+            throw LoadException(ss.str() + "\nCould not load file");
+        }
     }
 
     // Load all textures. Textures that fail to load will be NullOpt.

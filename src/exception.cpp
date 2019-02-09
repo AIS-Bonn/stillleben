@@ -6,8 +6,9 @@
 namespace sl
 {
 
-Exception::Exception(const char* msg)
- : std::runtime_error(msg)
+Exception::Exception(const std::string& msg)
+ : std::runtime_error{msg}
 {}
+
 
 }

@@ -18,6 +18,8 @@
 
 #include <cstring>
 
+#include <mutex>
+
 #if HAVE_EGL
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -73,6 +75,7 @@ public:
     std::unique_ptr<Platform::GLContext> gl_context;
 
     std::unique_ptr<ImporterManager> importerManager;
+    std::mutex importerManagerMutex;
 
     DebugTools::ResourceManager resourceManager;
 };
@@ -393,6 +396,7 @@ bool Context::makeCurrent()
 
 Corrade::Containers::Pointer<Context::Importer> Context::instantiateImporter()
 {
+    std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
     return m_d->importerManager->instantiate("AssimpImporter");
 }
 

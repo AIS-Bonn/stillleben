@@ -12,7 +12,7 @@ namespace sl
 class Exception : public std::runtime_error
 {
 public:
-    Exception(const char* msg);
+    explicit Exception(const std::string& msg);
 };
 
 }
