@@ -44,6 +44,8 @@ public:
     void setCameraProjection(const Magnum::Matrix4& projection);
     void setCameraFromFOV(Magnum::Rad fov);
 
+    Magnum::Matrix4 projectionMatrix() const;
+
     ViewportSize viewport() const
     { return m_camera->viewport(); }
 

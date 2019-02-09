@@ -144,6 +144,11 @@ void Scene::setCameraFromFOV(Magnum::Rad fov)
     setCameraIntrinsics(fx, fy, cx, cy);
 }
 
+Magnum::Matrix4 Scene::projectionMatrix() const
+{
+    return m_camera->projectionMatrix();
+}
+
 void Scene::addObject(const std::shared_ptr<Object>& obj)
 {
     m_objects.push_back(obj);

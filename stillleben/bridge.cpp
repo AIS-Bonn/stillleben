@@ -441,6 +441,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 P (tensor): The matrix.
         )EOS", py::arg("P"))
 
+        .def("projection_matrix", [](const std::shared_ptr<sl::Scene>& s){
+            return magnumToTorch(s->projectionMatrix());
+            }, R"EOS(
+                Return the currently used OpenGL projection matrix.
+            )EOS")
+
         .def_property_readonly("viewport", &Scene_viewport, R"EOS(
             The current viewport size (W,H) as set in the constructor.
         )EOS")
