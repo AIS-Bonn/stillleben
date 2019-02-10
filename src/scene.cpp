@@ -416,7 +416,7 @@ void Scene::chooseRandomLightPosition()
     Magnum::Vector3 randomDirection = Magnum::Vector3{
         normalDist(m_randomGenerator),
         -std::abs(normalDist(m_randomGenerator)), // always from above
-        std::abs(normalDist(m_randomGenerator)) // always towards camera
+        -std::abs(normalDist(m_randomGenerator)) // always on camera side
     }.normalized();
 
     Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
