@@ -172,7 +172,7 @@ def color_jitter(tensor_img):
     HSV[2] = M
 
     # Apply jitter
-    hue_jitter = 0.3
+    hue_jitter = 0.05
     hue_factor = random.uniform(-hue_jitter, hue_jitter)
 
     HSV[0] = HSV[0] + hue_factor * 360.0
@@ -207,11 +207,13 @@ def process_image(rgb):
         scaling=torch.empty(3).uniform_(0.998, 1.002)
     )
 
-    rgb = blur(rgb, sigma=random.uniform(0.0, 3.0))
+    if random.random() > 0.5:
+        rgb = blur(rgb, sigma=random.uniform(0.0, 3.0))
 
     rgb = exposure(rgb, deltaS=random.uniform(0.001, 2.0))
 
-    rgb = noise(rgb, a=0.001, b=0.03)
+    if random.random() > 0.5:
+        rgb = noise(rgb, a=0.001, b=0.03)
 
     rgb = color_jitter(rgb)
 
