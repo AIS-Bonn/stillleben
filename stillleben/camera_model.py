@@ -211,7 +211,7 @@ def process_image(rgb):
 
     rgb = exposure(rgb, deltaS=random.uniform(0.001, 2.0))
 
-    rgb = noise(rgb, a=0.001, b=0.01)
+    rgb = noise(rgb, a=0.001, b=0.03)
 
     rgb = color_jitter(rgb)
 
