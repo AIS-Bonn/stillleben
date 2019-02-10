@@ -193,7 +193,7 @@ Magnum::Matrix4 Scene::placeObjectRandomly(float diameter)
 
     // Step 1: Produce a suitable z coordinate
     const float fullyVisible = minimumDistanceForObjectDiameter(diameter);
-    std::uniform_real_distribution<float> zDist(0.8 * fullyVisible, 2.0 * fullyVisible);
+    std::uniform_real_distribution<float> zDist(1.2 * fullyVisible, 5.0 * fullyVisible);
 
     const float z = zDist(m_randomGenerator);
 
