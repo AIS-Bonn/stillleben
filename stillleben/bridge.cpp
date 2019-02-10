@@ -155,19 +155,10 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
 
 static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(const std::vector<std::string>& filenames)
 {
-    using Future = std::future<std::shared_ptr<sl::Mesh>>;
+    if(!g_context)
+        throw std::logic_error("You need to call init() first!");
 
-    ctpl::thread_pool pool(std::thread::hardware_concurrency());
-
-    std::vector<Future> results;
-    for(const auto& filename : filenames)
-        results.push_back(pool.push(std::bind(Mesh_factory, filename)));
-
-    std::vector<std::shared_ptr<sl::Mesh>> ret;
-    for(auto& future : results)
-        ret.push_back(future.get());
-
-    return ret;
+    return sl::Mesh::loadThreaded(g_context, filenames);
 }
 
 static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)

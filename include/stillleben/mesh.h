@@ -59,6 +59,11 @@ public:
 
     void load(const std::string& filename);
 
+    void loadNonGL(const std::string& filename);
+    void loadGL();
+
+    static std::vector<std::shared_ptr<Mesh>> loadThreaded(const std::shared_ptr<Context>& ctx, const std::vector<std::string>& filenames);
+
     Magnum::Range3D bbox() const;
 
     void centerBBox();

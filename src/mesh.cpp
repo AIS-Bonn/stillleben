@@ -3,6 +3,7 @@
 
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
+#include <stillleben/contrib/ctpl_stl.h>
 
 #include <btBulletDynamicsCommon.h>
 
@@ -106,6 +107,12 @@ Mesh::~Mesh()
 
 void Mesh::load(const std::string& filename)
 {
+    loadNonGL(filename);
+    loadGL();
+}
+
+void Mesh::loadNonGL(const std::string& filename)
+{
     // Load a scene importer plugin
     m_importer = m_ctx->instantiateImporter();
     if(!m_importer)
@@ -131,6 +138,12 @@ void Mesh::load(const std::string& filename)
             throw LoadException("Could not load file");
         }
     }
+}
+
+void Mesh::loadGL()
+{
+    if(!m_importer)
+        throw std::logic_error("You need to call loadNonGL() first");
 
     // Load all textures. Textures that fail to load will be NullOpt.
     m_textures = Containers::Array<Containers::Optional<GL::Texture2D>>{m_importer->textureCount()};
@@ -229,6 +242,42 @@ void Mesh::load(const std::string& filename)
             updateBoundingBox(Matrix4{}, 0);
         }
     }
+}
+
+namespace
+{
+    std::shared_ptr<Mesh> loadHelper(const std::shared_ptr<Context>& ctx, const std::string& filename)
+    {
+        auto mesh = std::make_shared<Mesh>(ctx);
+        mesh->loadNonGL(filename);
+
+        return mesh;
+    }
+}
+
+std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(const std::shared_ptr<Context>& ctx, const std::vector<std::string>& filenames)
+{
+    using Future = std::future<std::shared_ptr<sl::Mesh>>;
+
+    ctpl::thread_pool pool(std::thread::hardware_concurrency());
+
+    std::vector<Future> results;
+    for(const auto& filename : filenames)
+    {
+        results.push_back(pool.push(std::bind(&loadHelper, ctx, filename)));
+    }
+
+    std::vector<std::shared_ptr<sl::Mesh>> ret;
+    for(auto& future : results)
+    {
+        auto mesh = future.get(); // may throw if we had a load error
+
+        mesh->loadGL();
+
+        ret.push_back(std::move(mesh));
+    }
+
+    return ret;
 }
 
 void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int meshObjectIdx)
