@@ -207,13 +207,15 @@ def process_image(rgb):
         scaling=torch.empty(3).uniform_(0.998, 1.002)
     )
 
-    if random.random() > 0.5:
+    if random.random() > 0.8:
         rgb = blur(rgb, sigma=random.uniform(0.0, 3.0))
 
     rgb = exposure(rgb, deltaS=random.uniform(0.001, 2.0))
 
-    if random.random() > 0.5:
+    if random.random() > 0.8:
         rgb = noise(rgb, a=0.001, b=0.03)
+
+    rgb.clamp_(0.0, 1.0)
 
     rgb = color_jitter(rgb)
 
