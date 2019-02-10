@@ -135,6 +135,67 @@ def noise(rgb, a, b):
 
     return (poisson_part + gaussian_part).clamp_(0.0, 1.0)
 
+def color_jitter(tensor_img):
+    """
+    Args:
+      tensor_img: 3xHxW RGB float tensor [0,1]
+    """
+
+    assert tensor_img.size(0) == 3
+    height = tensor_img.size(1)
+    width = tensor_img.size(2)
+
+    R = tensor_img[0]
+    G = tensor_img[1]
+    B = tensor_img[2]
+
+    M, Mi = tensor_img.max(dim=0)
+    m, mi = tensor_img.min(dim=0)
+
+    C = M - m
+
+    H = tensor_img.new_empty((4, height, width))
+    H[0] = 0.0
+    H[1] = (G-B) / C + 0.0
+    H[2] = (B-R) / C + 2.0
+    H[3] = (R-G) / C + 4.0
+
+    case = Mi + 1
+    case[C == 0] = 0
+
+    HSV = torch.empty_like(tensor_img)
+    HSV[0] = 60.0 * H.gather(0, case.unsqueeze(0))[0]
+    HSV[0][HSV[0] < 0] += 360.0
+
+    HSV[1] = (M - m) / M
+    HSV[1][M == 0] = 0.0
+    HSV[2] = M
+
+    # Apply jitter
+    hue_jitter = 0.3
+    hue_factor = random.uniform(-hue_jitter, hue_jitter)
+
+    HSV[0] = HSV[0] + hue_factor * 360.0
+    HSV[0][HSV[0] < 0] += 360.0
+    HSV[0][HSV[0] > 360.0] -= 360.0
+
+    # convert back to RGB
+    HSV[0] /= 60.0
+    X = C * (1.0 - (HSV[0].fmod(2.0) - 1).abs())
+
+    order_case = HSV[0].view(-1).long().clamp_(0,5)
+    order = torch.cuda.LongTensor([
+        [0,1,2], [1,0,2], [2,0,1], [2,1,0], [1,2,0], [0,2,1]
+    ])
+    selected_order = order[order_case].view(height, width, 3).permute(2, 0, 1)
+
+    CX0 = torch.stack((C, X, torch.zeros_like(C)))
+
+    RGB = CX0.gather(0, selected_order)
+    RGB += m.unsqueeze(0)
+
+    return RGB
+
 @profiling.Timer('camera_model.process_image')
 def process_image(rgb):
 
@@ -152,6 +213,6 @@ def process_image(rgb):
 
     rgb = noise(rgb, a=0.001, b=0.01)
 
+    rgb = color_jitter(rgb)
+
     return rgb
-
-
