@@ -529,6 +529,26 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
             Resolve collisions by forward-simulation using the physics engine.
         )EOS")
+
+        .def_property("light_position",
+            [](const std::shared_ptr<sl::Scene>& scene){
+                return magnumToTorch(scene->lightPosition());
+            },
+            [](const std::shared_ptr<sl::Scene>& scene, at::Tensor position){
+                scene->setLightPosition(torchToMagnumVector3D(position));
+            },
+            R"EOS(
+                The light position in world coordinates. This is a float tensor
+                of size 3.
+            )EOS"
+        )
+
+        .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
+            Choose a random light position under the following constraints:
+
+            * The light comes from above (negative Y direction)
+            * The light never comes from behind the objects.
+        )EOS")
     ;
 
     py::class_<sl::RenderPass::Result, std::shared_ptr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

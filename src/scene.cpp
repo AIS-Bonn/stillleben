@@ -394,4 +394,34 @@ bool Scene::resolveCollisions()
     return false;
 }
 
+void Scene::setLightPosition(const Magnum::Vector3& position)
+{
+    m_lightPosition = position;
+}
+
+void Scene::chooseRandomLightPosition()
+{
+    // We want to have the light coming from above, but not from behind the
+    // objects. We first determine the light position relative to the camera.
+
+    Magnum::Vector3 meanPosition;
+    for(auto& obj : m_objects)
+    {
+        meanPosition += (m_camera->cameraMatrix() * obj->pose()).translation();
+    }
+    if(!m_objects.empty())
+        meanPosition /= m_objects.size();
+
+    std::normal_distribution<float> normalDist;
+    Magnum::Vector3 randomDirection = Magnum::Vector3{
+        normalDist(m_randomGenerator),
+        -std::abs(normalDist(m_randomGenerator)), // always from above
+        std::abs(normalDist(m_randomGenerator)) // always towards camera
+    }.normalized();
+
+    Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
+
+    setLightPosition(m_camera->cameraMatrix().invertedOrthogonal().transformPoint(lightPositionInCam));
+}
+
 }

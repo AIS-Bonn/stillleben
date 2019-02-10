@@ -79,6 +79,15 @@ public:
     bool resolveCollisions();
     //@}
 
+    //! @name Lighting
+    //@{
+    void setLightPosition(const Magnum::Vector3& lightPosition);
+    Magnum::Vector3 lightPosition() const
+    { return m_lightPosition; }
+
+    void chooseRandomLightPosition();
+    //@}
+
 private:
     struct BulletStuff;
 
@@ -101,6 +110,8 @@ private:
 
     // Keep Bullet dependency isolated -> unique_ptr here
     std::unique_ptr<Magnum::BulletIntegration::DebugDraw> m_physicsDebugDraw;
+
+    Magnum::Vector3 m_lightPosition;
 };
 
 }
