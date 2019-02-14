@@ -100,6 +100,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     framebuffer.bind();
 
+    framebuffer.clearColor(1, invalid);
+    framebuffer.clearColor(2, Vector4ui(0));
+    framebuffer.clearColor(3, Vector4ui(0));
+    framebuffer.clear(GL::FramebufferClear::Depth);
+
     // Do we have a background texture?
     if(scene.backgroundImage())
     {
@@ -110,12 +115,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         framebuffer.clear(GL::FramebufferClear::Depth);
     }
     else
+    {
         framebuffer.clearColor(0, 0x00000000_rgbaf);
-
-    framebuffer.clearColor(1, invalid);
-    framebuffer.clearColor(2, Vector4ui(0));
-    framebuffer.clearColor(3, Vector4ui(0));
-    framebuffer.clear(GL::FramebufferClear::Depth);
+    }
 
     // Let the fun begin!
     for(auto& object : scene.objects())
