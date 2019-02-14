@@ -61,7 +61,7 @@ public:
     //@{
     float minimumDistanceForObjectDiameter(float diameter) const;
 
-    Magnum::Matrix4 placeObjectRandomly(float diameter);
+    Magnum::Matrix4 placeObjectRandomly(float diameter, float minSizeFactor=0.2);
     //@}
 
     void addObject(const std::shared_ptr<Object>& object);

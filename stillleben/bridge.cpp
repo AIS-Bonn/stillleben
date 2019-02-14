@@ -485,8 +485,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 diameter (float): Diameter of the object.
         )EOS", py::arg("diameter"))
 
-        .def("place_object_randomly", [](const std::shared_ptr<sl::Scene>& s, float diameter) {
-            return magnumToTorch(s->placeObjectRandomly(diameter));
+        .def("place_object_randomly", [](const std::shared_ptr<sl::Scene>& s, float diameter, float minSizeFactor) {
+            return magnumToTorch(s->placeObjectRandomly(diameter, minSizeFactor));
             },
             R"EOS(
                 Generates a random pose for an object of given diameter.
@@ -497,7 +497,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 `2.0*min_dist_for_object_diameter()`, and
                 * :math:`x` and :math:`y` are choosen such that the object center is
                 inside 80% of the camera frustrum in each axis.
-            )EOS", py::arg("diameter")
+            )EOS", py::arg("diameter"), py::arg("min_size_factor")=0.2
         )
 
         .def("add_object", &sl::Scene::addObject, R"EOS(
