@@ -47,6 +47,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
 
 add_library(stillleben SHARED
+    src/animator.cpp
     src/context.cpp
     src/cuda_interop.cpp
     src/debug.cpp

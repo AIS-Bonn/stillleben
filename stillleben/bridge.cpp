@@ -10,12 +10,14 @@
 #include <stillleben/render_pass.h>
 #include <stillleben/debug.h>
 #include <stillleben/cuda_interop.h>
+#include <stillleben/animator.h>
 #include <stillleben/contrib/ctpl_stl.h>
 
 #include <Corrade/Utility/Debug.h>
 #include <Magnum/Image.h>
 
 #include <future>
+#include <memory>
 
 static std::shared_ptr<sl::Context> g_context;
 static bool g_cudaEnabled = false;
@@ -638,5 +640,28 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Returns:
                 RenderPassResult
         )EOS", py::arg("scene"))
+    ;
+
+    py::class_<sl::Animator>(m, "Animator", R"EOS(
+            Generates interpolated object poses.
+        )EOS")
+
+        .def(py::init([](const std::vector<at::Tensor>& poses, unsigned int ticks){
+            std::vector<Magnum::Matrix4> mPoses;
+            for(auto& p : poses)
+                mPoses.push_back(torchToMagnum(p));
+            return std::make_unique<sl::Animator>(mPoses, ticks);
+        }), "Constructor", py::arg("poses"), py::arg("ticks"))
+
+        .def("__iter__", [](py::object s) { return s; })
+
+        .def("__next__", [](sl::Animator& s){
+            if(s.currentTick() >= s.totalTicks())
+                throw py::stop_iteration{};
+
+            return magnumToTorch(s());
+        })
+
+        .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
     ;
 }
