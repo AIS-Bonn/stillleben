@@ -184,9 +184,9 @@ def color_jitter(tensor_img):
     X = C * (1.0 - (HSV[0].fmod(2.0) - 1).abs())
 
     order_case = HSV[0].view(-1).long().clamp_(0,5)
-    order = torch.cuda.LongTensor([
+    order = torch.LongTensor([
         [0,1,2], [1,0,2], [2,0,1], [2,1,0], [1,2,0], [0,2,1]
-    ])
+    ]).to(HSV.device)
     selected_order = order[order_case].view(height, width, 3).permute(2, 0, 1)
 
     CX0 = torch.stack((C, X, torch.zeros_like(C)))
