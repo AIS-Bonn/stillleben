@@ -62,7 +62,7 @@ in highp vec3 cameraDirection;
 in mediump vec2 interpolatedTextureCoords;
 #endif
 
-in highp vec3 objectCoordinates;
+centroid in highp vec3 objectCoordinates;
 
 layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec3 objectCoordinatesOut;

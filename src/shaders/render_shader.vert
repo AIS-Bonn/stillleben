@@ -41,7 +41,7 @@ out mediump vec3 transformedNormal;
 out highp vec3 lightDirection;
 out highp vec3 cameraDirection;
 
-out highp vec3 objectCoordinates;
+centroid out highp vec3 objectCoordinates;
 
 void main()
 {
