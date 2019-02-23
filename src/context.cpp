@@ -19,6 +19,7 @@
 #include <cstring>
 #include <sstream>
 #include <mutex>
+#include <iostream>
 
 #if HAVE_EGL
 #include <EGL/egl.h>
@@ -431,8 +432,9 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
     texture.setStorage(format, image->size());
     texture.setSubImage({}, *image);
 
-    if(!ss.empty())
-        std::cerr << ss.str() << std::flush;
+    std::string messages = ss.str();
+    if(!messages.empty())
+        std::cerr << messages << std::flush;
 
     return texture;
 }
