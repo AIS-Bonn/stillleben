@@ -406,15 +406,18 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
         m_d->importerManager->loadAndInstantiate("AnyImageImporter")
     };
 
+    std::ostringstream ss;
+    Error redirectTo{&ss};
+
     if(!importer)
         throw std::logic_error("Could not load AnyImageImporter plugin");
 
     if(!importer->openFile(path))
-        throw std::runtime_error("Could not open image file");
+        throw std::runtime_error("Could not open image file: " + ss.str());
 
     auto image = importer->image2D(0);
     if(!image)
-        throw std::runtime_error("Could not load image");
+        throw std::runtime_error("Could not load image: " + ss.str());
 
     GL::TextureFormat format;
     if(image->format() == PixelFormat::RGB8Unorm)
@@ -427,6 +430,9 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
     GL::RectangleTexture texture;
     texture.setStorage(format, image->size());
     texture.setSubImage({}, *image);
+
+    if(!ss.empty())
+        std::cerr << ss.str() << std::flush();
 
     return texture;
 }
