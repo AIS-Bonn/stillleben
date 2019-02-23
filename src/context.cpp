@@ -17,7 +17,7 @@
 #include <Magnum/DebugTools/ResourceManager.h>
 
 #include <cstring>
-
+#include <sstream>
 #include <mutex>
 
 #if HAVE_EGL
@@ -432,7 +432,7 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
     texture.setSubImage({}, *image);
 
     if(!ss.empty())
-        std::cerr << ss.str() << std::flush();
+        std::cerr << ss.str() << std::flush;
 
     return texture;
 }
