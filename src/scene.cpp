@@ -119,8 +119,8 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
     Matrix4 P{
         {2.0f*n/(R-L), 0.0f, 0.0f, 0.0f},
         {0.0f, 2.0f*n/(B-T), 0.0f, 0.0f},
-	{(R+L)/(L-R), (T+B)/(T-B), (f+n)/(f-n), 1.0f},
-	{0.0f, 0.0f, (2.0f * f * n) / (n-f), 0.0f}
+        {(R+L)/(L-R), (T+B)/(T-B), (f+n)/(f-n), 1.0f},
+        {0.0f, 0.0f, (2.0f * f * n) / (n-f), 0.0f}
     };
 
     m_camera->setProjectionMatrix(P);
@@ -187,7 +187,7 @@ Magnum::Quaternion randomQuaternion(Generator& g)
     return q.normalized();
 }
 
-Magnum::Matrix4 Scene::placeObjectRandomly(float diameter, float minSizeFactor)
+Magnum::Vector3 Scene::randomTranslationInCameraFOV(float diameter, float minSizeFactor)
 {
     const auto P = m_camera->projectionMatrix();
 
@@ -206,21 +206,32 @@ Magnum::Matrix4 Scene::placeObjectRandomly(float diameter, float minSizeFactor)
     std::uniform_real_distribution<float> xDist(-x_range, x_range);
     std::uniform_real_distribution<float> yDist(-y_range, y_range);
 
-    Vector3 translation(
+    return {
         xDist(m_randomGenerator),
         yDist(m_randomGenerator),
         z
-    );
+    };
+}
 
-    // Step 3: Choose random orientation
-    Quaternion orientation = randomQuaternion(m_randomGenerator);
+Magnum::Matrix3 Scene::randomOrientation()
+{
+    return randomQuaternion(m_randomGenerator).toMatrix();
+}
 
-    // ... and now combine
-    Matrix4 pose = Matrix4::from(orientation.toMatrix(), translation);
+Magnum::Matrix4 Scene::randomPoseInCameraFOV(float diameter, float minSizeFactor)
+{
+    return Matrix4::from(randomOrientation(), randomTranslationInCameraFOV(diameter, minSizeFactor));
+}
 
-    Matrix4 worldPose = m_camera->cameraMatrix().invertedOrthogonal() * pose;
+Magnum::Matrix4 Scene::placeObjectRandomly(float diameter, float minSizeFactor)
+{
+    auto pose = randomPoseInCameraFOV(diameter, minSizeFactor);
+    return cameraToWorld(pose);
+}
 
-    return worldPose;
+Magnum::Matrix4 Scene::cameraToWorld(const Magnum::Matrix4& poseInCamera) const
+{
+    return m_camera->cameraMatrix().invertedOrthogonal() * poseInCamera;
 }
 
 void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& texture)

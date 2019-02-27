@@ -59,9 +59,16 @@ public:
 
     //! @name Object placement
     //@{
-    float minimumDistanceForObjectDiameter(float diameter) const;
+    static constexpr float DEFAULT_MIN_SIZE_FACTOR = 0.2f;
 
-    Magnum::Matrix4 placeObjectRandomly(float diameter, float minSizeFactor=0.2);
+    float minimumDistanceForObjectDiameter(float diameter) const;
+    Magnum::Vector3 randomTranslationInCameraFOV(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
+    Magnum::Matrix3 randomOrientation();
+    Magnum::Matrix4 randomPoseInCameraFOV(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
+
+    Magnum::Matrix4 cameraToWorld(const Magnum::Matrix4& poseInCamera) const;
+
+    Magnum::Matrix4 placeObjectRandomly(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
     //@}
 
     void addObject(const std::shared_ptr<Object>& object);

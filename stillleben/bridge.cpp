@@ -51,6 +51,18 @@ static Magnum::Matrix4 torchToMagnum(const at::Tensor& tensor)
     return mat;
 }
 
+static at::Tensor magnumToTorch(const Magnum::Matrix3& mat)
+{
+    auto tensor = torch::from_blob(
+        const_cast<float*>(mat.data()),
+        {3,3},
+        at::kFloat
+    );
+
+    // NOTE: Magnum matrices are column-major
+    return tensor.t().clone();
+}
+
 static at::Tensor magnumToTorch(const Magnum::Vector3& vec)
 {
     return torch::from_blob(const_cast<float*>(vec.data()), {3}, at::kFloat).clone();
@@ -499,7 +511,44 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 `2.0*min_dist_for_object_diameter()`, and
                 * :math:`x` and :math:`y` are choosen such that the object center is
                 inside 80% of the camera frustrum in each axis.
-            )EOS", py::arg("diameter"), py::arg("min_size_factor")=0.2
+            )EOS",
+            py::arg("diameter"),
+            py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
+        )
+
+        .def("random_orientation", [](const std::shared_ptr<sl::Scene>& s) {
+                return magnumToTorch(s->randomOrientation());
+            },
+            R"EOS(
+                Generate a random orientation.
+
+                Returns:
+                    tensor: 3x3 float rotation matrix
+            )EOS"
+        )
+
+        .def("random_translation_in_fov", [](const std::shared_ptr<sl::Scene>& s, float diameter, float minSizeFactor) {
+                return magnumToTorch(s->randomTranslationInCameraFOV(diameter, minSizeFactor));
+            },
+            R"EOS(
+                Generate a random translation s.t. the object fits inside the camera
+                FOV.
+            )EOS",
+            py::arg("diameter"),
+            py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
+        )
+
+        .def("camera_to_world", [](const std::shared_ptr<sl::Scene>& s, at::Tensor poseInCamera) {
+                return magnumToTorch(
+                    s->cameraToWorld(torchToMagnum(poseInCamera))
+                );
+            },
+            R"EOS(
+                Transform a pose from camera coordinates to world coordinates.
+
+                Args:
+                    poseInCamera (tensor): 4x4 float pose
+            )EOS", py::arg("poseInCamera")
         )
 
         .def("add_object", &sl::Scene::addObject, R"EOS(
