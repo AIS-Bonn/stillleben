@@ -595,7 +595,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Returns:
                 bool: True if a non-colliding pose was found.
-        )EOS", py::arg("object"), py::arg("orientation_hint"), py::arg("max_iterations")=10)
+        )EOS", py::arg("object"), py::arg("orientation_hint") = (at::Tensor*)nullptr, py::arg("max_iterations")=10)
 
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
             Resolve collisions by forward-simulation using the physics engine.
