@@ -7,6 +7,7 @@
 #include <stillleben/math.h>
 #include <stillleben/common.h>
 
+#include <Corrade/Containers/Optional.h>
 #include <Magnum/SceneGraph/Camera.h>
 
 #include <memory>
@@ -81,7 +82,8 @@ public:
 
     bool performCollisionCheck() const;
 
-    bool findNonCollidingPose(const std::shared_ptr<Object>& object, int maxIterations = 10);
+    using OrientationHint = Corrade::Containers::Optional<Magnum::Matrix3>;
+    bool findNonCollidingPose(Object& object, const OrientationHint& orientationHint = {}, int maxIterations = 10);
 
     bool resolveCollisions();
     //@}

@@ -51,6 +51,20 @@ static Magnum::Matrix4 torchToMagnum(const at::Tensor& tensor)
     return mat;
 }
 
+static Magnum::Matrix3 torchToMagnumMatrix3(const at::Tensor& tensor)
+{
+    auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous().t().contiguous();
+    if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 3 || cpuTensor.size(1) != 3)
+        throw std::invalid_argument("An orientation tensor must be 3x3");
+
+    const float* data = cpuTensor.data<float>();
+
+    Magnum::Matrix3 mat{Magnum::Math::NoInit};
+
+    memcpy(mat.data(), data, 9*sizeof(float));
+
+    return mat;
+}
 static at::Tensor magnumToTorch(const Magnum::Matrix3& mat)
 {
     auto tensor = torch::from_blob(
@@ -565,17 +579,23 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 bool: True if there is at least one collision
         )EOS")
 
-        .def("find_noncolliding_pose", &sl::Scene::findNonCollidingPose, R"EOS(
+        .def("find_noncolliding_pose", [](const std::shared_ptr<sl::Scene>& scene, const std::shared_ptr<sl::Object>& object, at::Tensor* orientationHint, int max_iterations){
+                sl::Scene::OrientationHint hint;
+                if(orientationHint)
+                    hint = torchToMagnumMatrix3(*orientationHint);
+                return scene->findNonCollidingPose(*object, hint, max_iterations);
+            }, R"EOS(
             Finds a non-colliding random pose for an object. The object should
             already have been added using add_object().
 
             Args:
                 object (stillleben.object): The object to place
+                orientation_hint (tensor): 3x3 float orientation to use
                 max_iterations (int): Maximum number of attempts
 
             Returns:
                 bool: True if a non-colliding pose was found.
-        )EOS", py::arg("object"), py::arg("max_iterations")=10)
+        )EOS", py::arg("object"), py::arg("orientation_hint"), py::arg("max_iterations")=10)
 
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
             Resolve collisions by forward-simulation using the physics engine.

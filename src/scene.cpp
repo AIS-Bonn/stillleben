@@ -285,16 +285,26 @@ namespace
     };
 }
 
-bool Scene::findNonCollidingPose(const std::shared_ptr<Object>& object, int maxIterations)
+bool Scene::findNonCollidingPose(Object& object, const OrientationHint& orientationHint, int maxIterations)
 {
+    float diameter = object.mesh()->bbox().size().length();
     for(int i = 0; i < maxIterations; ++i)
     {
         // Sample new pose
-        object->setPose(placeObjectRandomly(object->mesh()->bbox().size().length()));
+        if(orientationHint)
+        {
+            Magnum::Matrix4 pose = Magnum::Matrix4::from(
+                *orientationHint,
+                randomTranslationInCameraFOV(diameter)
+            );
+            object.setPose(cameraToWorld(pose));
+        }
+        else
+            object.setPose(placeObjectRandomly(diameter));
 
         // Check if collides with other objects
         CollisionCallback counter;
-        m_physicsWorld->contactTest(&object->rigidBody(), counter);
+        m_physicsWorld->contactTest(&object.rigidBody(), counter);
 
         if(counter.numContacts() == 0)
             return true; // success!
@@ -309,8 +319,6 @@ constexpr float LINEAR_VELOCITY_LIMIT = 0.01;
 void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
 {
     Scene* self = reinterpret_cast<Scene*>(world->getWorldUserInfo());
-
-    int i = 0;
 
     for(auto& obj : self->m_objects)
     {
