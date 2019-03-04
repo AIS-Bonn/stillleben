@@ -18,6 +18,9 @@
 
 #include <future>
 #include <memory>
+#include <functional>
+
+#include <pybind11/stl.h>
 
 static std::shared_ptr<sl::Context> g_context;
 static bool g_cudaEnabled = false;
@@ -25,73 +28,174 @@ static unsigned int g_cudaIndex = 0;
 static std::string g_installPrefix;
 
 // Conversion functions
-static at::Tensor magnumToTorch(const Magnum::Matrix4& mat)
+namespace
 {
-    auto tensor = torch::from_blob(
-        const_cast<float*>(mat.data()),
-        {4,4},
-        at::kFloat
-    );
+    // Magnum -> Torch
+    template<class T>
+    struct toTorch
+    {
+        using Result = T;
+        static T convert(const T& t)
+        { return t; }
+    };
 
-    // NOTE: Magnum matrices are column-major
-    return tensor.t().clone();
-}
-static Magnum::Matrix4 torchToMagnum(const at::Tensor& tensor)
-{
-    auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous().t().contiguous();
-    if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 4 || cpuTensor.size(1) != 4)
-        throw std::invalid_argument("A pose tensor must be 4x4");
+    template<>
+    struct toTorch<void>
+    {
+        using Result = void;
+    };
 
-    const float* data = cpuTensor.data<float>();
+    template<>
+    struct toTorch<Magnum::Matrix4>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Matrix4& mat)
+        {
+            auto tensor = torch::from_blob(
+                const_cast<float*>(mat.data()),
+                {4,4},
+                at::kFloat
+            );
 
-    Magnum::Matrix4 mat{Magnum::Math::NoInit};
+            // NOTE: Magnum matrices are column-major
+            return tensor.t().clone();
+        }
+    };
 
-    memcpy(mat.data(), data, 16*sizeof(float));
+    template<>
+    struct toTorch<Magnum::Matrix3>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Matrix3& mat)
+        {
+            auto tensor = torch::from_blob(
+                const_cast<float*>(mat.data()),
+                {3,3},
+                at::kFloat
+            );
 
-    return mat;
-}
+            // NOTE: Magnum matrices are column-major
+            return tensor.t().clone();
+        }
+    };
 
-static Magnum::Matrix3 torchToMagnumMatrix3(const at::Tensor& tensor)
-{
-    auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous().t().contiguous();
-    if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 3 || cpuTensor.size(1) != 3)
-        throw std::invalid_argument("An orientation tensor must be 3x3");
+    template<>
+    struct toTorch<Magnum::Vector3>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Vector3& vec)
+        {
+            return torch::from_blob(const_cast<float*>(vec.data()), {3}, at::kFloat).clone();
+        }
+    };
 
-    const float* data = cpuTensor.data<float>();
+    // Torch -> Magnum
+    template<class T>
+    struct fromTorch
+    {
+        using Type = T;
+        static T convert(const T& t)
+        { return t; }
+    };
 
-    Magnum::Matrix3 mat{Magnum::Math::NoInit};
+    template<>
+    struct fromTorch<Magnum::Matrix4>
+    {
+        using Type = at::Tensor;
+        static Magnum::Matrix4 convert(const at::Tensor& tensor)
+        {
+            auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous().t().contiguous();
+            if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 4 || cpuTensor.size(1) != 4)
+                throw std::invalid_argument("A pose tensor must be 4x4");
 
-    memcpy(mat.data(), data, 9*sizeof(float));
+            const float* data = cpuTensor.data<float>();
 
-    return mat;
-}
-static at::Tensor magnumToTorch(const Magnum::Matrix3& mat)
-{
-    auto tensor = torch::from_blob(
-        const_cast<float*>(mat.data()),
-        {3,3},
-        at::kFloat
-    );
+            Magnum::Matrix4 mat{Magnum::Math::NoInit};
 
-    // NOTE: Magnum matrices are column-major
-    return tensor.t().clone();
-}
+            memcpy(mat.data(), data, 16*sizeof(float));
 
-static at::Tensor magnumToTorch(const Magnum::Vector3& vec)
-{
-    return torch::from_blob(const_cast<float*>(vec.data()), {3}, at::kFloat).clone();
-}
-static Magnum::Vector3 torchToMagnumVector3D(const at::Tensor& tensor)
-{
-    auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous();
-    if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 3)
-        throw std::invalid_argument("A vector tensor must have size 3");
+            return mat;
+        }
+    };
 
-    const float* data = cpuTensor.data<float>();
-    Magnum::Vector3 vec{Magnum::Math::NoInit};
-    memcpy(vec.data(), data, 3*sizeof(float));
+    template<>
+    struct fromTorch<Magnum::Matrix3>
+    {
+        using Type = at::Tensor;
+        static Magnum::Matrix3 convert(const at::Tensor& tensor)
+        {
+            auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous().t().contiguous();
+            if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 3 || cpuTensor.size(1) != 3)
+                throw std::invalid_argument("An orientation tensor must be 3x3");
 
-    return vec;
+            const float* data = cpuTensor.data<float>();
+
+            Magnum::Matrix3 mat{Magnum::Math::NoInit};
+
+            memcpy(mat.data(), data, 9*sizeof(float));
+
+            return mat;
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Vector3>
+    {
+        using Type = at::Tensor;
+        static Magnum::Vector3 convert(const at::Tensor& tensor)
+        {
+            auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous();
+            if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 3)
+                throw std::invalid_argument("A vector tensor must have size 3");
+
+            const float* data = cpuTensor.data<float>();
+            Magnum::Vector3 vec{Magnum::Math::NoInit};
+            memcpy(vec.data(), data, 3*sizeof(float));
+
+            return vec;
+        }
+    };
+
+    // Automatic wrapping
+    template<class T, class R, class ... Args>
+    std::function<typename toTorch<std::decay_t<R>>::Result (const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type...)> wrapShared(R (T::*fun)(Args...) const)
+    {
+        using RConv = toTorch<std::decay_t<R>>;
+        return [=](const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) {
+            return RConv::convert((obj.get()->*fun)(fromTorch<std::decay_t<Args>>::convert(args)...));
+        };
+    }
+    template<class T, class R, class ... Args>
+    std::function<typename toTorch<std::decay_t<R>>::Result (const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type...)> wrapShared(R (T::*fun)(Args...))
+    {
+        using RConv = toTorch<std::decay_t<R>>;
+        return [=](const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) {
+            if constexpr(std::is_same_v<R, void>)
+                (obj.get()->*fun)(fromTorch<std::decay_t<Args>>::convert(args)...);
+            else
+                return RConv::convert((obj.get()->*fun)(fromTorch<std::decay_t<Args>>::convert(args)...));
+        };
+    }
+
+    template<class T, class R, class ... Args>
+    std::function<typename toTorch<std::decay_t<R>>::Result (T& obj, typename fromTorch<std::decay_t<Args>>::Type...)> wrapRef(R (T::*fun)(Args...) const)
+    {
+        using RConv = toTorch<std::decay_t<R>>;
+        return [=](T& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) {
+            return RConv::convert((obj.*fun)(fromTorch<std::decay_t<Args>>::convert(args)...));
+        };
+    }
+    template<class T, class R, class ... Args>
+    std::function<typename toTorch<std::decay_t<R>>::Result (T& obj, typename fromTorch<std::decay_t<Args>>::Type...)> wrapRef(R (T::*fun)(Args...))
+    {
+        using RConv = toTorch<std::decay_t<R>>;
+        return [=](T& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) {
+            if constexpr(std::is_same_v<R, void>)
+                (obj.*fun)(fromTorch<std::decay_t<Args>>::convert(args)...);
+            else
+                return RConv::convert((obj.*fun)(fromTorch<std::decay_t<Args>>::convert(args)...));
+        };
+    }
 }
 
 at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
@@ -189,11 +293,6 @@ static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(const std::vecto
     return sl::Mesh::loadThreaded(g_context, filenames);
 }
 
-static at::Tensor Mesh_pretransform(const std::shared_ptr<sl::Mesh>& mesh)
-{
-    return magnumToTorch(mesh->pretransform());
-}
-
 static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
 {
     sl::Mesh::Scale mode;
@@ -207,22 +306,6 @@ static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, floa
     mesh->scaleToBBoxDiagonal(diagonal, mode);
 }
 
-// Object
-static std::shared_ptr<sl::Object> Object_factory(const std::shared_ptr<sl::Mesh>& mesh)
-{
-    return sl::Object::instantiate(mesh);
-}
-
-static at::Tensor Object_pose(const std::shared_ptr<sl::Object>& object)
-{
-    return magnumToTorch(object->pose());
-}
-
-static void Object_setPose(const std::shared_ptr<sl::Object>& object, at::Tensor& tensor)
-{
-    object->setPose(torchToMagnum(tensor));
-}
-
 // Scene
 static std::shared_ptr<sl::Scene> Scene_factory(const std::tuple<int, int>& viewportSize)
 {
@@ -230,21 +313,6 @@ static std::shared_ptr<sl::Scene> Scene_factory(const std::tuple<int, int>& view
         std::get<0>(viewportSize),
         std::get<1>(viewportSize)
     });
-}
-
-static at::Tensor Scene_cameraPose(const std::shared_ptr<sl::Scene>& scene)
-{
-    return magnumToTorch(scene->cameraPose());
-}
-
-static void Scene_setCameraPose(const std::shared_ptr<sl::Scene>& scene, at::Tensor& tensor)
-{
-    scene->setCameraPose(torchToMagnum(tensor));
-}
-
-static void Scene_setCameraProjection(const std::shared_ptr<sl::Scene>& scene, at::Tensor& tensor)
-{
-    scene->setCameraProjection(torchToMagnum(tensor));
 }
 
 static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& scene)
@@ -295,18 +363,18 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         )EOS")
 
         .def_property("min",
-            [](const Magnum::Range3D& range){ return magnumToTorch(range.min()); },
-            [](Magnum::Range3D& range, at::Tensor min){ range.min() = torchToMagnumVector3D(min); }
+            [](const Magnum::Range3D& range){ return toTorch<Magnum::Vector3>::convert(range.min()); },
+            [](Magnum::Range3D& range, at::Tensor min){ range.min() = fromTorch<Magnum::Vector3>::convert(min); }
         )
         .def_property("max",
-            [](const Magnum::Range3D& range){ return magnumToTorch(range.max()); },
-            [](Magnum::Range3D& range, at::Tensor max){ range.max() = torchToMagnumVector3D(max); }
+            [](const Magnum::Range3D& range){ return toTorch<Magnum::Vector3>::convert(range.max()); },
+            [](Magnum::Range3D& range, at::Tensor max){ range.max() = fromTorch<Magnum::Vector3>::convert(max); }
         )
         .def_property_readonly("center",
-            [](const Magnum::Range3D& range){ return magnumToTorch(range.center()); }
+            [](const Magnum::Range3D& range){ return toTorch<Magnum::Vector3>::convert(range.center()); }
         )
         .def_property_readonly("size",
-            [](const Magnum::Range3D& range){ return magnumToTorch(range.size()); }
+            [](const Magnum::Range3D& range){ return toTorch<Magnum::Vector3>::convert(range.size()); }
         )
         .def_property_readonly("diagonal",
             [](const Magnum::Range3D& range){ return range.size().length(); }
@@ -386,7 +454,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     the scale of arbitrary mesh files.
         )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
-        .def_property_readonly("pretransform", &Mesh_pretransform, R"EOS(
+        .def_property_readonly("pretransform", wrapShared(&sl::Mesh::pretransform), R"EOS(
             The current pretransform matrix. Initialized to identity and
             modified by :func:`center_bbox` and :func:`scale_to_bbox_diagonal`.
         )EOS")
@@ -402,14 +470,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             properties.
         )EOS")
 
-        .def(py::init(&Object_factory), R"EOS(
+        .def(py::init(&sl::Object::instantiate), R"EOS(
             Constructor
 
             Args:
                 mesh (Mesh): Mesh to instantiate
         )EOS", py::arg("mesh"))
 
-        .def("pose", &Object_pose, R"EOS(
+        .def("pose", wrapShared(&sl::Object::pose), R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global
             points.
 
@@ -420,7 +488,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 >>> obj = Object(Mesh("mesh.gltf"))
                 >>> obj.pose()
         )EOS")
-        .def("set_pose", &Object_setPose, R"EOS(
+        .def("set_pose", wrapShared(&sl::Object::setPose), R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global
             points.
 
@@ -455,10 +523,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 viewport_size (int,int): Size of the rendered image (W,H)
         )EOS", py::arg("viewport_size"))
 
-        .def("camera_pose", &Scene_cameraPose, R"EOS(
+        .def("camera_pose", wrapShared(&sl::Scene::cameraPose), R"EOS(
             Retrieve current camera pose (see :func:`setCameraPose`).
         )EOS")
-        .def("set_camera_pose", &Scene_setCameraPose, R"EOS(
+        .def("set_camera_pose", wrapShared(&sl::Scene::setCameraPose), R"EOS(
             Set the camera pose within the scene. For most applications, leaving
             this at identity is a good idea - that way your object poses are
             expressed in camera coordinates.
@@ -482,16 +550,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 cy (float): :math:`c_y`
         )EOS", py::arg("fx"), py::arg("fy"), py::arg("cx"), py::arg("cy"))
 
-        .def("set_camera_projection", &Scene_setCameraProjection, R"EOS(
+        .def("set_camera_projection", wrapShared(&sl::Scene::setCameraProjection), R"EOS(
             Set the camera intrinsics from a 4x4 matrix.
 
             Args:
                 P (tensor): The matrix.
         )EOS", py::arg("P"))
 
-        .def("projection_matrix", [](const std::shared_ptr<sl::Scene>& s){
-            return magnumToTorch(s->projectionMatrix());
-            }, R"EOS(
+        .def("projection_matrix", wrapShared(&sl::Scene::projectionMatrix), R"EOS(
                 Return the currently used OpenGL projection matrix.
             )EOS")
 
@@ -513,10 +579,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 diameter (float): Diameter of the object.
         )EOS", py::arg("diameter"))
 
-        .def("place_object_randomly", [](const std::shared_ptr<sl::Scene>& s, float diameter, float minSizeFactor) {
-            return magnumToTorch(s->placeObjectRandomly(diameter, minSizeFactor));
-            },
-            R"EOS(
+        .def("place_object_randomly", wrapShared(&sl::Scene::placeObjectRandomly), R"EOS(
                 Generates a random pose for an object of given diameter.
 
                 The pose obeys the following constraints (relative to the camera
@@ -530,10 +593,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
         )
 
-        .def("random_orientation", [](const std::shared_ptr<sl::Scene>& s) {
-                return magnumToTorch(s->randomOrientation());
-            },
-            R"EOS(
+        .def("random_orientation", wrapShared(&sl::Scene::randomOrientation), R"EOS(
                 Generate a random orientation.
 
                 Returns:
@@ -541,10 +601,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             )EOS"
         )
 
-        .def("random_translation_in_fov", [](const std::shared_ptr<sl::Scene>& s, float diameter, float minSizeFactor) {
-                return magnumToTorch(s->randomTranslationInCameraFOV(diameter, minSizeFactor));
-            },
-            R"EOS(
+        .def("random_translation_in_fov", wrapShared(&sl::Scene::randomTranslationInCameraFOV), R"EOS(
                 Generate a random translation s.t. the object fits inside the camera
                 FOV.
             )EOS",
@@ -552,12 +609,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
         )
 
-        .def("camera_to_world", [](const std::shared_ptr<sl::Scene>& s, at::Tensor poseInCamera) {
-                return magnumToTorch(
-                    s->cameraToWorld(torchToMagnum(poseInCamera))
-                );
-            },
-            R"EOS(
+        .def("camera_to_world", wrapShared(&sl::Scene::cameraToWorld), R"EOS(
                 Transform a pose from camera coordinates to world coordinates.
 
                 Args:
@@ -579,11 +631,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 bool: True if there is at least one collision
         )EOS")
 
-        .def("find_noncolliding_pose", [](const std::shared_ptr<sl::Scene>& scene, const std::shared_ptr<sl::Object>& object, at::Tensor* orientationHint, int max_iterations){
+        .def("find_noncolliding_pose", [](const std::shared_ptr<sl::Scene>& scene, const std::shared_ptr<sl::Object>& object, const std::optional<at::Tensor>& orientationHint, int max_iterations){
                 sl::Scene::OrientationHint hint;
                 if(orientationHint)
-                    hint = torchToMagnumMatrix3(*orientationHint);
-                return scene->findNonCollidingPose(*object, hint, max_iterations);
+                    hint = fromTorch<Magnum::Matrix3>::convert(*orientationHint);
+                scene->findNonCollidingPose(*object, hint, max_iterations);
+                return toTorch<Magnum::Matrix4>::convert(object->pose());
             }, R"EOS(
             Finds a non-colliding random pose for an object. The object should
             already have been added using add_object().
@@ -595,19 +648,15 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Returns:
                 bool: True if a non-colliding pose was found.
-        )EOS", py::arg("object"), py::arg("orientation_hint") = (at::Tensor*)nullptr, py::arg("max_iterations")=10)
+        )EOS", py::arg("object"), py::arg("orientation_hint").none(true) = std::optional<at::Tensor>{}, py::arg("max_iterations")=10)
 
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
             Resolve collisions by forward-simulation using the physics engine.
         )EOS")
 
         .def_property("light_position",
-            [](const std::shared_ptr<sl::Scene>& scene){
-                return magnumToTorch(scene->lightPosition());
-            },
-            [](const std::shared_ptr<sl::Scene>& scene, at::Tensor position){
-                scene->setLightPosition(torchToMagnumVector3D(position));
-            },
+            wrapShared(&sl::Scene::lightPosition),
+            wrapShared(&sl::Scene::setLightPosition),
             R"EOS(
                 The light position in world coordinates. This is a float tensor
                 of size 3.
@@ -718,7 +767,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def(py::init([](const std::vector<at::Tensor>& poses, unsigned int ticks){
             std::vector<Magnum::Matrix4> mPoses;
             for(auto& p : poses)
-                mPoses.push_back(torchToMagnum(p));
+                mPoses.push_back(fromTorch<Magnum::Matrix4>::convert(p));
             return std::make_unique<sl::Animator>(mPoses, ticks);
         }), "Constructor", py::arg("poses"), py::arg("ticks"))
 
@@ -728,7 +777,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             if(s.currentTick() >= s.totalTicks())
                 throw py::stop_iteration{};
 
-            return magnumToTorch(s());
+            return toTorch<Magnum::Matrix4>::convert(s());
         })
 
         .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
