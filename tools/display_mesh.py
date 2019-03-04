@@ -51,6 +51,8 @@ if __name__ == "__main__":
         scene.add_object(object)
 
         if True:
+            pose = scene.find_noncolliding_pose(object, max_iterations=50)
+        elif True:
             pose = scene.place_object_randomly(mesh.bbox.diagonal)
         else:
             pose = torch.eye(4)
