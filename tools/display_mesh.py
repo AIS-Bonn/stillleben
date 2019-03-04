@@ -51,14 +51,17 @@ if __name__ == "__main__":
         scene.add_object(object)
 
         if True:
-            pose = scene.find_noncolliding_pose(object, max_iterations=50)
+            if not scene.find_noncolliding_pose(object, sampler='random', max_iterations=50, viewpoint=torch.tensor([1.0, 0.0, 0.0])):
+                print('WARNING: Could not find non-colliding pose')
+            print('Resulting pose:')
+            print(object.pose())
         elif True:
             pose = scene.place_object_randomly(mesh.bbox.diagonal)
+            object.set_pose(pose)
         else:
             pose = torch.eye(4)
             pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
-
-        object.set_pose(pose)
+            object.set_pose(pose)
 
     renderer = sl.RenderPass()
     result = renderer.render(scene)

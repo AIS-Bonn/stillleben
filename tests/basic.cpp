@@ -5,6 +5,7 @@
 #include <stillleben/mesh.h>
 #include <stillleben/scene.h>
 #include <stillleben/object.h>
+#include <stillleben/pose.h>
 
 #include <stillleben/phong_pass.h>
 #include <stillleben/render_pass.h>
@@ -69,7 +70,10 @@ TEST_CASE("basic")
     auto object = sl::Object::instantiate(mesh);
     REQUIRE(object);
 
-    float distance = scene.minimumDistanceForObjectDiameter(mesh->bbox().size().length());
+    float distance = sl::pose::minimumDistanceForObjectDiameter(
+        mesh->bbox().size().length(),
+        scene.projectionMatrix()
+    );
 
     object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
 
@@ -144,7 +148,10 @@ TEST_CASE("render")
     auto object = sl::Object::instantiate(mesh);
     REQUIRE(object);
 
-    float distance = scene.minimumDistanceForObjectDiameter(mesh->bbox().size().length());
+    float distance = sl::pose::minimumDistanceForObjectDiameter(
+        mesh->bbox().size().length(),
+        scene.projectionMatrix()
+    );
 
     object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
 

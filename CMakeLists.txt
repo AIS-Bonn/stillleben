@@ -55,6 +55,7 @@ add_library(stillleben SHARED
     src/mesh.cpp
     src/object.cpp
     src/phong_pass.cpp
+    src/pose.cpp
     src/render_pass.cpp
     src/scene.cpp
     src/stillleben.cpp

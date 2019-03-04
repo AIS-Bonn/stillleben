@@ -161,20 +161,6 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
         obj->setInstanceIndex(m_objects.size());
 }
 
-float Scene::minimumDistanceForObjectDiameter(float diameter) const
-{
-    auto P = m_camera->projectionMatrix();
-
-    // for perspective projection:
-    // P[0][0] = 1.0 / std::tan(alpha)
-    // NOTE: alpha is the half horizontal view angle.
-
-    return std::max(
-        P[0][0] * diameter / 2.0,
-        P[1][1] * diameter / 2.0
-    );
-}
-
 template<class Generator>
 Magnum::Quaternion randomQuaternion(Generator& g)
 {
@@ -185,48 +171,6 @@ Magnum::Quaternion randomQuaternion(Generator& g)
     };
 
     return q.normalized();
-}
-
-Magnum::Vector3 Scene::randomTranslationInCameraFOV(float diameter, float minSizeFactor)
-{
-    const auto P = m_camera->projectionMatrix();
-
-    // Step 1: Produce a suitable z coordinate
-    const float fullyVisible = minimumDistanceForObjectDiameter(diameter);
-    std::uniform_real_distribution<float> zDist(1.2 * fullyVisible, (1.0 / minSizeFactor) * fullyVisible);
-
-    const float z = zDist(m_randomGenerator);
-
-    // Step 2: Choose x,y
-    // P[0][0] = 1.0 / std::tan(alpha)
-
-    const float x_range = 0.8 * z / P[0][0];
-    const float y_range = 0.8 * z / P[1][1];
-
-    std::uniform_real_distribution<float> xDist(-x_range, x_range);
-    std::uniform_real_distribution<float> yDist(-y_range, y_range);
-
-    return {
-        xDist(m_randomGenerator),
-        yDist(m_randomGenerator),
-        z
-    };
-}
-
-Magnum::Matrix3 Scene::randomOrientation()
-{
-    return randomQuaternion(m_randomGenerator).toMatrix();
-}
-
-Magnum::Matrix4 Scene::randomPoseInCameraFOV(float diameter, float minSizeFactor)
-{
-    return Matrix4::from(randomOrientation(), randomTranslationInCameraFOV(diameter, minSizeFactor));
-}
-
-Magnum::Matrix4 Scene::placeObjectRandomly(float diameter, float minSizeFactor)
-{
-    auto pose = randomPoseInCameraFOV(diameter, minSizeFactor);
-    return cameraToWorld(pose);
 }
 
 Magnum::Matrix4 Scene::cameraToWorld(const Magnum::Matrix4& poseInCamera) const
@@ -285,32 +229,13 @@ namespace
     };
 }
 
-bool Scene::findNonCollidingPose(Object& object, const OrientationHint& orientationHint, int maxIterations)
+bool Scene::isObjectColliding(Object& object)
 {
-    float diameter = object.mesh()->bbox().size().length();
-    for(int i = 0; i < maxIterations; ++i)
-    {
-        // Sample new pose
-        if(orientationHint)
-        {
-            Magnum::Matrix4 pose = Magnum::Matrix4::from(
-                *orientationHint,
-                randomTranslationInCameraFOV(diameter)
-            );
-            object.setPose(cameraToWorld(pose));
-        }
-        else
-            object.setPose(placeObjectRandomly(diameter));
+    // Check if collides with other objects
+    CollisionCallback counter;
+    m_physicsWorld->contactTest(&object.rigidBody(), counter);
 
-        // Check if collides with other objects
-        CollisionCallback counter;
-        m_physicsWorld->contactTest(&object.rigidBody(), counter);
-
-        if(counter.numContacts() == 0)
-            return true; // success!
-    }
-
-    return false;
+    return counter.numContacts() != 0;
 }
 
 constexpr float ANGULAR_VELOCITY_LIMIT = 10.0 / 180.0 * M_PI;

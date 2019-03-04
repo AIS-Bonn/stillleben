@@ -6,6 +6,8 @@
 
 #include <stillleben/math.h>
 #include <stillleben/common.h>
+#include <stillleben/object.h>
+#include <stillleben/pose.h>
 
 #include <Corrade/Containers/Optional.h>
 #include <Magnum/SceneGraph/Camera.h>
@@ -26,7 +28,6 @@ namespace sl
 {
 
 class Context;
-class Object;
 
 class Scene
 {
@@ -60,16 +61,20 @@ public:
 
     //! @name Object placement
     //@{
-    static constexpr float DEFAULT_MIN_SIZE_FACTOR = 0.2f;
-
-    float minimumDistanceForObjectDiameter(float diameter) const;
-    Magnum::Vector3 randomTranslationInCameraFOV(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
-    Magnum::Matrix3 randomOrientation();
-    Magnum::Matrix4 randomPoseInCameraFOV(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
-
     Magnum::Matrix4 cameraToWorld(const Magnum::Matrix4& poseInCamera) const;
 
-    Magnum::Matrix4 placeObjectRandomly(float diameter, float minSizeFactor=DEFAULT_MIN_SIZE_FACTOR);
+    Magnum::Matrix4 placeObjectRandomly(
+        float diameter, float minSizeFactor = pose::DEFAULT_MIN_SIZE_FACTOR)
+    {
+        pose::RandomPositionSampler posSampler{projectionMatrix(), diameter};
+        posSampler.setMinSizeFactor(minSizeFactor);
+
+        pose::RandomPoseSampler sampler{posSampler};
+        return sampler(m_randomGenerator);
+    }
+
+    float minimumDistanceForObjectDiameter(float diameter) const
+    { return pose::minimumDistanceForObjectDiameter(diameter, projectionMatrix()); }
     //@}
 
     void addObject(const std::shared_ptr<Object>& object);
@@ -83,7 +88,9 @@ public:
     bool performCollisionCheck() const;
 
     using OrientationHint = Corrade::Containers::Optional<Magnum::Matrix3>;
-    bool findNonCollidingPose(Object& object, const OrientationHint& orientationHint = {}, int maxIterations = 10);
+
+    template<class Sampler>
+    bool findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations = 10);
 
     bool resolveCollisions();
     //@}
@@ -101,6 +108,7 @@ private:
     struct BulletStuff;
 
     static void constrainingTickCallback(btDynamicsWorld* world, float timeStep);
+    bool isObjectColliding(Object& object);
 
     std::shared_ptr<Context> m_ctx;
 
@@ -122,6 +130,24 @@ private:
 
     Magnum::Vector3 m_lightPosition;
 };
+
+// IMPLEMENTATION
+
+template<class Sampler>
+bool Scene::findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations)
+{
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        // Sample new pose
+        object.setPose(poseSampler(m_randomGenerator));
+
+        // Check if collides with other objects
+        if(!isObjectColliding(object))
+            return true; // success!
+    }
+
+    return false;
+}
 
 }
 

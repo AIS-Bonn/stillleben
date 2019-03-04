@@ -590,23 +590,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 inside 80% of the camera frustrum in each axis.
             )EOS",
             py::arg("diameter"),
-            py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
-        )
-
-        .def("random_orientation", wrapShared(&sl::Scene::randomOrientation), R"EOS(
-                Generate a random orientation.
-
-                Returns:
-                    tensor: 3x3 float rotation matrix
-            )EOS"
-        )
-
-        .def("random_translation_in_fov", wrapShared(&sl::Scene::randomTranslationInCameraFOV), R"EOS(
-                Generate a random translation s.t. the object fits inside the camera
-                FOV.
-            )EOS",
-            py::arg("diameter"),
-            py::arg("min_size_factor")=sl::Scene::DEFAULT_MIN_SIZE_FACTOR
+            py::arg("min_size_factor")=sl::pose::DEFAULT_MIN_SIZE_FACTOR
         )
 
         .def("camera_to_world", wrapShared(&sl::Scene::cameraToWorld), R"EOS(
@@ -631,24 +615,54 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 bool: True if there is at least one collision
         )EOS")
 
-        .def("find_noncolliding_pose", [](const std::shared_ptr<sl::Scene>& scene, const std::shared_ptr<sl::Object>& object, const std::optional<at::Tensor>& orientationHint, int max_iterations){
-                sl::Scene::OrientationHint hint;
-                if(orientationHint)
-                    hint = fromTorch<Magnum::Matrix3>::convert(*orientationHint);
-                scene->findNonCollidingPose(*object, hint, max_iterations);
-                return toTorch<Magnum::Matrix4>::convert(object->pose());
+        .def("find_noncolliding_pose", [](
+            const std::shared_ptr<sl::Scene>& scene,
+            const std::shared_ptr<sl::Object>& object,
+            const std::string& sampler, int max_iterations,
+            py::kwargs kwargs){
+                if(sampler == "random")
+                {
+                    sl::pose::RandomPositionSampler posSampler{
+                        scene->projectionMatrix(),
+                        object->mesh()->bbox().size().length()
+                    };
+                    sl::pose::RandomPoseSampler sampler{posSampler};
+                    return scene->findNonCollidingPose(*object, sampler, max_iterations);                }
+                else if(sampler == "viewpoint")
+                {
+                    if(!kwargs.contains("viewpoint"))
+                        throw std::invalid_argument{"sampler='viewpoint' needs viewpoint argument"};
+
+                    auto viewPoint = fromTorch<Magnum::Vector3>::convert(
+                        kwargs["viewpoint"].cast<at::Tensor>()
+                    );
+
+                    sl::pose::RandomPositionSampler posSampler{
+                        scene->projectionMatrix(),
+                        object->mesh()->bbox().size().length()
+                    };
+                    sl::pose::ViewPointPoseSampler sampler{posSampler};
+                    sampler.setViewPoint(viewPoint);
+
+                    return scene->findNonCollidingPose(*object, sampler, max_iterations);
+                }
+                else
+                    throw std::invalid_argument{"Unknown sampler"};
             }, R"EOS(
             Finds a non-colliding random pose for an object. The object should
             already have been added using add_object().
 
             Args:
                 object (stillleben.object): The object to place
-                orientation_hint (tensor): 3x3 float orientation to use
+                sampler (str): "random" for fully random pose or "viewpoint"
+                    for a pose that ensures we look from a certain viewpoint
+                    onto the object
                 max_iterations (int): Maximum number of attempts
+                viewpoint (tensor): 3D view point for "viewpoint" sampler
 
             Returns:
                 bool: True if a non-colliding pose was found.
-        )EOS", py::arg("object"), py::arg("orientation_hint").none(true) = std::optional<at::Tensor>{}, py::arg("max_iterations")=10)
+        )EOS", py::arg("object"), py::arg("sampler") = "random", py::arg("max_iterations")=10)
 
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
             Resolve collisions by forward-simulation using the physics engine.
