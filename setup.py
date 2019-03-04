@@ -113,6 +113,9 @@ setuptools.setup(
                 os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
                 make_relative_rpath('lib')
             ],
+            depends=[
+                os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
+            ]
         )
     ],
 )
