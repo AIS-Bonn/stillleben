@@ -38,8 +38,8 @@ public:
 
     //! @name Camera and viewport settings
     //@{
-    void setCameraPose(const PoseMatrix& pose);
-    PoseMatrix cameraPose() const;
+    void setCameraPose(const Magnum::Matrix4& pose);
+    Magnum::Matrix4 cameraPose() const;
 
     void setCameraIntrinsics(float fx, float fy, float cx, float cy);
     void setCameraProjection(const Magnum::Matrix4& projection);

@@ -82,12 +82,12 @@ Scene::~Scene()
     }
 }
 
-void Scene::setCameraPose(const PoseMatrix& pose)
+void Scene::setCameraPose(const Magnum::Matrix4& pose)
 {
     m_cameraObject.setTransformation(pose);
 }
 
-PoseMatrix Scene::cameraPose() const
+Magnum::Matrix4 Scene::cameraPose() const
 {
     return m_cameraObject.absoluteTransformationMatrix();
 }

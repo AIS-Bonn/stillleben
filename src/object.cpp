@@ -202,7 +202,7 @@ void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
     m_physicsWorld = world;
 }
 
-void Object::setPose(const PoseMatrix& matrix)
+void Object::setPose(const Magnum::Matrix4& matrix)
 {
     m_sceneObject.setTransformation(matrix);
 

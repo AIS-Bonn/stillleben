@@ -71,8 +71,8 @@ public:
 
     static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh);
 
-    void setPose(const PoseMatrix& pose);
-    PoseMatrix pose() const
+    void setPose(const Magnum::Matrix4& pose);
+    Magnum::Matrix4 pose() const
     { return m_sceneObject.transformationMatrix(); }
 
     void setParentSceneObject(Object3D* parent);
