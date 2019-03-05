@@ -150,11 +150,24 @@ public:
 
         // Make sure that our view point maps to the X axis
         Magnum::Matrix3 viewPointX;
-        viewPointX.row(0) = m_viewPoint;
-        viewPointX.row(1) = perpendicularVector(viewPointX.row(0));
-        viewPointX.row(2) = Magnum::Math::cross(
+        viewPointX.setRow(0, m_viewPoint);
+        viewPointX.setRow(1, perpendicularVector(viewPointX.row(0)));
+        viewPointX.setRow(2, Magnum::Math::cross(
             viewPointX.row(0), viewPointX.row(1)
-        );
+        ));
+
+        if(false)
+        {
+            Corrade::Utility::Debug{} << "viewPoint";
+            Corrade::Utility::Debug{} << m_viewPoint;
+
+            Corrade::Utility::Debug{} << "xFacingCamera";
+            Corrade::Utility::Debug{} << xFacingCamera;
+            Corrade::Utility::Debug{} << "xRot";
+            Corrade::Utility::Debug{} << xRot;
+            Corrade::Utility::Debug{} << "viewPointX";
+            Corrade::Utility::Debug{} << viewPointX;
+        }
 
         return Magnum::Matrix4::from(
             xFacingCamera * xRot * viewPointX,
