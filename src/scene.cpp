@@ -103,19 +103,12 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
     const float H = m_camera->viewport().y();
     const float W = m_camera->viewport().x();
 
-/*    // Caution, this is column-major
-    Matrix4 P{
-        {2.0f*fx/W, 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f*fy/H, 0.0f, 0.0f},
-        {1.0f - 2.0f*cx/W, 1.0f - 2.0f*cy/H, -(f+n)/(n-f), 1.0f},
-        {0.0f, 0.0f, 2.0f*f*n/(n-f), 0.0f}
-    };*/
-
     const float L = -cx * n / fx;
     const float R = (W-cx) * n / fx;
     const float T = -cy * n / fy;
     const float B = (H-cy) * n / fy;
 
+    // Caution, this is column-major
     Matrix4 P{
         {2.0f*n/(R-L), 0.0f, 0.0f, 0.0f},
         {0.0f, 2.0f*n/(B-T), 0.0f, 0.0f},
@@ -138,8 +131,8 @@ void Scene::setCameraFromFOV(Magnum::Rad fov)
 
     const float cx = W/2;
     const float cy = H/2;
-    const float fx = cx / (2.0 * Magnum::Math::tan(fov/2.0));
-    const float fy = cy / (2.0 * Magnum::Math::tan(fov/2.0));
+    const float fx = W / (2.0 * Magnum::Math::tan(fov/2.0));
+    const float fy = H / (2.0 * Magnum::Math::tan(fov/2.0));
 
     setCameraIntrinsics(fx, fy, cx, cy);
 }
