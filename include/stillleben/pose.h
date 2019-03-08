@@ -17,6 +17,11 @@ namespace sl
 namespace pose
 {
 
+namespace detail
+{
+    Magnum::Matrix3 crossMatrix(const Magnum::Vector3& v);
+}
+
 template<class Generator>
 Magnum::Quaternion randomQuaternion(Generator& g)
 {
@@ -36,6 +41,12 @@ Magnum::Matrix3 randomRotation(Generator& g)
 }
 
 float minimumDistanceForObjectDiameter(float diameter, const Magnum::Matrix4& P);
+
+/**
+ * This counters the apparent rotation of an object that is just translated
+ * in the camera FOV.
+ **/
+Magnum::Matrix3 rotationCorrectionForTranslation(const Magnum::Vector3& pos);
 
 
 // Sampler
@@ -178,6 +189,32 @@ public:
 private:
     RandomPositionSampler& m_positionSampler;
     Magnum::Vector3 m_viewPoint{1.0f, 0.0f, 0.0f};
+};
+
+class ViewCorrectedPoseSampler
+{
+public:
+    ViewCorrectedPoseSampler(RandomPositionSampler& positionSampler, const Magnum::Matrix3& orientation)
+     : m_positionSampler{positionSampler}
+     , m_orientation{orientation}
+    {}
+
+    template<class Generator>
+    Magnum::Matrix4 operator()(Generator& g)
+    {
+        Magnum::Vector3 pos = m_positionSampler(g);
+
+        Magnum::Matrix3 correction = rotationCorrectionForTranslation(pos);
+
+        return Magnum::Matrix4::from(
+            correction * m_orientation,
+            pos
+        );
+    }
+
+private:
+    RandomPositionSampler& m_positionSampler;
+    Magnum::Matrix3 m_orientation;
 };
 
 }

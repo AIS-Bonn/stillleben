@@ -646,6 +646,23 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
                     return scene->findNonCollidingPose(*object, sampler, max_iterations);
                 }
+                else if(sampler == "view_corrected")
+                {
+                    if(!kwargs.contains("orientation"))
+                        throw std::invalid_argument{"sampler='view_corrected' needs orientation argument"};
+
+                    auto orientation = fromTorch<Magnum::Matrix3>::convert(
+                        kwargs["orientation"].cast<at::Tensor>()
+                    );
+
+                    sl::pose::RandomPositionSampler posSampler{
+                        scene->projectionMatrix(),
+                        object->mesh()->bbox().size().length()
+                    };
+                    sl::pose::ViewCorrectedPoseSampler sampler{posSampler, orientation};
+
+                    return scene->findNonCollidingPose(*object, sampler, max_iterations);
+                }
                 else
                     throw std::invalid_argument{"Unknown sampler"};
             }, R"EOS(
@@ -654,11 +671,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Args:
                 object (stillleben.object): The object to place
-                sampler (str): "random" for fully random pose or "viewpoint"
+                sampler (str): "random" for fully random pose, "viewpoint"
                     for a pose that ensures we look from a certain viewpoint
-                    onto the object
+                    onto the object, or "view_corrected" for a perspective-
+                    corrected constant orientation.
                 max_iterations (int): Maximum number of attempts
                 viewpoint (tensor): 3D view point for "viewpoint" sampler
+                orientation (tensor): 3x3 orientation matrix for
+                    "view_corrected" sampler
 
             Returns:
                 bool: True if a non-colliding pose was found.

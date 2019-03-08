@@ -31,7 +31,7 @@ def build_stillleben():
     ]
 
     if subprocess.call(make_cmd, cwd=BUILD_PATH) != 0:
-        print('Failed to call ninja')
+        raise RuntimeError('Failed to call ninja')
 
 class PytorchCommand(setuptools.Command):
     """
