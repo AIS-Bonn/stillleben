@@ -6,6 +6,7 @@ variables:
 
 build:
   before_script:
+    - apt-get update
     - apt-get -y install cmake ninja-build
   script:
     - python setup.py install
