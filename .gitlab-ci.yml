@@ -5,5 +5,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 build:
+  before_script:
+    - apt-get -y install cmake ninja-build
   script:
     - python setup.py install
