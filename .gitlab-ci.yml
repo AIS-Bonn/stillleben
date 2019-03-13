@@ -1,0 +1,6 @@
+
+image: pytorch/pytorch
+
+build:
+  script:
+    - python setup.py install
