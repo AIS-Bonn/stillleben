@@ -1,6 +1,9 @@
 
 image: "pytorch/pytorch:1.0.1-cuda10.0-cudnn7-devel"
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 build:
   script:
     - python setup.py install
