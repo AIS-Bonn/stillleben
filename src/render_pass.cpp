@@ -113,7 +113,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     }
     else
     {
-        framebuffer.clearColor(0, 0xFFFFFF01_rgbaf);
+        framebuffer.clearColor(0, 0xFFFFFFFF_rgbaf);
     }
 
     framebuffer.clearColor(1, invalid);
