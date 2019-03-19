@@ -236,6 +236,11 @@ static at::Tensor readRGBATensor(Magnum::GL::RectangleTexture& texture)
     return extract(texture, Magnum::PixelFormat::RGBA8Unorm, 4, at::kByte);
 }
 
+static at::Tensor readXYZWTensor(Magnum::GL::RectangleTexture& texture)
+{
+    return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat);
+}
+
 static at::Tensor readCoordTensor(Magnum::GL::RectangleTexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
@@ -773,6 +778,20 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
                 Returns:
                     tensor: (H x W x 3) float tensor with coordinates.
+            )EOS")
+
+        .def("normals", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+                return readXYZWTensor(result->normals);
+            }, R"EOS(
+                Read normal map. Each pixel (XYZW) specifies the normal
+                direction in the camera frame (XYZ) and, in the W component,
+                the dot product with the camera direction.
+
+                If CUDA support is active, the tensor will reside on the GPU
+                which was used during rendering.
+
+                Returns:
+                    tensor: (H x W x 4) float tensor with normals.
             )EOS")
 
     ;

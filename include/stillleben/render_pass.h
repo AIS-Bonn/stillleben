@@ -31,6 +31,7 @@ public:
         Magnum::GL::RectangleTexture objectCoordinates;
         Magnum::GL::RectangleTexture classIndex;
         Magnum::GL::RectangleTexture instanceIndex;
+        Magnum::GL::RectangleTexture normals;
         Magnum::GL::RectangleTexture validMask;
     };
 
@@ -42,6 +43,7 @@ private:
     Magnum::GL::MultisampleTexture2D m_msaa_objectCoordinates;
     Magnum::GL::MultisampleTexture2D m_msaa_classIndex;
     Magnum::GL::MultisampleTexture2D m_msaa_instanceIndex;
+    Magnum::GL::MultisampleTexture2D m_msaa_normal;
 
     std::unique_ptr<RenderShader> m_shaderTextured;
     std::unique_ptr<RenderShader> m_shaderUniform;

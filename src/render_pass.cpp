@@ -63,8 +63,13 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
     m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
     m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
+
+    // Note: We use float format here because of a bug in Mesa
+    // https://bugs.freedesktop.org/show_bug.cgi?id=109057
     m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
     m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+
+    m_msaa_normal.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
 
     framebuffer
         .attachTexture(
@@ -83,12 +88,17 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             GL::Framebuffer::ColorAttachment{3},
             m_msaa_instanceIndex
         )
+        .attachTexture(
+            GL::Framebuffer::ColorAttachment{4},
+            m_msaa_normal
+        )
         .attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_msaa_depth)
         .mapForDraw({
             {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {RenderShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
             {RenderShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{2}},
             {RenderShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{3}},
+            {RenderShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}}
         })
     ;
 
@@ -119,6 +129,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     framebuffer.clearColor(1, invalid);
     framebuffer.clearColor(2, Vector4ui{0});
     framebuffer.clearColor(3, Vector4ui{0});
+    framebuffer.clearColor(4, 0x00000000_rgbaf);
 
     // Let the fun begin!
     for(auto& object : scene.objects())
@@ -205,6 +216,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
     ret->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
     ret->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
+    ret->normals.setStorage(GL::TextureFormat::RGBA32F, viewport);
     ret->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
 
     resolvedBuffer
@@ -212,20 +224,23 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .attachTexture(GL::Framebuffer::ColorAttachment{1}, ret->objectCoordinates)
         .attachTexture(GL::Framebuffer::ColorAttachment{2}, ret->classIndex)
         .attachTexture(GL::Framebuffer::ColorAttachment{3}, ret->instanceIndex)
-        .attachTexture(GL::Framebuffer::ColorAttachment{4}, ret->validMask)
+        .attachTexture(GL::Framebuffer::ColorAttachment{4}, ret->normals)
+        .attachTexture(GL::Framebuffer::ColorAttachment{5}, ret->validMask)
         .mapForDraw({
             {ResolveShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {ResolveShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
             {ResolveShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{2}},
             {ResolveShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{3}},
-            {ResolveShader::ValidMaskOutput, GL::Framebuffer::ColorAttachment{4}}
+            {ResolveShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}},
+            {ResolveShader::ValidMaskOutput, GL::Framebuffer::ColorAttachment{5}}
         })
         .bind()
     ;
 
     resolvedBuffer.clearColor(0, 0x00000000_rgbaf);
     resolvedBuffer.clearColor(3, Vector4ui(1));
-    resolvedBuffer.clearColor(4, Vector4ui(6));
+    resolvedBuffer.clearColor(4, 0x00000000_rgbaf);
+    resolvedBuffer.clearColor(5, Vector4ui(6));
 
     if(resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
     {
@@ -238,6 +253,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .bindCoordinates(m_msaa_objectCoordinates)
         .bindClassIndex(m_msaa_classIndex)
         .bindInstanceIndex(m_msaa_instanceIndex)
+        .bindNormals(m_msaa_normal)
     ;
 
     m_quadMesh.draw(*m_resolveShader);

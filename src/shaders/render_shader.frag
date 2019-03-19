@@ -68,6 +68,7 @@ layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec3 objectCoordinatesOut;
 layout(location = 2) out uint classIndexOut;
 layout(location = 3) out uint instanceIndexOut;
+layout(location = 4) out highp vec4 normalOut;
 
 void main()
 {
@@ -97,6 +98,10 @@ void main()
     mediump vec3 normalizedTransformedNormal = -normalize(transformedNormal);
     if(!gl_FrontFacing)
         normalizedTransformedNormal = -normalizedTransformedNormal;
+
+    /* Output the normal and dot product with camera ray */
+    normalOut.xyz = normalizedTransformedNormal;
+    normalOut.w = dot(normalizedTransformedNormal, cameraDirection);
 
     highp vec3 normalizedLightDirection = normalize(lightDirection);
 

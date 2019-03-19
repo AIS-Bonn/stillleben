@@ -7,6 +7,8 @@ layout(binding = 2) uniform highp usampler2DMS classIndex;
 
 layout(binding = 3) uniform highp usampler2DMS instanceIndex;
 
+layout(binding = 4) uniform highp sampler2DMS normals;
+
 // Inputs
 in highp vec2 textureCoords;
 
@@ -16,7 +18,8 @@ layout(location = 0) out highp vec4 fragmentColor;
 layout(location = 1) out highp vec3 objectCoordinatesOut;
 layout(location = 2) out highp uint classIndexOut;
 layout(location = 3) out highp uint instanceIndexOut;
-layout(location = 4) out highp uint validMaskOut;
+layout(location = 4) out highp vec4 normalOut;
+layout(location = 5) out highp uint validMaskOut;
 
 highp vec4 multisampleAverage(sampler2DMS sampler, ivec2 coord)
 {
@@ -41,6 +44,18 @@ highp vec3 multisampleVec3First(sampler2DMS sampler, ivec2 coord)
     return texelFetch(sampler, coord, 0).rgb;
 }
 
+highp vec4 multisampleSimpleAvg(sampler2DMS sampler, ivec2 coord)
+{
+    highp vec4 value = vec4(0.0);
+
+    for (int i = 0; i < MSAA_SAMPLES; i++)
+    {
+        value += texelFetch(sampler, coord, i);
+    }
+
+    return value / MSAA_SAMPLES;
+}
+
 void main()
 {
     ivec2 texSize = textureSize(rgb);
@@ -50,8 +65,10 @@ void main()
 
     objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0).rgb;
     classIndexOut = texelFetch(classIndex, texCoord, 0).r;
-
     instanceIndexOut = texelFetch(instanceIndex, texCoord, 0).r;
+
+    normalOut = multisampleSimpleAvg(normals, texCoord);
+
     validMaskOut = 255u;
     for(int i = 1; i < MSAA_SAMPLES; ++i)
     {

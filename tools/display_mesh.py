@@ -20,6 +20,8 @@ if __name__ == "__main__":
         help='Render debug image with object poses')
     parser.add_argument('--physics-debug', action='store_true',
         help='Render physics debug image with collision wireframes')
+    parser.add_argument('--normals', action='store_true',
+        help='Display normals')
 
     args = parser.parse_args()
 
@@ -90,5 +92,13 @@ if __name__ == "__main__":
         dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
         dbg_img.show()
 
+    if args.normals:
+        normal_img = result.normals()[:,:,2] * 128 + 128
+        normal_img.clamp_(0,255)
+        normal_img = Image.fromarray(normal_img.byte().cpu().numpy())
+        normal_img.show()
 
-
+        normal_img = result.normals()[:,:,3] * 255
+        normal_img.clamp_(0,255)
+        normal_img = Image.fromarray(normal_img.byte().cpu().numpy())
+        normal_img.show()

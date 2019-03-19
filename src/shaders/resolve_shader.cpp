@@ -22,6 +22,7 @@ enum: Int
     ObjectCoordinateLayer = 1,
     ClassIndexLayer = 2,
     InstanceIndexLayer = 3,
+    NormalsLayer = 4,
 };
 
 ResolveShader::ResolveShader(unsigned int msaa_factor)
@@ -97,6 +98,12 @@ sl::ResolveShader& ResolveShader::bindClassIndex(GL::MultisampleTexture2D& textu
 sl::ResolveShader& ResolveShader::bindInstanceIndex(GL::MultisampleTexture2D& texture)
 {
     texture.bind(InstanceIndexLayer);
+    return *this;
+}
+
+sl::ResolveShader& ResolveShader::bindNormals(GL::MultisampleTexture2D& texture)
+{
+    texture.bind(NormalsLayer);
     return *this;
 }
 

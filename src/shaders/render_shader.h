@@ -48,7 +48,8 @@ public:
         ColorOutput = 0,
         ObjectCoordinatesOutput = 1,
         ClassIndexOutput = 2,
-        InstanceIndexOutput = 3
+        InstanceIndexOutput = 3,
+        NormalOutput = 4
     };
 
     /**

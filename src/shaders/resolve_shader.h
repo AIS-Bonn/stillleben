@@ -27,7 +27,8 @@ public:
         ObjectCoordinatesOutput = 1,
         ClassIndexOutput = 2,
         InstanceIndexOutput = 3,
-        ValidMaskOutput = 4
+        NormalOutput = 4,
+        ValidMaskOutput = 5
     };
 
     /**
@@ -63,6 +64,7 @@ public:
     ResolveShader& bindCoordinates(GL::MultisampleTexture2D& texture);
     ResolveShader& bindClassIndex(GL::MultisampleTexture2D& texture);
     ResolveShader& bindInstanceIndex(GL::MultisampleTexture2D& texture);
+    ResolveShader& bindNormals(GL::MultisampleTexture2D& texture);
 
 private:
 };
