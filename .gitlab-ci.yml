@@ -13,16 +13,17 @@ build:
     - apt-get -y install cmake ninja-build libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
   script:
     - python setup.py install
+    - python setup.py bdist_wheel
   artifacts:
     expire_in: 1 week
     paths:
-      - stillleben
+      - dist
 
 pages:
   stage: pages
   script:
     - conda install -y sphinx sphinx_rtd_theme
-    - export PYTHONPATH=$(pwd)
+    - pip install dist/stillleben-*.whl
     - make -C doc html
     - mkdir public
     - cp -R doc/_build/html/* public/
