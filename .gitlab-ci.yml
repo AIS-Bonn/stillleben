@@ -4,9 +4,24 @@ image: "xqms/pytorch:latest"
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
+stages: [build, pages]
+
 build:
+  stage: build
   before_script:
     - apt-get update
     - apt-get -y install cmake ninja-build libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
   script:
     - python setup.py install
+
+pages:
+  stage: pages
+  script:
+    - make -C doc html
+    - mkdir public
+    - cp doc/_build/html/* public/
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
