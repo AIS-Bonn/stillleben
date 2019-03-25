@@ -17,7 +17,7 @@ build:
 pages:
   stage: pages
   script:
-    - conda install -y sphinx
+    - conda install -y sphinx sphinx_rtd_theme
     - make -C doc html
     - mkdir public
     - cp doc/_build/html/* public/
