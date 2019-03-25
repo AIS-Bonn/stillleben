@@ -4,19 +4,30 @@ image: "xqms/pytorch:latest"
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-stages: [build]
+stages: [build, pages]
 
 build:
   stage: build
   before_script:
     - apt-get update
     - apt-get -y install cmake ninja-build libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
-    - conda install -y sphinx sphinx_rtd_theme
   script:
     - python setup.py install
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - stillleben
+
+pages:
+  stage: pages
+  script:
+    - conda install -y sphinx sphinx_rtd_theme
+    - export PYTHONPATH=$(pwd)
     - make -C doc html
     - mkdir public
     - cp -R doc/_build/html/* public/
   artifacts:
     paths:
       - public
+  only:
+    - master
