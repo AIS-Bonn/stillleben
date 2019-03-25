@@ -21,6 +21,9 @@ build:
 
 pages:
   stage: pages
+  before_script:
+    - apt-get update
+    - apt-get -y install libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
   script:
     - conda install -y sphinx sphinx_rtd_theme
     - pip install dist/stillleben-*.whl
