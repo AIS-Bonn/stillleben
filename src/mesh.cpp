@@ -9,11 +9,13 @@
 
 #include <Corrade/Utility/Configuration.h>
 
+#include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/PixelFormat.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/SceneGraph.h>
 #include <Magnum/SceneGraph/Scene.h>

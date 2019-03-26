@@ -15,6 +15,7 @@
 
 #include <Corrade/Utility/Debug.h>
 #include <Magnum/Image.h>
+#include <Magnum/PixelFormat.h>
 
 #include <future>
 #include <memory>

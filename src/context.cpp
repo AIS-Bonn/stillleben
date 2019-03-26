@@ -11,6 +11,7 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Platform/GLContext.h>
+#include <Magnum/PixelFormat.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
 

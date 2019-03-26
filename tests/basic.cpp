@@ -14,6 +14,7 @@
 #include <Magnum/Image.h>
 #include <Magnum/Math/Vector.h>
 #include <Magnum/Math/Range.h>
+#include <Magnum/PixelFormat.h>
 
 #include <iostream>
 #include <iomanip>
