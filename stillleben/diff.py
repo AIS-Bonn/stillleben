@@ -3,6 +3,8 @@
 Differentiation package for stillleben
 """
 
+import torch
+
 def backpropagate_gradient_to_poses(scene, render_result, grad):
     r"""
     Performs backpropagation of a gradient on the output image back to the
@@ -90,7 +92,7 @@ def apply_pose_delta(pose, delta, orthonormalize=True):
             new_poses[b, :3, :3] = torch.matmul(U, V.t())
 
     # unbatch if required
-    if not batch:
+    if not batched:
         new_poses = new_poses[0]
 
     # back to original device
