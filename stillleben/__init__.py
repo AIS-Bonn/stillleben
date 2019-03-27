@@ -6,6 +6,7 @@ The stillleben package.
 import torch # important, otherwise we get undefined references during ._C import
 import os
 from . import camera_model
+from . import diff
 from ._C import *
 from ._C import _set_install_prefix
 
@@ -23,6 +24,7 @@ __all__ = [
     'Texture',
 
     'camera_model',
+    'diff',
 ]
 
 
