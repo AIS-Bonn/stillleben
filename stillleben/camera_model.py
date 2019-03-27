@@ -4,7 +4,7 @@ Introduces camera noise effects
 
 Largely after:
 A. Carlson et al.: Modeling Camera Effects to Improve Visual Learning from
-  Synthetic Data (2018)
+Synthetic Data (2018)
 """
 
 import torch
