@@ -14,12 +14,12 @@ def backpropagate_gradient_to_poses(scene, render_result, grad):
 
     .. math::
 
-        T(\alpha,\beta,\gamma,a,b,c) = \left( \begin{matrix}
+        T(\alpha,\beta,\gamma,a,b,c) = T_0 \left( \begin{matrix}
             1 & -\gamma & \beta & a \\
             \gamma & 1 & -\alpha & b \\
             -\beta & \alpha & 1 & c \\
             0 & 0 & 0 & 1 \\
-        \end{matrix} \right) T_0
+        \end{matrix} \right)
 
     Args:
         scene (stillleben.Scene): Scene
@@ -83,7 +83,7 @@ def apply_pose_delta(pose, delta, orthonormalize=True):
     delta_matrix[:,:3,3] = delta[:,3:]
     delta_matrix[:,3,3] = 1.0
 
-    new_poses = torch.matmul(delta_matrix, pose)
+    new_poses = torch.matmul(pose, delta_matrix)
 
     # and make sure it's orthonormal
     if orthonormalize:
