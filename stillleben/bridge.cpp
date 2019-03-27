@@ -614,6 +614,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 object (Object): Object to be added.
         )EOS", py::arg("object"))
 
+        .def_property_readonly("objects", &sl::Scene::objects, R"EOS(
+            Contains all objects added to the scene. See add_object()
+
+            Returns:
+                list: List of sl::Object
+        )EOS")
+
         .def("perform_collision_check", &sl::Scene::performCollisionCheck, R"EOS(
             Checks if the current arrangement of objects is in collision.
 
