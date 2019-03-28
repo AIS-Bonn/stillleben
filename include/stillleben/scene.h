@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 #include <random>
+#include <functional>
+#include <optional>
 
 class btDiscreteDynamicsWorld;
 class btDynamicsWorld;
@@ -93,6 +95,8 @@ public:
     bool findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations = 10);
 
     bool resolveCollisions();
+
+    void simulateTableTopScene(const std::function<void(int)>& visCallback = {});
     //@}
 
     //! @name Lighting

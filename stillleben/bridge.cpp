@@ -22,6 +22,7 @@
 #include <functional>
 
 #include <pybind11/stl.h>
+#include <pybind11/functional.h>
 
 static std::shared_ptr<sl::Context> g_context;
 static bool g_cudaEnabled = false;
@@ -709,6 +710,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 of size 3.
             )EOS"
         )
+
+        .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
+            Arrange the objects as if they were standing on a supporting surface.
+        )EOS")
 
         .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
             Choose a random light position under the following constraints:
