@@ -36,13 +36,13 @@ if __name__ == "__main__":
 
     meshes = []
     for mesh_file in args.mesh:
-        mesh = sl.Mesh(mesh_file)
+        mesh = sl.Mesh(mesh_file, max_physics_triangles=6000)
 
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
-        #mesh.center_bbox()
-        #mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        mesh.center_bbox()
+        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)

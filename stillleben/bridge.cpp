@@ -281,23 +281,27 @@ static void setInstallPrefix(const std::string& path)
     g_installPrefix = path;
 }
 
-static std::shared_ptr<sl::Mesh> Mesh_factory(const std::string& filename)
+static std::shared_ptr<sl::Mesh> Mesh_factory(
+    const std::string& filename,
+    std::size_t maxPhysicsTriangles)
 {
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
     auto mesh = std::make_shared<sl::Mesh>(g_context);
-    mesh->load(filename);
+    mesh->load(filename, maxPhysicsTriangles);
 
     return mesh;
 }
 
-static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(const std::vector<std::string>& filenames)
+static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
+    const std::vector<std::string>& filenames,
+    std::size_t maxPhysicsTriangles)
 {
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
-    return sl::Mesh::loadThreaded(g_context, filenames);
+    return sl::Mesh::loadThreaded(g_context, filenames, maxPhysicsTriangles);
 }
 
 static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -425,20 +429,27 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Args:
                 filename (str): Mesh filename
+                 max_physics_triangles (int): Maximum number of triangles for
+                     collision shape. If the mesh is more complex than this,
+                     it is simplified using quadric edge decimation.
+                     You can view the collision mesh using
+                     :func:`render_physics_debug_image`.
 
             Examples:
                 >>> m = Mesh("path/to/my/mesh.gltf")
-        )EOS", py::arg("filename"))
+        )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
 
             Args:
                 filenames (list): List of file names to load
+                max_physics_triangles (int): Maximum number of triangles for
+                    collision shape (see :func:`Mesh`).
 
             Returns:
                 list: List of mesh instances
-        )EOS")
+        )EOS", py::arg("filenames"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.

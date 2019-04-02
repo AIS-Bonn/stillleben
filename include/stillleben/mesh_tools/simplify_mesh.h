@@ -13,6 +13,15 @@
 #include <algorithm>
 #include <cstring>
 
+//
+// This code is largely 1:1 from
+// https://github.com/sp4cerat/Fast-Quadric-Mesh-Simplification
+// (licensed under MIT)
+//
+// I ported to Magnum maths and adapted to slightly more modern C++, although
+// the algorithm is still quite low-level and does a lot of index fiddling.
+//
+
 namespace sl
 {
 namespace mesh_tools
@@ -38,7 +47,7 @@ public:
      , m_dirty(indices.size()/3, false)
     {}
 
-    void simplify(std::size_t targetTriangles, double aggressiveness=7)
+    void simplify(std::size_t targetTriangles, double aggressiveness=5)
     {
         using namespace Magnum;
 
@@ -57,16 +66,14 @@ public:
                 break;
 
             // Update mesh once in a while
-            if(iter % 5 == 0)
+//             if(iter % 5 == 0)
                 updateMesh(iter == 0);
-
-            checkMesh();
 
             std::fill(m_dirty.begin(), m_dirty.end(), false);
 
             // triangles with edge errors *below* this threshold will be
             // removed
-            const float threshold = 1e-7 * std::pow<float>(
+            const float threshold = 1e-9 * std::pow<float>(
                 iter + 3, aggressiveness
             );
 
@@ -147,6 +154,7 @@ public:
         }
 
         compactMesh();
+        checkMesh();
     }
 private:
     void checkMesh()
@@ -156,6 +164,14 @@ private:
             if(v >= m_vertices.size())
             {
                 throw std::logic_error("Mesh indices invalid");
+            }
+        }
+
+        for(auto& v : m_vertices)
+        {
+            if(!std::isfinite(v.x()) || !std::isfinite(v.y()) || !std::isfinite(v.z()))
+            {
+                throw std::runtime_error("Got non-finite vertex");
             }
         }
     }
@@ -171,12 +187,17 @@ private:
                 for(std::size_t j = 0; j < 3; ++j)
                 {
                     m_indices[3*dst + j] = m_indices[3*i + j];
+                    m_error[3*dst + j] = m_error[3*i + j];
                 }
+                m_normals[dst] = m_normals[i];
+
                 dst++;
             }
         }
 
-        m_indices.resize(dst);
+        m_indices.resize(3*dst);
+        m_error.resize(3*dst);
+        m_normals.resize(dst);
         m_triangleDeleted.resize(dst);
         std::fill(m_triangleDeleted.begin(), m_triangleDeleted.end(), false);
     }
@@ -186,9 +207,16 @@ private:
         using namespace Magnum;
 
         Vector4 v{normal, d};
-        return Matrix4{
-            Math::RectangularMatrix<1,4, float>::fromVector(v) * Math::RectangularMatrix<4,1, float>::fromVector(v)
-        };
+        Matrix4 ret{Magnum::Math::NoInit};
+
+        for(std::size_t i = 0; i < 4; ++i)
+        {
+            for(std::size_t j = 0; j < 4; ++j)
+            {
+                ret[i][j] = v[i] * v[j];
+            }
+        }
+        return ret;
     }
 
     float vertexError(const Magnum::Matrix4& Q, const Magnum::Vector3& p) const
@@ -218,10 +246,18 @@ private:
 
         float det = Qd.determinant();
 
-        if(det != 0 && !border)
+        if(std::abs(det) > 1e-7 && !border)
         {
             // Qd is invertible
             result = Qd.inverted() * (-Q[3].xyz());
+            if(!std::isfinite(result.x()) || !std::isfinite(result.y()) || !std::isfinite(result.z()))
+            {
+                Corrade::Utility::Error{} << "Obtained non-finite number from optimization";
+                Corrade::Utility::Error{} << "Qd";
+                Corrade::Utility::Error{} << Qd;
+                Corrade::Utility::Error{} << "result:" << result;
+                throw std::runtime_error("Quadric optimization failed");
+            }
             return vertexError(Q, result);
         }
         else
@@ -282,7 +318,6 @@ private:
         Magnum::Vector3 p;
         for(std::size_t i = 0; i < n; ++i)
         {
-            // FIXME: The original code also stores a triangle error
             for(std::size_t j = 0; j < 3; ++j)
             {
                 m_error[3*i+j] = calculateError(
@@ -299,7 +334,7 @@ private:
         if(!init)
             compactTriangles();
 
-        if(init)
+//         if(init)
             initQuadrics();
 
         std::fill(m_tstart.begin(), m_tstart.end(), 0);
@@ -376,8 +411,6 @@ private:
     bool flipped(const Magnum::Vector3& p, std::size_t idx0, std::size_t idx1,
         std::size_t v0, std::size_t v1, std::vector<std::size_t>& deleted)
     {
-        std::size_t bordercount = 0;
-
         auto tstart = m_tstart[v0];
         auto tcount = m_tcount[v0];
 
@@ -392,9 +425,8 @@ private:
             auto id1 = m_indices[triangle*3 + ((s+1) % 3)];
             auto id2 = m_indices[triangle*3 + ((s+2) % 3)];
 
-            if(id1 == idx1 || id2 == idx1)
+            if(id1 == v1 || id2 == v1)
             {
-                bordercount++;
                 deleted[i] = true;
                 continue;
             }
@@ -456,6 +488,7 @@ private:
 
     void compactMesh()
     {
+        // Abuse the tcount array to indicate whether a vertex is in use
         std::fill(m_tcount.begin(), m_tcount.end(), 0);
 
         // Compact triangles (m_indices)
@@ -469,7 +502,10 @@ private:
                     continue;
 
                 for(std::size_t j = 0; j < 3; ++j)
+                {
                     m_indices[triangleIdx*3 + j] = m_indices[i*3 + j];
+                    m_tcount[m_indices[i*3+j]] = 1;
+                }
                 triangleIdx++;
             }
             m_indices.resize(triangleIdx*3);
@@ -483,6 +519,9 @@ private:
             // We abuse the m_tstart array here to record the new vertex ID
             for(std::size_t i = 0; i < numVertices; ++i)
             {
+                if(!m_tcount[i])
+                    continue;
+
                 m_tstart[i] = vertexIdx;
                 m_vertices[vertexIdx] = m_vertices[i];
 
@@ -504,12 +543,18 @@ private:
 
     std::vector<Magnum::UnsignedInt>& m_indices;
     std::vector<Vertex>& m_vertices;
+
     std::vector<bool> m_triangleDeleted;
     std::vector<Magnum::Vector3> m_normals;
     std::vector<Magnum::Matrix4> m_Q;
+
+    //! Error per triangle vertex
     std::vector<float> m_error;
+
+    //! Is a vertex a border vertex?
     std::vector<bool> m_border;
 
+    //! At which reference ID does this vertex start?
     std::vector<std::size_t> m_tstart;
 
     //! how many triangles is this vertex part of?

@@ -108,13 +108,13 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::load(const std::string& filename)
+void Mesh::load(const std::string& filename, std::size_t maxPhysicsTriangles)
 {
-    loadNonGL(filename);
+    loadNonGL(filename, maxPhysicsTriangles);
     loadGL();
 }
 
-void Mesh::loadNonGL(const std::string& filename)
+void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles)
 {
     // Load a scene importer plugin
     m_importer = m_ctx->instantiateImporter();
@@ -144,6 +144,7 @@ void Mesh::loadNonGL(const std::string& filename)
 
     // Simplify meshes if possible
     m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
+    m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -160,14 +161,18 @@ void Mesh::loadNonGL(const std::string& filename)
             {}, {}, {}
         };
 
-        // operates in-place
-        mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
-            simplifiedMesh.indices(), simplifiedMesh.positions(0)
-        };
+        if(meshData->indices().size() > maxPhysicsTriangles)
+        {
+            // simplify in-place
+            mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
+                simplifiedMesh.indices(), simplifiedMesh.positions(0)
+            };
 
-        simplification.simplify(2000);
+            simplification.simplify(maxPhysicsTriangles);
+        }
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
+        m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
     }
 }
 
@@ -229,7 +234,6 @@ void Mesh::loadGL()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
-    m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -250,8 +254,6 @@ void Mesh::loadGL()
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
-
-        m_collisionShapes[i] = collisionShapeFromMeshData(*meshData);
     }
 
     // Update the bounding box
@@ -277,16 +279,22 @@ void Mesh::loadGL()
 
 namespace
 {
-    std::shared_ptr<Mesh> loadHelper(const std::shared_ptr<Context>& ctx, const std::string& filename)
+    std::shared_ptr<Mesh> loadHelper(
+        const std::shared_ptr<Context>& ctx,
+        const std::string& filename,
+        std::size_t maxPhysicsTriangles)
     {
         auto mesh = std::make_shared<Mesh>(ctx);
-        mesh->loadNonGL(filename);
+        mesh->loadNonGL(filename, maxPhysicsTriangles);
 
         return mesh;
     }
 }
 
-std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(const std::shared_ptr<Context>& ctx, const std::vector<std::string>& filenames)
+std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
+    const std::shared_ptr<Context>& ctx,
+    const std::vector<std::string>& filenames,
+    std::size_t maxPhysicsTriangles)
 {
     using Future = std::future<std::shared_ptr<sl::Mesh>>;
 
@@ -295,7 +303,9 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(const std::shared_ptr<Cont
     std::vector<Future> results;
     for(const auto& filename : filenames)
     {
-        results.push_back(pool.push(std::bind(&loadHelper, ctx, filename)));
+        results.push_back(pool.push(std::bind(&loadHelper,
+            ctx, filename, maxPhysicsTriangles
+        )));
     }
 
     std::vector<std::shared_ptr<sl::Mesh>> ret;
