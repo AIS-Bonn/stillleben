@@ -56,7 +56,11 @@ public:
         gl_context.reset(new Platform::GLContext{NoCreate, argc, argv.data()});
 
         if(!installPrefix.empty())
+#ifndef NDEBUG
+            importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum-d/importers");
+#else
             importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum/importers");
+#endif
         else
             importerManager = std::make_unique<ImporterManager>();
 

@@ -40,6 +40,7 @@ public:
     using CollisionArray = Corrade::Containers::Array<std::shared_ptr<btCollisionShape>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
+    using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
 
     class LoadException : public Exception
     {
@@ -113,6 +114,7 @@ private:
     CollisionArray m_collisionShapes;
     TextureArray m_textures;
     MaterialArray m_materials;
+    SimplifiedMeshArray m_simplifiedMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),

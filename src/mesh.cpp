@@ -4,6 +4,7 @@
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
 #include <stillleben/contrib/ctpl_stl.h>
+#include <stillleben/mesh_tools/simplify_mesh.h>
 
 #include <btBulletDynamicsCommon.h>
 
@@ -139,6 +140,34 @@ void Mesh::loadNonGL(const std::string& filename)
         {
             throw LoadException("Could not load file");
         }
+    }
+
+    // Simplify meshes if possible
+    m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
+    for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
+    {
+        Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
+        if(!meshData || meshData->primitive() != MeshPrimitive::Triangles)
+        {
+            Warning{} << "Cannot load the mesh, skipping";
+            continue;
+        }
+
+        Trade::MeshData3D simplifiedMesh{
+            MeshPrimitive::Triangles,
+            meshData->indices(),
+            {meshData->positions(0)},
+            {}, {}, {}
+        };
+
+        // operates in-place
+        mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
+            simplifiedMesh.indices(), simplifiedMesh.positions(0)
+        };
+
+        simplification.simplify(2000);
+
+        m_simplifiedMeshes[i] = std::move(simplifiedMesh);
     }
 }
 
