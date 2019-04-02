@@ -44,7 +44,7 @@ namespace sl
  *   so the MeshData3D instance needs to be kept around!
  **/
 static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
-    const Trade::MeshData3D& meshData, bool convexHull = true)
+    const Trade::MeshData3D& meshData, bool convexHull = false)
 {
     // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
 
@@ -161,7 +161,7 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
             {}, {}, {}
         };
 
-        if(meshData->indices().size() > maxPhysicsTriangles)
+        if(meshData->indices().size()/3 > maxPhysicsTriangles)
         {
             // simplify in-place
             mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{

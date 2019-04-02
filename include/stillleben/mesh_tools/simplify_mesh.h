@@ -59,9 +59,9 @@ public:
 
         checkMesh();
 
-        for(UnsignedInt iter = 0; iter < 100; ++iter)
+        for(UnsignedInt iter = 0; iter < 2; ++iter)
         {
-            printf("iter %lu\n", numTriangles - deletedTriangles);
+            printf("iter triangles=%lu, vertices=%lu\n", numTriangles - deletedTriangles, m_vertices.size());
             if(numTriangles - deletedTriangles <= targetTriangles)
                 break;
 
@@ -289,6 +289,9 @@ private:
 
         std::size_t n = m_indices.size()/3;
 
+        for(std::size_t i = 0; i < m_vertices.size(); ++i)
+            m_Q[i] = Matrix4(Math::ZeroInit);
+
         // Init quadrics
         for(std::size_t i = 0; i < n; ++i)
         {
@@ -434,7 +437,7 @@ private:
             auto d1 = (m_vertices[id1] - p).normalized();
             auto d2 = (m_vertices[id2] - p).normalized();
 
-            if(std::abs(Magnum::Math::dot(d1, d2)) > 0.999)
+            if(std::abs(Magnum::Math::dot(d1, d2)) > 0.999f)
                 return true;
 
             auto n = Magnum::Math::cross(d1, d2).normalized();
@@ -493,7 +496,7 @@ private:
 
         // Compact triangles (m_indices)
         {
-            const std::size_t numTriangles = m_indices.size();
+            const std::size_t numTriangles = m_indices.size() / 3;
             std::size_t triangleIdx = 0;
 
             for(std::size_t i = 0; i < numTriangles; ++i)
