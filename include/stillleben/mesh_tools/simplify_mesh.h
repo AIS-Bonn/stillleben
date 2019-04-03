@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 
 //
 // This code is largely 1:1 from
@@ -155,6 +156,28 @@ public:
 
         compactMesh();
         checkMesh();
+    }
+
+    void writeOBJ(const std::string& filename)
+    {
+        std::ofstream out(filename);
+        if(!out)
+            throw std::runtime_error("Can't write to output file");
+
+        out.imbue(std::locale::classic());
+
+        for(auto& v : m_vertices)
+            out << "v " << v.x() << " " << v.y() << " " << v.z() << "\n";
+
+        for(std::size_t i = 0; i < m_indices.size()/3; ++i)
+        {
+            out << "f";
+            for(std::size_t j = 0; j < 3; ++j)
+            {
+                out << " " << m_indices[i*3+j]+1;
+            }
+            out << "\n";
+        }
     }
 private:
     void checkMesh()

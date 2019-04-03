@@ -169,6 +169,7 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
             };
 
             simplification.simplify(maxPhysicsTriangles);
+            simplification.writeOBJ("/tmp/test.obj");
         }
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
