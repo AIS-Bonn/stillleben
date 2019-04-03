@@ -117,8 +117,8 @@ public:
 
                     auto tstart = m_ref_triangle.size();
 
-                    updateTriangles(idx0, v0, deleted0, deletedTriangles);
-                    updateTriangles(idx0, v1, deleted1, deletedTriangles);
+                    updateTriangles(v0, v0, deleted0, deletedTriangles);
+                    updateTriangles(v0, v1, deleted1, deletedTriangles);
 
                     auto tcount = m_ref_triangle.size() - tstart;
 
@@ -474,7 +474,7 @@ private:
         return false;
     }
 
-    void updateTriangles(std::size_t idx0, std::size_t v,
+    void updateTriangles(std::size_t replacement, std::size_t v,
         const std::vector<std::size_t>& deleted, std::size_t& deletedTriangles)
     {
         Magnum::Vector3 p;
@@ -496,7 +496,7 @@ private:
                 continue;
             }
 
-            m_indices[triangle*3 + m_ref_vertex[tstart + i]] = v;
+            m_indices[triangle*3 + m_ref_vertex[tstart + i]] = replacement;
             m_dirty[triangle] = true;
 
             auto v0 = m_indices[triangle*3 + 0];
