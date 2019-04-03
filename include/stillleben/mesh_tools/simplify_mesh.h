@@ -46,28 +46,30 @@ public:
      , m_tstart(vertices.size())
      , m_tcount(vertices.size())
      , m_dirty(indices.size()/3, false)
+     , m_vertexDeleted(vertices.size(), false)
     {}
 
-    void simplify(std::size_t targetTriangles, double aggressiveness=5)
+    void simplify(std::size_t targetTriangles, double aggressiveness=7,
+        bool verbose=false)
     {
         using namespace Magnum;
 
-        const UnsignedInt numTriangles = m_indices.size()/3;
+        const UnsignedInt startTriangles = m_indices.size()/3;
 
         std::size_t deletedTriangles = 0;
 
         std::vector<std::size_t> deleted0, deleted1;
 
-        checkMesh();
-
-        for(UnsignedInt iter = 0; iter < 2; ++iter)
+        for(UnsignedInt iter = 0; iter < 100; ++iter)
         {
-            printf("iter triangles=%lu, vertices=%lu\n", numTriangles - deletedTriangles, m_vertices.size());
-            if(numTriangles - deletedTriangles <= targetTriangles)
+            if(verbose)
+                printf("iter triangles=%lu, vertices=%lu\n", startTriangles - deletedTriangles, m_vertices.size());
+
+            if(startTriangles - deletedTriangles <= targetTriangles)
                 break;
 
             // Update mesh once in a while
-//             if(iter % 5 == 0)
+            if(iter % 5 == 0)
                 updateMesh(iter == 0);
 
             std::fill(m_dirty.begin(), m_dirty.end(), false);
@@ -79,7 +81,8 @@ public:
             );
 
             // remove vertices & mark deleted triangles
-            for(std::size_t i = 0; i < numTriangles; ++i)
+            const unsigned int currentNumTriangles = m_indices.size()/3;
+            for(std::size_t i = 0; i < currentNumTriangles; ++i)
             {
                 if(m_triangleDeleted[i] || m_dirty[i])
                     continue;
@@ -87,12 +90,17 @@ public:
                 for(std::size_t j = 0; j < 3; ++j)
                 {
                     if(m_error[i*3+j] >= threshold)
-                        continue;
+                        continue; // keep this edge
 
                     auto idx0 = i*3 + j;
                     auto idx1 = i*3 + ((j+1) % 3);
                     auto v0 = m_indices[idx0];
                     auto v1 = m_indices[idx1];
+
+                    CORRADE_INTERNAL_ASSERT(!m_vertexDeleted[v0]);
+                    CORRADE_INTERNAL_ASSERT(!m_vertexDeleted[v1]);
+                    CORRADE_INTERNAL_ASSERT(m_tcount[v0] != 0);
+                    CORRADE_INTERNAL_ASSERT(m_tcount[v1] != 0);
 
                     // Border check
                     if(m_border[v0] != m_border[v1])
@@ -105,7 +113,7 @@ public:
                     deleted0.resize(m_tcount[v0]);
                     deleted1.resize(m_tcount[v1]);
 
-                    // Do not remove edge if that would flip the triangle
+                    // Do not remove edge if that would flip a triangle
                     if(flipped(p, idx0, idx1, v0, v1, deleted0))
                         continue;
                     if(flipped(p, idx1, idx0, v1, v0, deleted1))
@@ -122,6 +130,10 @@ public:
 
                     auto tcount = m_ref_triangle.size() - tstart;
 
+                    // We now have tcount many references for our new collapsed
+                    // vertex.
+
+                    // Does it fit into the reference section of v0?
                     if(tcount <= m_tcount[v0])
                     {
                         // save RAM
@@ -137,6 +149,9 @@ public:
                                 &m_ref_vertex[tstart],
                                 tcount * sizeof(std::size_t)
                             );
+
+                            // TODO: We should actually make m_ref_* smaller
+                            //   here, correct?
                         }
                     }
                     else
@@ -146,10 +161,12 @@ public:
                     }
 
                     m_tcount[v0] = tcount;
+                    m_vertexDeleted[v1] = true;
+
                     break;
                 }
 
-                if(numTriangles - deletedTriangles <= targetTriangles)
+                if(startTriangles - deletedTriangles <= targetTriangles)
                     break;
             }
         }
@@ -190,11 +207,58 @@ private:
             }
         }
 
+        for(std::size_t triangle = 0; triangle < m_indices.size()/3; ++triangle)
+        {
+            auto* v = &m_indices[triangle*3];
+
+            if(v[0] == v[1] || v[1] == v[2] || v[2] == v[0])
+            {
+                throw std::logic_error("Duplicate vertex in triangle");
+            }
+        }
+
         for(auto& v : m_vertices)
         {
             if(!std::isfinite(v.x()) || !std::isfinite(v.y()) || !std::isfinite(v.z()))
             {
                 throw std::runtime_error("Got non-finite vertex");
+            }
+        }
+    }
+
+    void checkReferences()
+    {
+        for(std::size_t i = 0; i < m_indices.size()/3; ++i)
+        {
+            if(m_triangleDeleted[i])
+                continue;
+
+            for(std::size_t j = 0; j < 3; ++j)
+            {
+                auto v = m_indices[i*3 + j];
+                if(m_tcount[v] == 0)
+                {
+                    throw std::logic_error("Vertex in triangle has triangle count 0");
+                }
+
+                if(m_vertexDeleted[v])
+                    throw std::logic_error("indices refers to deleted vertex");
+
+                auto tstart = m_tstart[v];
+                auto tcount = m_tcount[v];
+
+                bool found = false;
+                for(std::size_t k = 0; k < tcount; ++k)
+                {
+                    if(m_ref_triangle[tstart + k] == i && m_ref_vertex[tstart + k] == j)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if(!found)
+                    throw std::logic_error("triangle not referenced by vertex");
             }
         }
     }
@@ -213,6 +277,7 @@ private:
                     m_error[3*dst + j] = m_error[3*i + j];
                 }
                 m_normals[dst] = m_normals[i];
+                m_dirty[dst] = m_dirty[i];
 
                 dst++;
             }
@@ -355,12 +420,10 @@ private:
 
     void updateMesh(bool init = false)
     {
-        printf("updateMesh(%d)\n", init);
-
         if(!init)
             compactTriangles();
 
-//         if(init)
+        if(init)
             initQuadrics();
 
         std::fill(m_tstart.begin(), m_tstart.end(), 0);
@@ -374,7 +437,7 @@ private:
         {
             m_tstart[i] = tstart;
             tstart += m_tcount[i];
-            m_tcount[i] = 0; // why?
+            m_tcount[i] = 0; // use tcount to count already referenced triangles
         }
 
         m_ref_triangle.resize(m_indices.size());
@@ -394,6 +457,9 @@ private:
         {
             m_border.clear();
             m_border.resize(m_vertices.size(), false);
+
+            // We set m_border[j] = true if vertex j is exactly in one common
+            // triangle with another vertex i.
 
             std::vector<std::size_t> vcount, vids;
 
@@ -453,6 +519,7 @@ private:
 
             if(id1 == v1 || id2 == v1)
             {
+                // Since v0 and v1 will collapse, this triangle will disappear.
                 deleted[i] = true;
                 continue;
             }
@@ -485,6 +552,7 @@ private:
         for(std::size_t i = 0; i < tcount; ++i)
         {
             auto triangle = m_ref_triangle[tstart + i];
+            auto vertexInTriangle = m_ref_vertex[tstart + i];
 
             if(m_triangleDeleted[triangle])
                 continue;
@@ -496,9 +564,18 @@ private:
                 continue;
             }
 
-            m_indices[triangle*3 + m_ref_vertex[tstart + i]] = replacement;
+            // Debug check
+            CORRADE_INTERNAL_ASSERT(m_indices[triangle*3 + vertexInTriangle] == v);
+            CORRADE_INTERNAL_ASSERT(
+                   m_indices[triangle*3 + ((vertexInTriangle + 1) % 3)] != replacement
+                && m_indices[triangle*3 + ((vertexInTriangle + 2) % 3)] != replacement
+            );
+
+            // Do the replacement
+            m_indices[triangle*3 + vertexInTriangle] = replacement;
             m_dirty[triangle] = true;
 
+            // And recompute errors
             auto v0 = m_indices[triangle*3 + 0];
             auto v1 = m_indices[triangle*3 + 1];
             auto v2 = m_indices[triangle*3 + 2];
@@ -507,8 +584,9 @@ private:
             m_error[triangle*3 + 1] = calculateError(v1, v2, p);
             m_error[triangle*3 + 2] = calculateError(v2, v0, p);
 
+            // Push a ref pair, we will hook it up later in simplify().
             m_ref_triangle.push_back(triangle);
-            m_ref_vertex.push_back(m_ref_vertex[tstart + i]);
+            m_ref_vertex.push_back(vertexInTriangle);
         }
     }
 
@@ -593,6 +671,8 @@ private:
     std::vector<std::size_t> m_ref_vertex;
 
     std::vector<bool> m_dirty;
+
+    std::vector<bool> m_vertexDeleted;
 };
 
 }
