@@ -40,6 +40,9 @@ public:
     using CollisionArray = Corrade::Containers::Array<std::shared_ptr<btCollisionShape>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
+    using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
+
+    static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
     class LoadException : public Exception
     {
@@ -57,12 +60,16 @@ public:
     Mesh(Mesh&& other);
     ~Mesh();
 
-    void load(const std::string& filename);
+    void load(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 
-    void loadNonGL(const std::string& filename);
+    void loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
     void loadGL();
 
-    static std::vector<std::shared_ptr<Mesh>> loadThreaded(const std::shared_ptr<Context>& ctx, const std::vector<std::string>& filenames);
+    static std::vector<std::shared_ptr<Mesh>> loadThreaded(
+        const std::shared_ptr<Context>& ctx,
+        const std::vector<std::string>& filenames,
+        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles
+    );
 
     Magnum::Range3D bbox() const;
 
@@ -113,6 +120,7 @@ private:
     CollisionArray m_collisionShapes;
     TextureArray m_textures;
     MaterialArray m_materials;
+    SimplifiedMeshArray m_simplifiedMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),

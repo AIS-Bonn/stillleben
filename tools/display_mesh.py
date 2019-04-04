@@ -22,6 +22,8 @@ if __name__ == "__main__":
         help='Render physics debug image with collision wireframes')
     parser.add_argument('--normals', action='store_true',
         help='Display normals')
+    parser.add_argument('--tabletop', action='store_true',
+        help='Simulate a tabletop scene')
 
     args = parser.parse_args()
 
@@ -34,7 +36,7 @@ if __name__ == "__main__":
 
     meshes = []
     for mesh_file in args.mesh:
-        mesh = sl.Mesh(mesh_file)
+        mesh = sl.Mesh(mesh_file, max_physics_triangles=6000)
 
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
@@ -52,20 +54,36 @@ if __name__ == "__main__":
         object = sl.Object(mesh)
         scene.add_object(object)
 
-        if True:
-            if not scene.find_noncolliding_pose(object, sampler='random', max_iterations=50, viewpoint=torch.tensor([1.0, 0.0, 0.0])):
-                print('WARNING: Could not find non-colliding pose')
-            print('Resulting pose:')
-            print(object.pose())
-        elif True:
-            pose = scene.place_object_randomly(mesh.bbox.diagonal)
-            object.set_pose(pose)
-        else:
-            pose = torch.eye(4)
-            pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
-            object.set_pose(pose)
+        if not args.tabletop:
+            if True:
+                if not scene.find_noncolliding_pose(object, sampler='random', max_iterations=50, viewpoint=torch.tensor([1.0, 0.0, 0.0])):
+                    print('WARNING: Could not find non-colliding pose')
+            elif True:
+                pose = scene.place_object_randomly(mesh.bbox.diagonal)
+                object.set_pose(pose)
+            else:
+                pose = torch.eye(4)
+                pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
+                object.set_pose(pose)
 
     renderer = sl.RenderPass()
+
+    def vis_cb(iteration):
+        result = renderer.render(scene)
+        rgb = result.rgb()
+        rgb = rgb[:,:,:3]
+        rgb_np = rgb.cpu().numpy()
+
+        img = Image.fromarray(rgb_np, mode='RGB')
+        img.save('/tmp/iter{:03}.png'.format(iteration))
+
+    if args.tabletop:
+        scene.simulate_tabletop_scene(vis_cb)
+
+    print('Resulting poses:')
+    for obj in scene.objects:
+        print(obj.pose())
+
     result = renderer.render(scene)
 
     rgb = result.rgb()

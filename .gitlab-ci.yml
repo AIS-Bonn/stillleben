@@ -8,12 +8,11 @@ stages: [build, pages]
 
 build:
   stage: build
-  before_script:
-    - apt-get update
-    - apt-get -y install cmake ninja-build libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
   script:
     - python setup.py install
     - python setup.py bdist_wheel
+    - cpp_build/tests/tests
+    - python tests/test_python.py
   artifacts:
     expire_in: 1 week
     paths:
@@ -21,11 +20,7 @@ build:
 
 pages:
   stage: pages
-  before_script:
-    - apt-get update
-    - apt-get -y install libglvnd-dev libegl1-mesa-dev libgl1-mesa-dev libassimp-dev libbullet-dev
   script:
-    - conda install -y sphinx sphinx_rtd_theme
     - pip install dist/stillleben-*.whl
     - make -C doc html
     - mkdir public

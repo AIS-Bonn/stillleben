@@ -16,7 +16,7 @@ TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 class PythonTest(unittest.TestCase):
     def setUp(self):
         if torch.cuda.is_available():
-            sl.initCUDA(0)
+            sl.init_cuda(0)
         else:
             sl.init()
 
@@ -54,7 +54,7 @@ class PythonTest(unittest.TestCase):
         dbg_img.save('/tmp/stillleben_debug.png')
 
         rgb_noise = process_image(rgb.permute(2, 0, 1)[:3].float() / 255.0)
-        rgb_noise_np = (rgb_noise * 255).byte().permute(1,2,0).contiguous().numpy()
+        rgb_noise_np = (rgb_noise * 255).byte().permute(1,2,0).contiguous().cpu().numpy()
         noise_img = Image.fromarray(rgb_noise_np, mode='RGB')
         noise_img.save('/tmp/stillleben_noise.png')
 

@@ -276,3 +276,14 @@ TEST_CASE("render")
         CHECK(instanceCount < 0.5 * image.size().product());
     }
 }
+
+TEST_CASE("physics")
+{
+    // Create our stillleben Context
+    auto context = sl::Context::Create();
+    REQUIRE(context);
+
+    // Load a mesh file
+    auto mesh = std::make_shared<sl::Mesh>(context);
+    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf", 100);
+}

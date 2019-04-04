@@ -231,8 +231,8 @@ bool Scene::isObjectColliding(Object& object)
     return counter.numContacts() != 0;
 }
 
-constexpr float ANGULAR_VELOCITY_LIMIT = 10.0 / 180.0 * M_PI;
-constexpr float LINEAR_VELOCITY_LIMIT = 0.01;
+constexpr float ANGULAR_VELOCITY_LIMIT = 20.0 / 180.0 * M_PI;
+constexpr float LINEAR_VELOCITY_LIMIT = 0.1;
 
 void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
 {
@@ -241,7 +241,7 @@ void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
     for(auto& obj : self->m_objects)
     {
         auto& rigidBody = obj->rigidBody();
-	rigidBody.setDamping(0.5, 0.5);
+        rigidBody.setDamping(0.5, 0.5);
 
 //	Debug{} << "Object" << (i++);
         btVector3 angularVelocity = rigidBody.getAngularVelocity();
@@ -287,7 +287,7 @@ namespace
     };
 
     template<class F>
-    Caller<F> finally(F&& f)
+    [[nodiscard]] Caller<F> finally(F&& f)
     {
         return {std::move(f)};
     }
@@ -359,6 +359,77 @@ void Scene::chooseRandomLightPosition()
     Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
 
     setLightPosition(m_camera->cameraMatrix().invertedOrthogonal().transformPoint(lightPositionInCam));
+}
+
+void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
+{
+    // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
+    std::uniform_real_distribution<float> angleDist(0.0, M_PI/2.0);
+    Magnum::Rad angle{angleDist(m_randomGenerator)};
+
+    Magnum::Vector3 normal{0.0f, -Math::sin(angle), -Math::cos(angle)};
+
+    // The plane always goes through a point [0 0 d].
+    float minDistVis = 0.1f;
+    float maxDiameter = 0.0f;
+    for(auto& obj : m_objects)
+    {
+        float diameter = obj->mesh()->bbox().size().length();
+        maxDiameter = std::max(maxDiameter, diameter);
+        minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
+    }
+    std::uniform_real_distribution<float> dDist{0.8f*minDistVis, 4.0f*minDistVis};
+
+    Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
+
+    float planeConstant = Magnum::Math::dot(normal, p);
+
+    Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
+    Debug{} << "Focal point is" << p;
+
+    // Add it to the physics scene
+    btStaticPlaneShape planeShape{btVector3{normal}, planeConstant};
+    btDefaultMotionState planeState;
+    btRigidBody planeBody{0.0, &planeState, &planeShape};
+    planeBody.setFriction(0.0);
+
+    m_physicsWorld->addRigidBody(&planeBody);
+    auto remover = finally([&]{ m_physicsWorld->removeRigidBody(&planeBody); });
+
+    // Arrange the objects randomly above the plane
+    std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
+    Debug{} << "Initial object poses:";
+    for(auto& obj : m_objects)
+    {
+        Magnum::Vector3 pos = p + 1.0f*maxDiameter*normal + Magnum::Vector3{
+            posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
+        };
+        Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
+
+        Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
+        obj->setPose(pose);
+
+        Debug{} << pose;
+    }
+
+    // We simulate a strong fake gravity towards p
+    const int maxIterations = 40;
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        if(visCallback)
+            visCallback(i);
+
+        Debug{} << "Iteration";
+        for(auto& obj : m_objects)
+        {
+            Magnum::Vector3 dir = (p - obj->pose().translation()).normalized();
+            obj->rigidBody().applyCentralForce(btVector3{10.0f * dir});
+            Debug{} << "Obj pos:" << obj->pose().translation();
+        }
+
+//         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
+        m_physicsWorld->stepSimulation(0.05, 10);
+    }
 }
 
 }
