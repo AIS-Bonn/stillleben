@@ -16,7 +16,7 @@ TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 class PythonTest(unittest.TestCase):
     def setUp(self):
         if torch.cuda.is_available():
-            sl.initCUDA(0)
+            sl.init_cuda(0)
         else:
             sl.init()
 
