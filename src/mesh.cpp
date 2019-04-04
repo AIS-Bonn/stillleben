@@ -7,6 +7,7 @@
 #include <stillleben/mesh_tools/simplify_mesh.h>
 
 #include <btBulletDynamicsCommon.h>
+#include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
 #include <Corrade/Utility/Configuration.h>
 
@@ -44,7 +45,7 @@ namespace sl
  *   so the MeshData3D instance needs to be kept around!
  **/
 static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
-    const Trade::MeshData3D& meshData, bool convexHull = true)
+    const Trade::MeshData3D& meshData, bool convexHull = false)
 {
     // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
 
@@ -78,22 +79,19 @@ static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
         bulletMesh.m_indexType = PHY_INTEGER;
         bulletMesh.m_vertexType = PHY_FLOAT;
 
-        Debug{} << "Creating btBvhTriangleMeshShape with numTriangles:"
-                << bulletMesh.m_numTriangles
-                << "and numVertices:"
-                << bulletMesh.m_numVertices
-        ;
-
         auto tivArray = new btTriangleIndexVertexArray();
         tivArray->addIndexedMesh(bulletMesh, PHY_INTEGER);
 
-        return std::shared_ptr<btBvhTriangleMeshShape>(
-            new btBvhTriangleMeshShape(tivArray, true),
-            [&](btBvhTriangleMeshShape* b) {
+        auto shape = std::shared_ptr<btGImpactMeshShape>(
+            new btGImpactMeshShape(tivArray),
+            [=](btGImpactMeshShape* b) {
                 delete b;
                 delete tivArray;
             }
         );
+
+        shape->updateBound();
+        return shape;
     }
 }
 
