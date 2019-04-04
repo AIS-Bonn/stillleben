@@ -1,0 +1,8 @@
+
+# mesa
+leak:libEGL_mesa
+leak:i965_dri
+
+# nvidia
+leak:libnvidia-eglcore
+

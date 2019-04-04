@@ -24,7 +24,7 @@ cpp_debug:
     - mkdir build_debug && cd build_debug
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address -GNinja ..
     - ninja install
-    - ASAN_OPTIONS=alloc_dealloc_mismatch=0 tests/tests
+    - ASAN_OPTIONS=alloc_dealloc_mismatch=0 LSAN_OPTIONS=suppressions=../tests/asan_suppressions.txt tests/tests
 
 pages:
   stage: pages
