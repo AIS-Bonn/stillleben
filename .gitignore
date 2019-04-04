@@ -1,6 +1,7 @@
 *.kdev4*
 *~
 build/
+build_debug/
 tmp_install/
 cpp_build/
 stillleben/bin
