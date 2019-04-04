@@ -18,6 +18,14 @@ build:
     paths:
       - dist
 
+cpp_debug:
+  stage: build
+  script:
+    - mkdir build_debug && cd build_debug
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address -GNinja ..
+    - ninja
+    - tests/tests
+
 pages:
   stage: pages
   script:
