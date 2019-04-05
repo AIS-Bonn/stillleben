@@ -30,8 +30,6 @@ ExternalProject_Add(PhysX_external
         --no-warn-unused-cli
         -DTARGET_BUILD_PLATFORM=linux
         -DPX_OUTPUT_ARCH=x86
-        -DCMAKE_C_COMPILER=clang
-        -DCMAKE_CXX_COMPILER=clang++
         "-DCMAKE_PREFIX_PATH=<SOURCE_DIR>/externals/opengl-linux"
         "-DPHYSX_ROOT_DIR=<SOURCE_DIR>/physx"
         "-DCMAKE_BUILD_TYPE=Release"
@@ -56,7 +54,7 @@ ExternalProject_Add(PhysX_external
 ExternalProject_Get_Property(PhysX_external INSTALL_DIR)
 
 add_library(PhysX INTERFACE)
-target_link_libraries(PhysX INTERFACE
+set(LIBRARIES
     ${INSTALL_DIR}/bin/linux.clang/release/libPhysX_64.so
     ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCommon_64.so
     ${INSTALL_DIR}/bin/linux.clang/release/libPhysXFoundation_64.so
@@ -64,6 +62,13 @@ target_link_libraries(PhysX INTERFACE
     ${INSTALL_DIR}/bin/linux.clang/release/libPhysXExtensions_static_64.a
     ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCooking_64.so
 )
+
+target_link_libraries(PhysX INTERFACE ${LIBRARIES})
 add_dependencies(PhysX PhysX_external)
 
 target_include_directories(PhysX INTERFACE ${INSTALL_DIR}/include)
+
+install(FILES
+    ${LIBRARIES}
+    DESTINATION lib
+)
