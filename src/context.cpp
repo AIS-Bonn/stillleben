@@ -73,6 +73,7 @@ public:
             throw std::runtime_error("Could not load AssimpImporter plugin");
         }
 
+        // Setup PhysX stuff
         pxFoundation.reset(
             PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback)
         );
@@ -84,6 +85,10 @@ public:
             *transport,
             physx::PxPvdInstrumentationFlag::eALL
         );
+
+        pxPhysics.reset(PxCreatePhysics(
+            PX_PHYSICS_VERSION, *pxFoundation, physx::PxTolerancesScale(), true, pxPvd.get()
+        ));
     }
 
     void* egl_display = nullptr;

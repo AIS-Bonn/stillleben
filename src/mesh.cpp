@@ -31,12 +31,59 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
 
+#include "physx.h"
+
 #include <sstream>
 
 using namespace Magnum;
 
 namespace sl
 {
+
+/**
+ * @brief Create PhysX collision shape from Trade::MeshData3D
+ * */
+static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Trade::MeshData3D& meshData)
+{
+    if(meshData.primitive() != MeshPrimitive::Triangles)
+    {
+        Error{} << "Cannot load collision mesh, skipping";
+        return {};
+    }
+
+    if(meshData.positionArrayCount() > 1)
+    {
+        Warning{} << "Mesh has more than one position array, this is unsupported";
+    }
+
+    // This is ugly as hell because you can't move a physx::PxDefaultMemoryOutputStream.
+    Corrade::Containers::Optional<PhysXOutputBuffer> out;
+
+    out.emplace();
+
+    static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
+
+    physx::PxTriangleMeshDesc meshDesc;
+    meshDesc.points.count = meshData.positions(0).size();
+    meshDesc.points.stride = sizeof(physx::PxVec3);
+    meshDesc.points.data = meshData.positions(0).data();
+
+    static_assert(sizeof(decltype(*meshData.indices().data())) == sizeof(physx::PxU32));
+
+    meshDesc.triangles.count = meshData.indices().size();
+    meshDesc.triangles.stride = 3*sizeof(physx::PxU32);
+    meshDesc.triangles.data = meshData.indices().data();
+
+    physx::PxTriangleMeshCookingResult::Enum result;
+    bool status = cooking.cookTriangleMesh(meshDesc, *out, &result);
+    if(!status)
+    {
+        Error{} << "PhysX cooking failed, ignoring mesh";
+        return {};
+    }
+
+    return out;
+}
 
 /**
  * @brief Create bullet collision shape from Trade::MeshData3D
@@ -171,7 +218,8 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
         }
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
-        m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
+//         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
+        m_physXBuffers[i] = cookForPhysX(*m_simplifiedMeshes[i]);
     }
 }
 

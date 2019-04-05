@@ -79,6 +79,31 @@ private:
     T* m_ptr = nullptr;
 };
 
+class PhysXOutputBuffer : public physx::PxOutputStream
+{
+public:
+    PhysXOutputBuffer() {}
+    PhysXOutputBuffer(const PhysXOutputBuffer&) = delete;
+    PhysXOutputBuffer(PhysXOutputBuffer&& other)
+    {
+        m_data = std::move(other.m_data);
+    }
+
+    physx::PxU32 write(const void* src, physx::PxU32 count) override
+    {
+        uint8_t* writePtr = m_data.data() + m_data.size();
+        m_data.resize(m_data.size() + count);
+        memcpy(writePtr, src, count);
+
+        return count;
+    }
+
+    uint8_t* data() { return m_data.data(); }
+    std::size_t size() { return m_data.size(); }
+private:
+    std::vector<uint8_t> m_data;
+};
+
 }
 
 #endif

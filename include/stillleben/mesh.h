@@ -31,6 +31,7 @@ namespace sl
 {
 
 class Context;
+class PhysXOutputBuffer;
 
 class Mesh
 {
@@ -41,6 +42,8 @@ public:
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
     using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
+
+    using CookedPhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXOutputBuffer>>;
 
     static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
@@ -121,6 +124,7 @@ private:
     TextureArray m_textures;
     MaterialArray m_materials;
     SimplifiedMeshArray m_simplifiedMeshes;
+    CookedPhysXMeshArray m_physXBuffers;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),
