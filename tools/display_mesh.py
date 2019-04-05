@@ -41,8 +41,8 @@ if __name__ == "__main__":
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
-        mesh.center_bbox()
-        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        #mesh.center_bbox()
+        #mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
@@ -76,6 +76,10 @@ if __name__ == "__main__":
 
         img = Image.fromarray(rgb_np, mode='RGB')
         img.save('/tmp/iter{:03}.png'.format(iteration))
+
+        dbg_rgb = sl.render_physics_debug_image(scene)
+        dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
+        dbg_img.save('/tmp/physics{:03}.png'.format(iteration))
 
     if args.tabletop:
         scene.simulate_tabletop_scene(vis_cb)

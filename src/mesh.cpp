@@ -45,7 +45,7 @@ namespace sl
  *   so the MeshData3D instance needs to be kept around!
  **/
 static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
-    const Trade::MeshData3D& meshData, bool convexHull = false)
+    const Trade::MeshData3D& meshData, bool convexHull = true)
 {
     // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
 
@@ -91,6 +91,7 @@ static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
         );
 
         shape->updateBound();
+        shape->setMargin(0.1f);
         return shape;
     }
 }

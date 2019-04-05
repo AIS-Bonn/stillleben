@@ -100,6 +100,8 @@ void Object::load()
     btRigidBody::btRigidBodyConstructionInfo info(
         mass, &m_motionState->btMotionState(), m_collisionShape.get(), bInertia
     );
+//     info.m_linearDamping = 0.1;
+//     info.m_angularDamping = 0.1;
     m_rigidBody = std::make_unique<btRigidBody>(info);
     m_rigidBody->forceActivationState(DISABLE_DEACTIVATION);
 }
