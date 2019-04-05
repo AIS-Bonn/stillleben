@@ -36,6 +36,9 @@ T getExtension(const char* name)
 
 #include <Magnum/Platform/WindowlessGlxApplication.h>
 
+// PhysX
+#include "physx.h"
+
 using namespace Magnum;
 
 namespace sl
@@ -69,6 +72,18 @@ public:
         {
             throw std::runtime_error("Could not load AssimpImporter plugin");
         }
+
+        pxFoundation.reset(
+            PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback)
+        );
+        pxPvd.reset(
+            PxCreatePvd(*pxFoundation)
+        );
+        auto transport = physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+        pxPvd->connect(
+            *transport,
+            physx::PxPvdInstrumentationFlag::eALL
+        );
     }
 
     void* egl_display = nullptr;
@@ -84,6 +99,12 @@ public:
     std::mutex importerManagerMutex;
 
     DebugTools::ResourceManager resourceManager;
+
+    physx::PxDefaultAllocator pxAllocator;
+    physx::PxDefaultErrorCallback pxErrorCallback;
+    PhysXHolder<physx::PxFoundation> pxFoundation;
+    PhysXHolder<physx::PxPvd> pxPvd;
+    PhysXHolder<physx::PxPhysics> pxPhysics;
 };
 
 Context::Context(const std::string& installPrefix)
