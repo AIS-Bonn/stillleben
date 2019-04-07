@@ -86,8 +86,14 @@ public:
             physx::PxPvdInstrumentationFlag::eALL
         );
 
+        physx::PxTolerancesScale scale;
+
         pxPhysics.reset(PxCreatePhysics(
-            PX_PHYSICS_VERSION, *pxFoundation, physx::PxTolerancesScale(), true, pxPvd.get()
+            PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
+        ));
+
+        pxCooking.reset(PxCreateCooking(
+            PX_PHYSICS_VERSION, *pxFoundation, physx::PxCookingParams(scale)
         ));
     }
 
@@ -110,6 +116,7 @@ public:
     PhysXHolder<physx::PxFoundation> pxFoundation;
     PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPhysics> pxPhysics;
+    PhysXHolder<physx::PxCooking> pxCooking;
 };
 
 Context::Context(const std::string& installPrefix)
@@ -468,6 +475,16 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
         std::cerr << messages << std::flush;
 
     return texture;
+}
+
+physx::PxPhysics& Context::physxPhysics()
+{
+    return *m_d->pxPhysics;
+}
+
+physx::PxCooking& Context::physxCooking()
+{
+    return *m_d->pxCooking;
 }
 
 }

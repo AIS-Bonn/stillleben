@@ -27,11 +27,19 @@
 
 class btCollisionShape;
 
+namespace physx
+{
+    class PxTriangleMesh;
+}
+
 namespace sl
 {
 
 class Context;
 class PhysXOutputBuffer;
+
+template<class T>
+class PhysXHolder;
 
 class Mesh
 {
@@ -44,6 +52,7 @@ public:
     using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
 
     using CookedPhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXOutputBuffer>>;
+    using PhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXHolder<physx::PxTriangleMesh>>>;
 
     static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
@@ -100,6 +109,9 @@ public:
     CollisionArray& collisionShapes()
     { return m_collisionShapes; }
 
+    PhysXMeshArray& physXMeshes()
+    { return m_physXMeshes; }
+
     TextureArray& textures()
     { return m_textures; }
 
@@ -125,6 +137,7 @@ private:
     MaterialArray m_materials;
     SimplifiedMeshArray m_simplifiedMeshes;
     CookedPhysXMeshArray m_physXBuffers;
+    PhysXMeshArray m_physXMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),

@@ -191,6 +191,7 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
     // Simplify meshes if possible
     m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
     m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
+    m_physXBuffers = CookedPhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -219,7 +220,7 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
 //         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
-        m_physXBuffers[i] = cookForPhysX(*m_simplifiedMeshes[i]);
+        m_physXBuffers[i] = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
     }
 }
 
@@ -281,6 +282,7 @@ void Mesh::loadGL()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -301,6 +303,14 @@ void Mesh::loadGL()
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
+
+        if(auto& buf = m_physXBuffers[i])
+        {
+            physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
+            m_physXMeshes[i] = PhysXHolder<physx::PxTriangleMesh>{
+                m_ctx->physxPhysics().createTriangleMesh(stream)
+            };
+        }
     }
 
     // Update the bounding box

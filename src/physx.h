@@ -89,11 +89,17 @@ public:
         m_data = std::move(other.m_data);
     }
 
+    PhysXOutputBuffer& operator=(PhysXOutputBuffer&& other)
+    {
+        std::swap(m_data, other.m_data);
+        return *this;
+    }
+
     physx::PxU32 write(const void* src, physx::PxU32 count) override
     {
-        uint8_t* writePtr = m_data.data() + m_data.size();
-        m_data.resize(m_data.size() + count);
-        memcpy(writePtr, src, count);
+        std::size_t off = m_data.size();
+        m_data.resize(off + count);
+        memcpy(m_data.data() + off, src, count);
 
         return count;
     }
