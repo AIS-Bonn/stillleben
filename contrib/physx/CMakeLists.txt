@@ -72,6 +72,11 @@ add_dependencies(PhysX PhysX_external)
 target_include_directories(PhysX INTERFACE ${INSTALL_DIR}/include)
 
 install(FILES
-    ${LIBRARIES}
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysX_64.so
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXFoundation_64.so
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXPvdSDK_static_64.a
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXExtensions_static_64.a
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCooking_64.so
+    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCommon_64.so
     DESTINATION lib
 )
