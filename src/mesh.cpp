@@ -5,6 +5,7 @@
 #include <stillleben/context.h>
 #include <stillleben/contrib/ctpl_stl.h>
 #include <stillleben/mesh_tools/simplify_mesh.h>
+#include <stillleben/physx.h>
 
 #include <Corrade/Utility/Configuration.h>
 
@@ -28,9 +29,9 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
 
-#include "physx.h"
-
 #include <sstream>
+
+#include "physx_impl.h"
 
 using namespace Magnum;
 
@@ -53,26 +54,20 @@ static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCo
         Warning{} << "Mesh has more than one position array, this is unsupported";
     }
 
-    // This is ugly as hell because you can't move a physx::PxDefaultMemoryOutputStream.
     Corrade::Containers::Optional<PhysXOutputBuffer> out;
 
     out.emplace();
 
     static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
 
-    physx::PxTriangleMeshDesc meshDesc;
+    physx::PxConvexMeshDesc meshDesc;
     meshDesc.points.count = meshData.positions(0).size();
     meshDesc.points.stride = sizeof(physx::PxVec3);
     meshDesc.points.data = meshData.positions(0).data();
+    meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
 
-    static_assert(sizeof(decltype(*meshData.indices().data())) == sizeof(physx::PxU32));
-
-    meshDesc.triangles.count = meshData.indices().size();
-    meshDesc.triangles.stride = 3*sizeof(physx::PxU32);
-    meshDesc.triangles.data = meshData.indices().data();
-
-    physx::PxTriangleMeshCookingResult::Enum result;
-    bool status = cooking.cookTriangleMesh(meshDesc, *out, &result);
+    physx::PxConvexMeshCookingResult::Enum result;
+    bool status = cooking.cookConvexMesh(meshDesc, *out, &result);
     if(!status)
     {
         Error{} << "PhysX cooking failed, ignoring mesh";
@@ -246,8 +241,8 @@ void Mesh::loadGL()
         if(auto& buf = m_physXBuffers[i])
         {
             physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
-            m_physXMeshes[i] = PhysXHolder<physx::PxTriangleMesh>{
-                m_ctx->physxPhysics().createTriangleMesh(stream)
+            m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
+                m_ctx->physxPhysics().createConvexMesh(stream)
             };
         }
     }

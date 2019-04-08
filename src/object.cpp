@@ -1,11 +1,9 @@
 // Scene object
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include <BulletCollision/CollisionShapes/btCompoundShape.h>
-#include <btBulletDynamicsCommon.h>
-
 #include <stillleben/object.h>
 
+#include <stillleben/context.h>
 #include <stillleben/mesh.h>
 
 #include <limits>
@@ -27,8 +25,7 @@
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/MeshObjectData3D.h>
 
-#include <Magnum/BulletIntegration/Integration.h>
-#include <Magnum/BulletIntegration/MotionState.h>
+#include "physx_impl.h"
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -44,19 +41,22 @@ void Drawable::draw(const Matrix4& transformationMatrix, SceneGraph::Camera3D& c
 }
 
 Object::Object()
- : m_collisionShape{std::make_unique<btCompoundShape>()}
 {
 }
 
 Object::~Object()
 {
-    setPhysicsWorld(nullptr);
 }
 
 void Object::load()
 {
-    // pretransform is handled differently for Magnum & Bullet:
-    // For Magnum, we just use the pretransform directly, while for Bullet
+    m_rigidBody.reset(
+        m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform())
+    );
+    m_rigidBody->setMass(1.0f);
+
+    // pretransform is handled differently for Magnum & PhysX:
+    // For Magnum, we just use the pretransform directly, while for PhysX
     // we have to split it into the rigid part (see addMeshObject()) and
     // the scaling part below.
     m_meshObject.setTransformation(m_mesh->pretransform());
@@ -83,27 +83,6 @@ void Object::load()
     }
 
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
-
-    // Setup bullet integration
-
-    // NOTE: This call has to be after the child shapes are added.
-    // Bullet is horrible...
-    m_collisionShape->setLocalScaling(btVector3{Vector3{m_mesh->pretransformScale()}});
-
-    m_motionState = std::make_unique<Magnum::BulletIntegration::MotionState>(m_sceneObject);
-
-    const auto mass = 0.2f;
-
-    btVector3 bInertia(0.0f, 0.0f, 0.0f);
-    m_collisionShape->calculateLocalInertia(mass, bInertia);
-
-    btRigidBody::btRigidBodyConstructionInfo info(
-        mass, &m_motionState->btMotionState(), m_collisionShape.get(), bInertia
-    );
-//     info.m_linearDamping = 0.1;
-//     info.m_angularDamping = 0.1;
-    m_rigidBody = std::make_unique<btRigidBody>(info);
-    m_rigidBody->forceActivationState(DISABLE_DEACTIVATION);
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -147,21 +126,43 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
 
-        auto collisionShape = m_mesh->collisionShapes()[objectData->instance()];
+        auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
 
-        if(collisionShape)
+        if(physxMesh)
         {
-            // This is a bit tricky: Bullet can only handle rigid transforms
-            // here. So we ask for the relative transform to m_meshObject
-            // (which is rigid), and then apply the rigid part of the pretransform.
-            // Scaling is then handled by scaling the entire bullet collision shape.
-            btTransform bulletTransform(
-                m_mesh->pretransformRigid()
-                * m_meshObject.absoluteTransformationMatrix().inverted()
-                * object->absoluteTransformationMatrix()
+            auto& physics = m_mesh->context()->physxPhysics();
+
+            PhysXHolder<physx::PxMaterial> material{
+                physics.createMaterial(0.5f, 0.5f, 0.6f)
+            };
+            physx::PxMeshScale meshScale(m_mesh->pretransformScale());
+
+            physx::PxConvexMeshGeometry geometry(physxMesh->get(), meshScale);
+
+            PhysXHolder<physx::PxShape> shape{
+                physics.createShape(geometry, *material, true)
+            };
+
+            // Where are we relative to m_meshObject?
+            Matrix4 poseInMeshObject = m_meshObject.absoluteTransformationMatrix().inverted() * object->absoluteTransformationMatrix();
+
+            // The transformation between m_sceneObject and m_meshObject is
+            // composed of a rigid part and a scale.
+            Matrix4 poseInSceneObjectRigid = m_mesh->pretransformRigid() * poseInMeshObject;
+
+            // PhysX applies scale locally in the shape.
+            // => This is pretransformScale(), but we need to adjust the
+            //    translation part of poseInSceneObjectRigid from scaled
+            //    coordinates to unscaled ones.
+
+            Matrix4 pose = Matrix4::from(
+                poseInSceneObjectRigid.rotationScaling(),
+                (1.0f/m_mesh->pretransformScale()) * poseInSceneObjectRigid.translation()
             );
 
-            m_collisionShape->addChildShape(bulletTransform, collisionShape.get());
+            shape->setLocalPose(physx::PxTransform{pose});
+
+            m_rigidBody->attachShape(*shape);
         }
     }
 
@@ -195,25 +196,22 @@ void Object::setParentSceneObject(Object3D* parent)
     m_sceneObject.setParent(parent);
 }
 
-void Object::setPhysicsWorld(btDiscreteDynamicsWorld* world)
+void Object::setPhysicsScene(physx::PxScene* scene)
 {
-    if(m_physicsWorld)
-        m_physicsWorld->removeRigidBody(m_rigidBody.get());
+    if(m_physicsScene)
+        m_physicsScene->removeActor(*m_rigidBody);
 
-    if(world)
-        world->addRigidBody(m_rigidBody.get());
+    if(scene)
+        scene->addActor(*m_rigidBody);
 
-    m_physicsWorld = world;
+    m_physicsScene = scene;
 }
 
 void Object::setPose(const Magnum::Matrix4& matrix)
 {
     m_sceneObject.setTransformation(matrix);
 
-    // Stupid, but hey, it works!
-    btTransform transform;
-    m_rigidBody->getMotionState()->getWorldTransform(transform);
-    m_rigidBody->setWorldTransform(transform);
+    m_rigidBody->setGlobalPose(physx::PxTransform{matrix});
 }
 
 void Object::setInstanceIndex(unsigned int index)
@@ -222,14 +220,6 @@ void Object::setInstanceIndex(unsigned int index)
         throw std::invalid_argument("Object::setInstanceIndex(): out of range");
 
     m_instanceIndex = index;
-}
-
-btRigidBody& Object::rigidBody()
-{
-    if(!m_rigidBody)
-        throw std::logic_error("Access of rigidBody() before object is loaded");
-
-    return *m_rigidBody;
 }
 
 }

@@ -29,7 +29,7 @@ class btCollisionShape;
 
 namespace physx
 {
-    class PxTriangleMesh;
+    class PxConvexMesh;
 }
 
 namespace sl
@@ -52,7 +52,7 @@ public:
     using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
 
     using CookedPhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXOutputBuffer>>;
-    using PhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXHolder<physx::PxTriangleMesh>>>;
+    using PhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXHolder<physx::PxConvexMesh>>>;
 
     static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
@@ -71,6 +71,9 @@ public:
     Mesh(const Mesh& other) = delete;
     Mesh(Mesh&& other);
     ~Mesh();
+
+    std::shared_ptr<Context>& context()
+    { return m_ctx; }
 
     void load(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 

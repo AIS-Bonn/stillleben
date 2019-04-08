@@ -18,12 +18,10 @@
 #include <functional>
 #include <optional>
 
-class btDiscreteDynamicsWorld;
-class btDynamicsWorld;
-
-namespace Magnum
+namespace physx
 {
-namespace BulletIntegration { class DebugDraw; }
+    class PxDefaultCpuDispatcher;
+    class PxScene;
 }
 
 namespace sl
@@ -87,8 +85,6 @@ public:
     //@{
     void drawPhysicsDebug();
 
-    bool performCollisionCheck() const;
-
     using OrientationHint = Corrade::Containers::Optional<Magnum::Matrix3>;
 
     template<class Sampler>
@@ -109,9 +105,6 @@ public:
     //@}
 
 private:
-    struct BulletStuff;
-
-    static void constrainingTickCallback(btDynamicsWorld* world, float timeStep);
     bool isObjectColliding(Object& object);
 
     std::shared_ptr<Context> m_ctx;
@@ -126,11 +119,8 @@ private:
 
     std::shared_ptr<Magnum::GL::RectangleTexture> m_backgroundImage;
 
-    std::unique_ptr<BulletStuff> m_bulletStuff;
-    std::unique_ptr<btDiscreteDynamicsWorld> m_physicsWorld;
-
-    // Keep Bullet dependency isolated -> unique_ptr here
-    std::unique_ptr<Magnum::BulletIntegration::DebugDraw> m_physicsDebugDraw;
+    PhysXUnique<physx::PxDefaultCpuDispatcher> m_physicsDispatcher;
+    PhysXUnique<physx::PxScene> m_physicsScene;
 
     Magnum::Vector3 m_lightPosition;
 };

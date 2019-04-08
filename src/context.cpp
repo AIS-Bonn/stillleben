@@ -2,6 +2,7 @@
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
 #include <stillleben/context.h>
+#include <stillleben/physx.h>
 
 #include <algorithm>
 
@@ -36,8 +37,7 @@ T getExtension(const char* name)
 
 #include <Magnum/Platform/WindowlessGlxApplication.h>
 
-// PhysX
-#include "physx.h"
+#include "physx_impl.h"
 
 using namespace Magnum;
 
