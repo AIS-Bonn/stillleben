@@ -69,6 +69,9 @@ public:
     Object();
     ~Object();
 
+    Object(const Object&) = delete;
+    Object& operator=(const Object&) = delete;
+
     static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh);
 
     void setPose(const Magnum::Matrix4& pose);
