@@ -147,20 +147,22 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
 
-        // This is a bit tricky: Bullet can only handle rigid transforms
-        // here. So we ask for the relative transform to m_meshObject
-        // (which is rigid), and then apply the rigid part of the pretransform.
-        // Scaling is then handled by scaling the entire bullet collision shape.
-        btTransform bulletTransform(
-            m_mesh->pretransformRigid()
-             * m_meshObject.absoluteTransformationMatrix().inverted()
-             * object->absoluteTransformationMatrix()
-        );
+        auto collisionShape = m_mesh->collisionShapes()[objectData->instance()];
 
-        m_collisionShape->addChildShape(
-            bulletTransform,
-            m_mesh->collisionShapes()[objectData->instance()].get()
-        );
+        if(collisionShape)
+        {
+            // This is a bit tricky: Bullet can only handle rigid transforms
+            // here. So we ask for the relative transform to m_meshObject
+            // (which is rigid), and then apply the rigid part of the pretransform.
+            // Scaling is then handled by scaling the entire bullet collision shape.
+            btTransform bulletTransform(
+                m_mesh->pretransformRigid()
+                * m_meshObject.absoluteTransformationMatrix().inverted()
+                * object->absoluteTransformationMatrix()
+            );
+
+            m_collisionShape->addChildShape(bulletTransform, collisionShape.get());
+        }
     }
 
     // Recursively add children
