@@ -6,9 +6,6 @@
 #include <stillleben/contrib/ctpl_stl.h>
 #include <stillleben/mesh_tools/simplify_mesh.h>
 
-#include <btBulletDynamicsCommon.h>
-#include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
-
 #include <Corrade/Utility/Configuration.h>
 
 #include <Magnum/GL/Mesh.h>
@@ -83,64 +80,6 @@ static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCo
     }
 
     return out;
-}
-
-/**
- * @brief Create bullet collision shape from Trade::MeshData3D
- *
- * @warning The resulting collision shape references the original mesh data,
- *   so the MeshData3D instance needs to be kept around!
- **/
-static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
-    const Trade::MeshData3D& meshData, bool convexHull = true)
-{
-    // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
-
-    if(meshData.primitive() != MeshPrimitive::Triangles)
-    {
-        Error() << "Cannot load collision mesh, skipping";
-        return {};
-    }
-
-    if(convexHull)
-    {
-        auto shape = std::make_shared<btConvexHullShape>(
-            reinterpret_cast<const float*>(meshData.positions(0).data()),
-            meshData.positions(0).size(),
-            sizeof(Vector3)
-        );
-
-        shape->optimizeConvexHull();
-
-        return shape;
-    }
-    else
-    {
-        btIndexedMesh bulletMesh;
-        bulletMesh.m_numTriangles = meshData.indices().size()/3;
-        bulletMesh.m_triangleIndexBase = reinterpret_cast<const unsigned char *>(meshData.indices().data());
-        bulletMesh.m_triangleIndexStride = 3 * sizeof(UnsignedInt);
-        bulletMesh.m_numVertices = meshData.positions(0).size();
-        bulletMesh.m_vertexBase = reinterpret_cast<const unsigned char *>(meshData.positions(0).data());
-        bulletMesh.m_vertexStride = sizeof(Vector3);
-        bulletMesh.m_indexType = PHY_INTEGER;
-        bulletMesh.m_vertexType = PHY_FLOAT;
-
-        auto tivArray = new btTriangleIndexVertexArray();
-        tivArray->addIndexedMesh(bulletMesh, PHY_INTEGER);
-
-        auto shape = std::shared_ptr<btGImpactMeshShape>(
-            new btGImpactMeshShape(tivArray),
-            [=](btGImpactMeshShape* b) {
-                delete b;
-                delete tivArray;
-            }
-        );
-
-        shape->updateBound();
-        shape->setMargin(0.1f);
-        return shape;
-    }
 }
 
 Mesh::Mesh(const std::shared_ptr<Context>& ctx)
