@@ -53,7 +53,6 @@ void Object::load()
     m_rigidBody.reset(
         m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform())
     );
-    m_rigidBody->setMass(1.0f);
 
     // pretransform is handled differently for Magnum & PhysX:
     // For Magnum, we just use the pretransform directly, while for PhysX
@@ -83,6 +82,9 @@ void Object::load()
     }
 
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
+
+    // Calculate mass & inertia
+    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -133,7 +135,7 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             auto& physics = m_mesh->context()->physxPhysics();
 
             PhysXHolder<physx::PxMaterial> material{
-                physics.createMaterial(0.5f, 0.5f, 0.6f)
+                physics.createMaterial(0.5f, 0.5f, 0.0f)
             };
             physx::PxMeshScale meshScale(m_mesh->pretransformScale());
 
@@ -212,6 +214,11 @@ void Object::setPose(const Magnum::Matrix4& matrix)
     m_sceneObject.setTransformation(matrix);
 
     m_rigidBody->setGlobalPose(physx::PxTransform{matrix});
+}
+
+void Object::updateFromPhysics()
+{
+    m_sceneObject.setTransformation(Matrix4{m_rigidBody->getGlobalPose()});
 }
 
 void Object::setInstanceIndex(unsigned int index)

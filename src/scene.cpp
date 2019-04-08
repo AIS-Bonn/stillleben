@@ -317,96 +317,96 @@ void Scene::chooseRandomLightPosition()
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
-//     // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
-//     std::uniform_real_distribution<float> angleDist(30.0*M_PI/180.0, M_PI/2.0 - 30.0*M_PI/180.0);
-//     Magnum::Rad angle{angleDist(m_randomGenerator)};
-//
-//     Magnum::Vector3 normal{0.0f, -Math::sin(angle), -Math::cos(angle)};
-//
-//     // The plane always goes through a point [0 0 d].
-//     float minDistVis = 0.1f;
-//     float maxDiameter = 0.0f;
-//     for(auto& obj : m_objects)
-//     {
-//         float diameter = obj->mesh()->bbox().size().length();
-//         maxDiameter = std::max(maxDiameter, diameter);
-//         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
-//     }
-//     std::uniform_real_distribution<float> dDist{0.8f*minDistVis, 4.0f*minDistVis};
-//
-//     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
-//
-//     float planeConstant = Magnum::Math::dot(normal, p);
-//
-//     Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
-//     Debug{} << "Focal point is" << p;
-//
-//     // Add it to the physics scene
-//     Vector3 xAxis = Vector3::xAxis();
-//     Vector3 zAxis = normal;
-//     Vector3 yAxis = Math::cross(zAxis, xAxis);
-//
-//     Matrix3 rot{xAxis, yAxis, zAxis};
-//
-//     Matrix4 T = Matrix4::from(rot, p);
-//
-//     btBoxShape boxShape(btVector3{2.0, 2.0, 0.05});
-//     btDefaultMotionState boxState(btTransform{T});
-//     btRigidBody::btRigidBodyConstructionInfo info(
-//         0.0, &boxState, &boxShape
-//     );
-//     btRigidBody boxBody{info};
-//
-// //     btStaticPlaneShape planeShape{btVector3{normal}, planeConstant};
-// //     btDefaultMotionState planeState;
-// //     btRigidBody planeBody{0.0, &planeState, &planeShape};
-// //     planeBody.setFriction(0.0);
-//
-//     m_physicsWorld->addRigidBody(&boxBody);
-//     auto remover = finally([&]{ m_physicsWorld->removeRigidBody(&boxBody); });
-//
-//     // Switch on gravity
-//     m_physicsWorld->setGravity(btVector3{-9.81f * normal});
-//
-//     // Arrange the objects randomly above the plane
-//     std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
-//     Debug{} << "Initial object poses:";
-//     float z = 0.0f;
-//     for(auto& obj : m_objects)
-//     {
-//         z += maxDiameter;
-//         Magnum::Vector3 pos = p + z*normal /*+ Magnum::Vector3{
-//             posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
-//         }*/;
-//         Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
-//
-//         Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
-//         obj->setPose(pose);
-//
-//         Debug{} << pose;
-//     }
-//
-//     // We simulate a strong fake gravity towards p
-//     const Vector3 gravityCenter = p + 0.1*normal;
-//
-//     const int maxIterations = 40;
-//     for(int i = 0; i < maxIterations; ++i)
-//     {
-//         if(visCallback)
-//             visCallback(i);
-//
-//         Debug{} << "Iteration";
-//         for(auto& obj : m_objects)
-//         {
+    // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
+    std::uniform_real_distribution<float> angleDist(30.0*M_PI/180.0, M_PI/2.0 - 30.0*M_PI/180.0);
+    Magnum::Rad angle{angleDist(m_randomGenerator)};
+
+    Magnum::Vector3 normal{0.0f, -Math::sin(angle), -Math::cos(angle)};
+
+    // The plane always goes through a point [0 0 d].
+    float minDistVis = 0.1f;
+    float maxDiameter = 0.0f;
+    for(auto& obj : m_objects)
+    {
+        float diameter = obj->mesh()->bbox().size().length();
+        maxDiameter = std::max(maxDiameter, diameter);
+        minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
+    }
+    std::uniform_real_distribution<float> dDist{2.0f*minDistVis, 4.0f*minDistVis};
+
+    Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
+
+    float planeConstant = Magnum::Math::dot(normal, p);
+
+    Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
+    Debug{} << "Focal point is" << p;
+
+    // Add it to the physics scene
+    Vector3 xAxis = Vector3::xAxis();
+    Vector3 zAxis = normal;
+    Vector3 yAxis = Math::cross(zAxis, xAxis);
+
+    Matrix3 rot{xAxis, yAxis, zAxis};
+
+    Matrix4 T = Matrix4::from(rot, p);
+
+    auto& physics = m_ctx->physxPhysics();
+
+    physx::PxBoxGeometry boxGeom{2.0, 2.0, 0.02};
+    PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
+    PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
+    PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
+    actor->attachShape(*shape);
+
+    m_physicsScene->addActor(*actor);
+    auto remover = finally([&](){ m_physicsScene->removeActor(*actor); });
+
+    m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
+
+    // Arrange the objects randomly above the plane
+    std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
+    Debug{} << "Initial object poses:";
+    float z = 0.0f;
+    for(auto& obj : m_objects)
+    {
+        z += maxDiameter;
+        Magnum::Vector3 pos = p + z*normal /*+ Magnum::Vector3{
+            posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
+        }*/;
+        Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
+
+        Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
+        obj->setPose(pose);
+
+        Debug{} << pose;
+    }
+
+    // We simulate a strong fake gravity towards p
+    const Vector3 gravityCenter = p + 0.1*normal;
+
+    const int maxIterations = 40;
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        if(visCallback)
+            visCallback(i);
+
+        Debug{} << "Iteration";
+        for(auto& obj : m_objects)
+        {
 //             Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
 //             obj->rigidBody().applyCentralForce(btVector3{5.0f * dir});
-//             Debug{} << "Obj pos:" << obj->pose().translation();
-// //             Debug{} << "plane pos:" << Vector3{planeBody.getWorldTransform().getOrigin()};
-//         }
-//
-// //         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
-//         m_physicsWorld->stepSimulation(0.02, 10);
-//     }
+            Debug{} << "Obj pos:" << obj->pose().translation();
+//             Debug{} << "plane pos:" << Vector3{planeBody.getWorldTransform().getOrigin()};
+        }
+
+        m_physicsScene->simulate(0.05f);
+        m_physicsScene->fetchResults(true);
+
+        for(auto& obj : m_objects)
+        {
+            obj->updateFromPhysics();
+        }
+    }
 }
 
 }

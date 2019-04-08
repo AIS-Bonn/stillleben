@@ -95,6 +95,8 @@ public:
     physx::PxRigidDynamic& rigidBody()
     { return *m_rigidBody; }
 
+    void updateFromPhysics();
+
 private:
     void load();
     void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);
