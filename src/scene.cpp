@@ -200,7 +200,10 @@ bool Scene::isObjectColliding(Object& object)
 
     for(auto shape : shapes)
     {
-        const auto& geometry = shape->getGeometry().any();
+        // The PhysX API is crappy here: be careful not to remove the copy
+        // in the first line, and, conversely, don't copy in the second line.
+        auto geometryHolder = shape->getGeometry();
+        const auto& geometry = geometryHolder.any();
 
         auto pose = body.getGlobalPose() * shape->getLocalPose();
 
