@@ -15,6 +15,14 @@ include(ExternalProject)
 # -DCMAKE_INSTALL_PREFIX="/home/max/projects/phd/stillleben/cpp_build/contrib/physx/PhysX-prefix/src/PhysX/physx/install/linux/PhysX"
 # -DCMAKE_BUILD_TYPE=release
 
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(PHYSX_BUILD_TYPE Debug)
+    set(PHYSX_BUILD_OUT debug)
+else()
+    set(PHYSX_BUILD_TYPE Release)
+    set(PHYSX_BUILD_OUT release)
+endif()
+
 ExternalProject_Add(PhysX_external
     # PhysX_4.1.0.25992954
     URL https://github.com/NVIDIAGameWorks/PhysX/archive/4050bbfdc2699dfab7edbf0393df8ff96bbe06c5.zip
@@ -32,7 +40,7 @@ ExternalProject_Add(PhysX_external
         -DPX_OUTPUT_ARCH=x86
         "-DCMAKE_PREFIX_PATH=<SOURCE_DIR>/externals/opengl-linux"
         "-DPHYSX_ROOT_DIR=<SOURCE_DIR>/physx"
-        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_BUILD_TYPE=${PHYSX_BUILD_TYPE}"
         "-DCMAKEMODULES_PATH=<SOURCE_DIR>/externals/cmakemodules"
         "-DPXSHARED_PATH=<SOURCE_DIR>/pxshared"
         "-DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>"
@@ -43,12 +51,12 @@ ExternalProject_Add(PhysX_external
     USES_TERMINAL_BUILD ON
 
     BUILD_BYPRODUCTS
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysX_64.so"
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysXCommon_64.so"
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysXFoundation_64.so"
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysXPvdSDK_static_64.a"
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysXExtensions_static_64.a"
-        "<INSTALL_DIR>/bin/linux.clang/release/libPhysXCooking_64.so"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysX_64.so"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysXCommon_64.so"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysXFoundation_64.so"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysXPvdSDK_static_64.a"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysXExtensions_static_64.a"
+        "<INSTALL_DIR>/bin/linux.clang/${PHYSX_BUILD_OUT}/libPhysXCooking_64.so"
 )
 
 ExternalProject_Get_Property(PhysX_external INSTALL_DIR)
@@ -56,7 +64,7 @@ ExternalProject_Get_Property(PhysX_external INSTALL_DIR)
 # Define an interface target for PhysX
 add_library(PhysX INTERFACE)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if(${PHYSX_BUILD_TYPE} STREQUAL "Debug")
     target_compile_definitions(PhysX INTERFACE -D_DEBUG=1)
     set(OUT_DIR "${INSTALL_DIR}/bin/linux.clang/debug")
 else()
