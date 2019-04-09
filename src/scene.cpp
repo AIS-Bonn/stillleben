@@ -341,8 +341,8 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     float planeConstant = Magnum::Math::dot(normal, p);
 
-    Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
-    Debug{} << "Focal point is" << p;
+//     Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
+//     Debug{} << "Focal point is" << p;
 
     // Add it to the physics scene
     Vector3 xAxis = Vector3::xAxis();
@@ -368,7 +368,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     // Arrange the objects randomly above the plane
     std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
-    Debug{} << "Initial object poses:";
+
     float z = 0.0f;
     for(auto& obj : m_objects)
     {
@@ -380,8 +380,6 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
         Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
         obj->setPose(pose);
-
-        Debug{} << pose;
     }
 
     // We simulate a strong fake gravity towards p
