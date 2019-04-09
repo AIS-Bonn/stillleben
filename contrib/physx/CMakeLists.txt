@@ -32,7 +32,7 @@ ExternalProject_Add(PhysX_external
         -DPX_OUTPUT_ARCH=x86
         "-DCMAKE_PREFIX_PATH=<SOURCE_DIR>/externals/opengl-linux"
         "-DPHYSX_ROOT_DIR=<SOURCE_DIR>/physx"
-        "-DCMAKE_BUILD_TYPE=Release"
+        "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
         "-DCMAKEMODULES_PATH=<SOURCE_DIR>/externals/cmakemodules"
         "-DPXSHARED_PATH=<SOURCE_DIR>/pxshared"
         "-DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>"
