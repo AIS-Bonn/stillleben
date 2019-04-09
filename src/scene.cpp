@@ -200,7 +200,7 @@ bool Scene::isObjectColliding(Object& object)
 
     for(auto shape : shapes)
     {
-        auto geometry = shape->getGeometry().any();
+        const auto& geometry = shape->getGeometry().any();
 
         auto pose = body.getGlobalPose() * shape->getLocalPose();
 
