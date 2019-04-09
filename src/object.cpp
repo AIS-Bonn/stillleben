@@ -86,6 +86,7 @@ void Object::load()
 
     // Calculate mass & inertia
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
+    Debug{} << "Object with mass" << m_rigidBody->getMass();
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
@@ -160,7 +161,7 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
 
             Matrix4 pose = Matrix4::from(
                 poseInSceneObjectRigid.rotationScaling(),
-                (1.0f/m_mesh->pretransformScale()) * poseInSceneObjectRigid.translation()
+                m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
             );
 
             shape->setLocalPose(physx::PxTransform{pose});
