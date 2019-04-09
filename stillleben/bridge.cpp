@@ -671,7 +671,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                         object->mesh()->bbox().size().length()
                     };
                     sl::pose::RandomPoseSampler sampler{posSampler};
-                    return scene->findNonCollidingPose(*object, sampler, max_iterations);                }
+                    return scene->findNonCollidingPose(*object, sampler, max_iterations);
+                }
                 else if(sampler == "viewpoint")
                 {
                     if(!kwargs.contains("viewpoint"))
