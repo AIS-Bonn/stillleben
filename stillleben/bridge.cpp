@@ -389,6 +389,43 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         })
     ;
 
+    // Quaternion <-> Matrix
+    m.def("quat_to_matrix",
+        [](torch::Tensor& quat){
+            if(quat.dim() != 1 || quat.size(0) != 4)
+                throw std::invalid_argument{"Quaternion tensor should be one-dimensional tensor of size 4"};
+
+            auto tmp = quat.cpu().contiguous();
+            auto quat_view = tmp.accessor<float,1>();
+            Magnum::Quaternion magnumQ{{quat_view[0], quat_view[1], quat_view[2]}, quat_view[3]};
+
+            return toTorch<Magnum::Matrix3>::convert(magnumQ.toMatrix());
+        },
+        R"EOS(
+            Convert a quaternion into a 3x3 rotation matrix.
+
+            Args:
+                quat (tensor): Should be a size 4 tensor with elements [x y z w]
+            Returns:
+                tensor: 3x3 rotation matrix
+        )EOS");
+    m.def("matrix_to_quat",
+        [](torch::Tensor& matrix){
+            auto magnumMatrix = fromTorch<Magnum::Matrix3>::convert(matrix);
+
+            auto q = Magnum::Quaternion::fromMatrix(magnumMatrix);
+
+            return toTorch<Magnum::Vector4>::convert({q.vector(), q.scalar()});
+        },
+        R"EOS(
+            Convert a 3x3 rotation matrix into a quaternion.
+
+            Args:
+                matrix (tensor): 3x3 rotation matrix
+            Returns:
+                tensor: Quaternion [x y z w]
+        )EOS");
+
     py::class_<Magnum::GL::RectangleTexture, std::shared_ptr<Magnum::GL::RectangleTexture>>(
         m, "Texture", R"EOS(
             An RGBA texture.
