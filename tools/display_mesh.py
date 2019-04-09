@@ -26,6 +26,8 @@ if __name__ == "__main__":
         help='Display normals')
     parser.add_argument('--tabletop', action='store_true',
         help='Simulate a tabletop scene')
+    parser.add_argument('--normalize', action='store_true',
+        help='Normalize mesh scales')
 
     args = parser.parse_args()
 
@@ -36,16 +38,18 @@ if __name__ == "__main__":
     if args.background:
         scene.background_image = sl.Texture(args.background)
 
+    print('Loading meshes (this can take some time)...')
     meshes = sl.Mesh.load_threaded(args.mesh)
     for mesh in meshes:
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
-        #mesh.center_bbox()
-        #mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        if args.normalize:
+            mesh.center_bbox()
+            mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
 
-        print("normalized:", mesh.bbox)
-        print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
+            print("normalized:", mesh.bbox)
+            print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
 
     print("Meshes loaded.")
 
