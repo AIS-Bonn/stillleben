@@ -332,7 +332,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
-    std::uniform_real_distribution<float> dDist{2.0f*minDistVis, 4.0f*minDistVis};
+    std::uniform_real_distribution<float> dDist{1.0f*minDistVis, 3.0f*minDistVis};
 
     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
 
@@ -352,7 +352,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     auto& physics = m_ctx->physxPhysics();
 
-    physx::PxBoxGeometry boxGeom{2.0, 2.0, 0.02};
+    physx::PxBoxGeometry boxGeom{10.0, 10.0, 0.02};
     PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
     PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
     PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
@@ -384,19 +384,37 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     // We simulate a strong fake gravity towards p
     const Vector3 gravityCenter = p + 0.1*normal;
 
-    const int maxIterations = 40;
+    const int maxIterations = 100;
     for(int i = 0; i < maxIterations; ++i)
     {
         if(visCallback)
             visCallback(i);
 
-        Debug{} << "Iteration";
         for(auto& obj : m_objects)
         {
-//             Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
-//             obj->rigidBody().applyCentralForce(btVector3{5.0f * dir});
-            Debug{} << "Obj pos:" << obj->pose().translation();
-//             Debug{} << "plane pos:" << Vector3{planeBody.getWorldTransform().getOrigin()};
+            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
+            obj->rigidBody().addForce(physx::PxVec3{5.0f * dir});
+        }
+
+        m_physicsScene->simulate(0.05f);
+        m_physicsScene->fetchResults(true);
+
+        for(auto& obj : m_objects)
+        {
+            obj->updateFromPhysics();
+        }
+    }
+
+    // Simulate further with only gravity
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        if(visCallback)
+            visCallback(i);
+
+        for(auto& obj : m_objects)
+        {
+            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
+            obj->rigidBody().addForce(physx::PxVec3{0.5f * dir});
         }
 
         m_physicsScene->simulate(0.05f);

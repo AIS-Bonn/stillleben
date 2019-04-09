@@ -6,6 +6,8 @@ from stillleben import camera_model
 
 from PIL import Image
 
+import time
+
 if __name__ == "__main__":
     import argparse
 
@@ -34,10 +36,8 @@ if __name__ == "__main__":
     if args.background:
         scene.background_image = sl.Texture(args.background)
 
-    meshes = []
-    for mesh_file in args.mesh:
-        mesh = sl.Mesh(mesh_file, max_physics_triangles=6000)
-
+    meshes = sl.Mesh.load_threaded(args.mesh)
+    for mesh in meshes:
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
@@ -46,7 +46,6 @@ if __name__ == "__main__":
 
         print("normalized:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
-        meshes.append(mesh)
 
     print("Meshes loaded.")
 
@@ -82,7 +81,10 @@ if __name__ == "__main__":
         #dbg_img.save('/tmp/physics{:03}.png'.format(iteration))
 
     if args.tabletop:
-        scene.simulate_tabletop_scene(vis_cb)
+        s1 = time.time()
+        scene.simulate_tabletop_scene()
+        s2 = time.time()
+        print('Tabletop sim took {}s'.format(s2-s1))
 
     print('Resulting poses:')
     for obj in scene.objects:
