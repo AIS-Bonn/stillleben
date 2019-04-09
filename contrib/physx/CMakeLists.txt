@@ -47,6 +47,7 @@ ExternalProject_Add(PhysX_external
         "-DPXSHARED_INSTALL_PREFIX:PATH=<INSTALL_DIR>"
         "-DPX_OUTPUT_LIB_DIR=<SOURCE_DIR>/physx"
         "-DPX_OUTPUT_BIN_DIR=<SOURCE_DIR>/physx"
+        "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
 
     USES_TERMINAL_BUILD ON
 
