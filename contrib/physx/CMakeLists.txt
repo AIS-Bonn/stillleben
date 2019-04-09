@@ -53,16 +53,25 @@ ExternalProject_Add(PhysX_external
 
 ExternalProject_Get_Property(PhysX_external INSTALL_DIR)
 
+# Define an interface target for PhysX
 add_library(PhysX INTERFACE)
+
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    target_compile_definitions(PhysX INTERFACE -D_DEBUG=1)
+    set(OUT_DIR "${INSTALL_DIR}/bin/linux.clang/debug")
+else()
+    set(OUT_DIR "${INSTALL_DIR}/bin/linux.clang/release")
+endif()
+
 set(LIBRARIES
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysX_64.so
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXFoundation_64.so
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXPvdSDK_static_64.a
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXExtensions_static_64.a
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCooking_64.so
+    ${OUT_DIR}/libPhysX_64.so
+    ${OUT_DIR}/libPhysXPvdSDK_static_64.a
+    ${OUT_DIR}/libPhysXExtensions_static_64.a
+    ${OUT_DIR}/libPhysXCooking_64.so
     "-Wl,--no-as-needed"
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCommon_64.so
+    ${OUT_DIR}/libPhysXCommon_64.so
     "-Wl,--as-needed"
+    ${OUT_DIR}/libPhysXFoundation_64.so
 )
 
 target_link_libraries(PhysX INTERFACE ${LIBRARIES})
@@ -72,11 +81,11 @@ add_dependencies(PhysX PhysX_external)
 target_include_directories(PhysX INTERFACE ${INSTALL_DIR}/include)
 
 install(FILES
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysX_64.so
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXFoundation_64.so
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXPvdSDK_static_64.a
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXExtensions_static_64.a
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCooking_64.so
-    ${INSTALL_DIR}/bin/linux.clang/release/libPhysXCommon_64.so
+    ${OUT_DIR}/libPhysX_64.so
+    ${OUT_DIR}/libPhysXFoundation_64.so
+    ${OUT_DIR}/libPhysXPvdSDK_static_64.a
+    ${OUT_DIR}/libPhysXExtensions_static_64.a
+    ${OUT_DIR}/libPhysXCooking_64.so
+    ${OUT_DIR}/libPhysXCommon_64.so
     DESTINATION lib
 )
