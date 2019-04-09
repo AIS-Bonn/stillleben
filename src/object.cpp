@@ -51,7 +51,7 @@ Object::~Object()
 void Object::load()
 {
     m_rigidBody.reset(
-        m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform())
+        m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
     );
 
     // pretransform is handled differently for Magnum & PhysX:
