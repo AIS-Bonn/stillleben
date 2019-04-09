@@ -207,7 +207,7 @@ bool Scene::isObjectColliding(Object& object)
         physx::PxOverlapBuffer cb(nullptr, 0);
 
         bool contacts = m_physicsScene->overlap(geometry, pose, cb,
-            physx::PxQueryFilterData(physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eANY_HIT),
+            physx::PxQueryFilterData(physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eANY_HIT | physx::PxQueryFlag::ePREFILTER),
             &filter
         );
 
