@@ -53,6 +53,7 @@ void Object::load()
     m_rigidBody.reset(
         m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
     );
+    m_rigidBody->userData = this;
 
     // pretransform is handled differently for Magnum & PhysX:
     // For Magnum, we just use the pretransform directly, while for PhysX
