@@ -80,7 +80,9 @@ public:
         pxPvd.reset(
             PxCreatePvd(*pxFoundation)
         );
-        auto transport = physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+        PhysXHolder<physx::PxPvdTransport> transport{
+            physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10)
+        };
         pxPvd->connect(
             *transport,
             physx::PxPvdInstrumentationFlag::eALL
