@@ -339,11 +339,6 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
 
-    float planeConstant = Magnum::Math::dot(normal, p);
-
-//     Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
-//     Debug{} << "Focal point is" << p;
-
     // Add it to the physics scene
     Vector3 xAxis = Vector3::xAxis();
     Vector3 zAxis = normal;
@@ -355,7 +350,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     auto& physics = m_ctx->physxPhysics();
 
-    physx::PxBoxGeometry boxGeom{10.0, 10.0, 0.02};
+    physx::PxBoxGeometry boxGeom{30.0, 30.0, 0.04};
     PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
     PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
     PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};

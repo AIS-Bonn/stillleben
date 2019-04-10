@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
         if args.normalize:
             mesh.center_bbox()
-            mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+            mesh.scale_to_bbox_diagonal(0.2, 'exact')
 
             print("normalized:", mesh.bbox)
             print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
