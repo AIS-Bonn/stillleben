@@ -91,6 +91,16 @@ namespace
         }
     };
 
+    template<>
+    struct toTorch<Magnum::Vector4>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Vector4& vec)
+        {
+            return torch::from_blob(const_cast<float*>(vec.data()), {4}, at::kFloat).clone();
+        }
+    };
+
     // Torch -> Magnum
     template<class T>
     struct fromTorch
@@ -153,6 +163,24 @@ namespace
             const float* data = cpuTensor.data<float>();
             Magnum::Vector3 vec{Magnum::Math::NoInit};
             memcpy(vec.data(), data, 3*sizeof(float));
+
+            return vec;
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Vector4>
+    {
+        using Type = at::Tensor;
+        static Magnum::Vector4 convert(const at::Tensor& tensor)
+        {
+            auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous();
+            if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 4)
+                throw std::invalid_argument("A vector4 tensor must have size 4");
+
+            const float* data = cpuTensor.data<float>();
+            Magnum::Vector4 vec{Magnum::Math::NoInit};
+            memcpy(vec.data(), data, 4*sizeof(float));
 
             return vec;
         }
