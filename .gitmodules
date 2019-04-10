@@ -10,3 +10,6 @@
 [submodule "contrib/magnum-integration"]
 	path = contrib/magnum-integration
 	url = https://github.com/mosra/magnum-integration.git
+[submodule "contrib/imgui"]
+	path = contrib/imgui
+	url = git@github.com:ocornut/imgui.git

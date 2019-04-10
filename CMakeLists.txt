@@ -17,6 +17,8 @@ else()
     set(MAGNUM_GL_APP WindowlessGlxApplication)
 endif()
 
+option(WITH_ALIGN_MESH "Build the align_mesh tool" OFF)
+
 # Build Corrade & Magnum
 add_subdirectory(contrib)
 
@@ -41,7 +43,7 @@ endif()
 
 include_directories(include)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
@@ -92,3 +94,4 @@ install(DIRECTORY
 )
 
 add_subdirectory(tests)
+add_subdirectory(tools)
