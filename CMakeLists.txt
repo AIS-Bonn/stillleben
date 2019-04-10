@@ -77,6 +77,7 @@ target_link_libraries(stillleben PUBLIC
     Magnum::DebugTools
     MagnumIntegration::Bullet
     Magnum::${MAGNUM_GL_APP}
+    PhysX
 )
 
 if(CUDA_FOUND)

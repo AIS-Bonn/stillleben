@@ -3,12 +3,10 @@
 
 #include <stillleben/scene.h>
 
+#include <stillleben/context.h>
 #include <stillleben/object.h>
 #include <stillleben/mesh.h>
 
-#include <btBulletDynamicsCommon.h>
-
-#include <Magnum/BulletIntegration/DebugDraw.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
@@ -19,24 +17,16 @@
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 
+#include "physx_impl.h"
+
 using namespace Magnum;
 using namespace Math::Literals;
 
 namespace sl
 {
 
-struct Scene::BulletStuff
-{
-    std::unique_ptr<btDbvtBroadphase> broadphase;
-    std::unique_ptr<btDefaultCollisionConfiguration> collisionConfig;
-    std::unique_ptr<btCollisionDispatcher> dispatcher;
-    std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
-};
-
 Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSize)
  : m_ctx{ctx}
- , m_bulletStuff{std::make_unique<BulletStuff>()}
- , m_physicsDebugDraw{std::make_unique<BulletIntegration::DebugDraw>()}
 {
     // Every scene needs a camera
     const Rad FOV_X = Deg(58.0);
@@ -51,24 +41,16 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
     std::random_device dev;
     m_randomGenerator.seed(dev());
 
-    m_bulletStuff->broadphase = std::make_unique<btDbvtBroadphase>();
-    m_bulletStuff->collisionConfig = std::make_unique<btDefaultCollisionConfiguration>();
-    m_bulletStuff->dispatcher = std::make_unique<btCollisionDispatcher>(m_bulletStuff->collisionConfig.get());
-    m_bulletStuff->solver = std::make_unique<btSequentialImpulseConstraintSolver>();
-    m_physicsWorld = std::make_unique<btDiscreteDynamicsWorld>(
-        m_bulletStuff->dispatcher.get(),
-        m_bulletStuff->broadphase.get(),
-        m_bulletStuff->solver.get(),
-        m_bulletStuff->collisionConfig.get()
-    );
+    auto& physics = ctx->physxPhysics();
 
-    m_physicsWorld->setGravity({0.0, 0.0, -10.0f});
+    m_physicsDispatcher.reset(physx::PxDefaultCpuDispatcherCreate(2));
 
-    m_physicsDebugDraw->setMode(
-        BulletIntegration::DebugDraw::Mode::DrawWireframe
-        | BulletIntegration::DebugDraw::Mode::DrawFrames
-    );
-    m_physicsWorld->setDebugDrawer(m_physicsDebugDraw.get());
+    physx::PxSceneDesc desc(physics.getTolerancesScale());
+    desc.gravity = physx::PxVec3(0.0f, 9.81f, 0.0f);
+    desc.cpuDispatcher = m_physicsDispatcher.get();
+    desc.filterShader = physx::PxDefaultSimulationFilterShader;
+
+    m_physicsScene.reset(physics.createScene(desc));
 }
 
 Scene::~Scene()
@@ -78,7 +60,7 @@ Scene::~Scene()
     for(auto& obj : m_objects)
     {
         obj->setParentSceneObject(nullptr);
-        obj->setPhysicsWorld(nullptr);
+        obj->setPhysicsScene(nullptr);
     }
 }
 
@@ -147,7 +129,7 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
     m_objects.push_back(obj);
 
     obj->setParentSceneObject(&m_scene);
-    obj->setPhysicsWorld(m_physicsWorld.get());
+    obj->setPhysicsScene(m_physicsScene.get());
 
     // Automatically set the instance index if not set by the user already
     if(obj->instanceIndex() == 0)
@@ -178,90 +160,65 @@ void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& te
 
 void Scene::drawPhysicsDebug()
 {
-    m_physicsDebugDraw->setTransformationProjectionMatrix(
-        m_camera->projectionMatrix() * m_camera->cameraMatrix()
-    );
-    m_physicsWorld->debugDrawWorld();
+    throw std::logic_error("Not implemented");
 }
 
-bool Scene::performCollisionCheck() const
-{
-    m_physicsWorld->performDiscreteCollisionDetection();
-
-    auto* dispatcher = m_physicsWorld->getDispatcher();
-
-    int numManifolds = dispatcher->getNumManifolds();
-    int numContacts = 0;
-    for(int i = 0; i < numManifolds; ++i)
-    {
-        auto* manifold = dispatcher->getManifoldByIndexInternal(i);
-
-        numContacts += manifold->getNumContacts();
-    }
-
-    Debug{} << "performCollisionCheck: found" << numContacts << "in" << numManifolds << "manifolds.";
-
-    return numContacts != 0;
-}
-
-// Ancient C++
 namespace
 {
-    struct CollisionCallback : public btCollisionWorld::ContactResultCallback
+    class AutoCollisionFilter : public physx::PxQueryFilterCallback
     {
-        btScalar addSingleResult(btManifoldPoint &, const btCollisionObjectWrapper *, int, int, const btCollisionObjectWrapper *, int, int) override
+    public:
+        explicit AutoCollisionFilter(const physx::PxActor* actor)
+         : m_actor{actor}
+        {}
+
+        physx::PxQueryHitType::Enum postFilter(const physx::PxFilterData& filterData, const physx::PxQueryHit& hit) override
         {
-            m_numContacts++;
-            return 0; // apparently unused (*argh*)
+            return physx::PxQueryHitType::eTOUCH;
         }
 
-        inline int numContacts() const
-        { return m_numContacts; }
+        physx::PxQueryHitType::Enum preFilter(const physx::PxFilterData& filterData, const physx::PxShape* shape, const physx::PxRigidActor* actor, physx::PxHitFlags& queryFlags) override
+        {
+            if(actor == m_actor)
+                return physx::PxQueryHitType::eNONE;
+
+            return physx::PxQueryHitType::eTOUCH;
+        }
     private:
-        int m_numContacts = 0;
+        const physx::PxActor* m_actor;
     };
 }
 
 bool Scene::isObjectColliding(Object& object)
 {
-    // Check if collides with other objects
-    CollisionCallback counter;
-    m_physicsWorld->contactTest(&object.rigidBody(), counter);
+    auto& body = object.rigidBody();
 
-    return counter.numContacts() != 0;
-}
+    std::vector<physx::PxShape*> shapes(body.getNbShapes());
+    body.getShapes(shapes.data(), shapes.size());
 
-constexpr float ANGULAR_VELOCITY_LIMIT = 20.0 / 180.0 * M_PI;
-constexpr float LINEAR_VELOCITY_LIMIT = 0.1;
+    AutoCollisionFilter filter(&body);
 
-void Scene::constrainingTickCallback(btDynamicsWorld* world, float timeStep)
-{
-    Scene* self = reinterpret_cast<Scene*>(world->getWorldUserInfo());
-
-    for(auto& obj : self->m_objects)
+    for(auto shape : shapes)
     {
-        auto& rigidBody = obj->rigidBody();
-        rigidBody.setDamping(0.5, 0.5);
+        // The PhysX API is crappy here: be careful not to remove the copy
+        // in the first line, and, conversely, don't copy in the second line.
+        auto geometryHolder = shape->getGeometry();
+        const auto& geometry = geometryHolder.any();
 
-//	Debug{} << "Object" << (i++);
-        btVector3 angularVelocity = rigidBody.getAngularVelocity();
-//	Debug{} << "angular:" << angularVelocity.getX() << angularVelocity.getY() << angularVelocity.getZ();
+        auto pose = body.getGlobalPose() * shape->getLocalPose();
 
-        float angVelNorm = angularVelocity.norm();
-        if(angVelNorm > ANGULAR_VELOCITY_LIMIT)
-            angularVelocity = angularVelocity / angVelNorm * ANGULAR_VELOCITY_LIMIT;
+        physx::PxOverlapBuffer cb(nullptr, 0);
 
-        rigidBody.setAngularVelocity(angularVelocity);
+        bool contacts = m_physicsScene->overlap(geometry, pose, cb,
+            physx::PxQueryFilterData(physx::PxQueryFlag::eDYNAMIC | physx::PxQueryFlag::eSTATIC | physx::PxQueryFlag::eANY_HIT | physx::PxQueryFlag::ePREFILTER),
+            &filter
+        );
 
-        btVector3 linearVelocity = rigidBody.getLinearVelocity();
-//	Debug{} << "linear:" << linearVelocity.getX() << linearVelocity.getY() << linearVelocity.getZ();
-
-        float linVelNorm = linearVelocity.norm();
-        if(linVelNorm > LINEAR_VELOCITY_LIMIT)
-            linearVelocity = linearVelocity / linVelNorm * LINEAR_VELOCITY_LIMIT;
-
-        rigidBody.setLinearVelocity(linearVelocity);
+        if(contacts)
+            return true;
     }
+
+    return false;
 }
 
 namespace
@@ -295,38 +252,38 @@ namespace
 
 bool Scene::resolveCollisions()
 {
-    constexpr int maxIterations = 40;
-
-    // Remove gravity
-    auto grav = m_physicsWorld->getGravity();
-    m_physicsWorld->setGravity(btVector3(0, 0, 0));
-
-    // Set it back when we exit
-    auto _ = finally([&](){m_physicsWorld->setGravity(grav);});
-
-    for(int i = 0; i < maxIterations; ++i)
-    {
-        m_physicsWorld->performDiscreteCollisionDetection();
-
-        int numContacts = 0;
-        {
-            auto* dispatcher = m_physicsWorld->getDispatcher();
-
-            int numManifolds = dispatcher->getNumManifolds();
-            for(int i = 0; i < numManifolds; ++i)
-            {
-                auto* manifold = dispatcher->getManifoldByIndexInternal(i);
-
-                numContacts += manifold->getNumContacts();
-            }
-        }
-
-        if(numContacts == 0)
-            return true;
-
-        m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
-        m_physicsWorld->stepSimulation(0.1, 1, 0.1);
-    }
+//     constexpr int maxIterations = 40;
+//
+//     // Remove gravity
+//     auto grav = m_physicsWorld->getGravity();
+//     m_physicsWorld->setGravity(btVector3(0, 0, 0));
+//
+//     // Set it back when we exit
+//     auto _ = finally([&](){m_physicsWorld->setGravity(grav);});
+//
+//     for(int i = 0; i < maxIterations; ++i)
+//     {
+//         m_physicsWorld->performDiscreteCollisionDetection();
+//
+//         int numContacts = 0;
+//         {
+//             auto* dispatcher = m_physicsWorld->getDispatcher();
+//
+//             int numManifolds = dispatcher->getNumManifolds();
+//             for(int i = 0; i < numManifolds; ++i)
+//             {
+//                 auto* manifold = dispatcher->getManifoldByIndexInternal(i);
+//
+//                 numContacts += manifold->getNumContacts();
+//             }
+//         }
+//
+//         if(numContacts == 0)
+//             return true;
+//
+//         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
+//         m_physicsWorld->stepSimulation(0.1, 1, 0.1);
+//     }
 
     return false;
 }
@@ -364,7 +321,7 @@ void Scene::chooseRandomLightPosition()
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
     // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
-    std::uniform_real_distribution<float> angleDist(0.0, M_PI/2.0);
+    std::uniform_real_distribution<float> angleDist(30.0*M_PI/180.0, M_PI/2.0 - 30.0*M_PI/180.0);
     Magnum::Rad angle{angleDist(m_randomGenerator)};
 
     Magnum::Vector3 normal{0.0f, -Math::sin(angle), -Math::cos(angle)};
@@ -378,57 +335,91 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
-    std::uniform_real_distribution<float> dDist{0.8f*minDistVis, 4.0f*minDistVis};
+    std::uniform_real_distribution<float> dDist{1.0f*minDistVis, 3.0f*minDistVis};
 
     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
 
-    float planeConstant = Magnum::Math::dot(normal, p);
-
-    Debug{} << "Plane has normal" << normal << "and constant" << planeConstant;
-    Debug{} << "Focal point is" << p;
-
     // Add it to the physics scene
-    btStaticPlaneShape planeShape{btVector3{normal}, planeConstant};
-    btDefaultMotionState planeState;
-    btRigidBody planeBody{0.0, &planeState, &planeShape};
-    planeBody.setFriction(0.0);
+    Vector3 xAxis = Vector3::xAxis();
+    Vector3 zAxis = normal;
+    Vector3 yAxis = Math::cross(zAxis, xAxis);
 
-    m_physicsWorld->addRigidBody(&planeBody);
-    auto remover = finally([&]{ m_physicsWorld->removeRigidBody(&planeBody); });
+    Matrix3 rot{xAxis, yAxis, zAxis};
+
+    Matrix4 T = Matrix4::from(rot, p);
+
+    auto& physics = m_ctx->physxPhysics();
+
+    physx::PxBoxGeometry boxGeom{30.0, 30.0, 0.04};
+    PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
+    PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
+    PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
+    actor->attachShape(*shape);
+
+    m_physicsScene->addActor(*actor);
+    auto remover = finally([&](){ m_physicsScene->removeActor(*actor); });
+
+    m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
 
     // Arrange the objects randomly above the plane
     std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
-    Debug{} << "Initial object poses:";
+
+    float z = 0.0f;
     for(auto& obj : m_objects)
     {
-        Magnum::Vector3 pos = p + 1.0f*maxDiameter*normal + Magnum::Vector3{
+        z += maxDiameter;
+        Magnum::Vector3 pos = p + z*normal /*+ Magnum::Vector3{
             posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
-        };
+        }*/;
         Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
 
         Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
         obj->setPose(pose);
-
-        Debug{} << pose;
     }
 
     // We simulate a strong fake gravity towards p
-    const int maxIterations = 40;
+    const Vector3 gravityCenter = p + 0.1*normal;
+
+    const int maxIterations = 100;
     for(int i = 0; i < maxIterations; ++i)
     {
         if(visCallback)
             visCallback(i);
 
-        Debug{} << "Iteration";
         for(auto& obj : m_objects)
         {
-            Magnum::Vector3 dir = (p - obj->pose().translation()).normalized();
-            obj->rigidBody().applyCentralForce(btVector3{10.0f * dir});
-            Debug{} << "Obj pos:" << obj->pose().translation();
+            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
+            obj->rigidBody().addForce(physx::PxVec3{5.0f * dir});
         }
 
-//         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
-        m_physicsWorld->stepSimulation(0.05, 10);
+        m_physicsScene->simulate(0.05f);
+        m_physicsScene->fetchResults(true);
+
+        for(auto& obj : m_objects)
+        {
+            obj->updateFromPhysics();
+        }
+    }
+
+    // Simulate further with only gravity
+    for(int i = 0; i < maxIterations; ++i)
+    {
+        if(visCallback)
+            visCallback(i);
+
+        for(auto& obj : m_objects)
+        {
+            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
+            obj->rigidBody().addForce(physx::PxVec3{0.5f * dir});
+        }
+
+        m_physicsScene->simulate(0.05f);
+        m_physicsScene->fetchResults(true);
+
+        for(auto& obj : m_objects)
+        {
+            obj->updateFromPhysics();
+        }
     }
 }
 

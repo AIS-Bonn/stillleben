@@ -2,6 +2,7 @@
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
 #include <stillleben/context.h>
+#include <stillleben/physx.h>
 
 #include <algorithm>
 
@@ -36,6 +37,8 @@ T getExtension(const char* name)
 
 #include <Magnum/Platform/WindowlessGlxApplication.h>
 
+#include "physx_impl.h"
+
 using namespace Magnum;
 
 namespace sl
@@ -69,6 +72,31 @@ public:
         {
             throw std::runtime_error("Could not load AssimpImporter plugin");
         }
+
+        // Setup PhysX stuff
+        pxFoundation.reset(
+            PxCreateFoundation(PX_PHYSICS_VERSION, pxAllocator, pxErrorCallback)
+        );
+        pxPvd.reset(
+            PxCreatePvd(*pxFoundation)
+        );
+        PhysXHolder<physx::PxPvdTransport> transport{
+            physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10)
+        };
+        pxPvd->connect(
+            *transport,
+            physx::PxPvdInstrumentationFlag::eALL
+        );
+
+        physx::PxTolerancesScale scale;
+
+        pxPhysics.reset(PxCreatePhysics(
+            PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
+        ));
+
+        pxCooking.reset(PxCreateCooking(
+            PX_PHYSICS_VERSION, *pxFoundation, physx::PxCookingParams(scale)
+        ));
     }
 
     void* egl_display = nullptr;
@@ -84,6 +112,13 @@ public:
     std::mutex importerManagerMutex;
 
     DebugTools::ResourceManager resourceManager;
+
+    physx::PxDefaultAllocator pxAllocator;
+    physx::PxDefaultErrorCallback pxErrorCallback;
+    PhysXHolder<physx::PxFoundation> pxFoundation;
+    PhysXHolder<physx::PxPvd> pxPvd;
+    PhysXHolder<physx::PxPhysics> pxPhysics;
+    PhysXHolder<physx::PxCooking> pxCooking;
 };
 
 Context::Context(const std::string& installPrefix)
@@ -442,6 +477,16 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
         std::cerr << messages << std::flush;
 
     return texture;
+}
+
+physx::PxPhysics& Context::physxPhysics()
+{
+    return *m_d->pxPhysics;
+}
+
+physx::PxCooking& Context::physxCooking()
+{
+    return *m_d->pxCooking;
 }
 
 }

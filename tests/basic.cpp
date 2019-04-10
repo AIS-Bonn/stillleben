@@ -286,4 +286,38 @@ TEST_CASE("physics")
     // Load a mesh file
     auto mesh = std::make_shared<sl::Mesh>(context);
     mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf", 100);
+
+    mesh->centerBBox();
+    mesh->scaleToBBoxDiagonal(0.5);
+
+    // Create a scene
+    sl::Scene scene(context, sl::ViewportSize(640, 480));
+
+    std::vector<std::shared_ptr<sl::Object>> objects;
+
+    for(int i = 0; i < 2; ++i)
+    {
+        // Instantiate the mesh to create a movable scene object
+        auto object = sl::Object::instantiate(mesh);
+        REQUIRE(object);
+
+        float distance = sl::pose::minimumDistanceForObjectDiameter(
+            mesh->bbox().size().length(),
+            scene.projectionMatrix()
+        );
+
+        object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
+
+        // Add it to the scene
+        scene.addObject(object);
+
+        sl::pose::RandomPositionSampler posSampler{
+            scene.projectionMatrix(),
+            object->mesh()->bbox().size().length()
+        };
+        sl::pose::RandomPoseSampler sampler{posSampler};
+        CHECK(scene.findNonCollidingPose(*object, sampler));
+
+        objects.push_back(std::move(object));
+    }
 }

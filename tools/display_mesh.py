@@ -6,6 +6,8 @@ from stillleben import camera_model
 
 from PIL import Image
 
+import time
+
 if __name__ == "__main__":
     import argparse
 
@@ -24,6 +26,8 @@ if __name__ == "__main__":
         help='Display normals')
     parser.add_argument('--tabletop', action='store_true',
         help='Simulate a tabletop scene')
+    parser.add_argument('--normalize', action='store_true',
+        help='Normalize mesh scales')
 
     args = parser.parse_args()
 
@@ -34,19 +38,18 @@ if __name__ == "__main__":
     if args.background:
         scene.background_image = sl.Texture(args.background)
 
-    meshes = []
-    for mesh_file in args.mesh:
-        mesh = sl.Mesh(mesh_file, max_physics_triangles=6000)
-
+    print('Loading meshes (this can take some time)...')
+    meshes = sl.Mesh.load_threaded(args.mesh)
+    for mesh in meshes:
         print("Loaded mesh with bounding box:", mesh.bbox)
         print("center:", mesh.bbox.center, "size:", mesh.bbox.size)
 
-        mesh.center_bbox()
-        mesh.scale_to_bbox_diagonal(0.5, 'order_of_magnitude')
+        if args.normalize:
+            mesh.center_bbox()
+            mesh.scale_to_bbox_diagonal(0.2, 'exact')
 
-        print("normalized:", mesh.bbox)
-        print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
-        meshes.append(mesh)
+            print("normalized:", mesh.bbox)
+            print("center:", mesh.bbox.center, "size:", mesh.bbox.size, "diagonal:", mesh.bbox.diagonal)
 
     print("Meshes loaded.")
 
@@ -77,8 +80,15 @@ if __name__ == "__main__":
         img = Image.fromarray(rgb_np, mode='RGB')
         img.save('/tmp/iter{:03}.png'.format(iteration))
 
+        #dbg_rgb = sl.render_physics_debug_image(scene)
+        #dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
+        #dbg_img.save('/tmp/physics{:03}.png'.format(iteration))
+
     if args.tabletop:
-        scene.simulate_tabletop_scene(vis_cb)
+        s1 = time.time()
+        scene.simulate_tabletop_scene()
+        s2 = time.time()
+        print('Tabletop sim took {}s'.format(s2-s1))
 
     print('Resulting poses:')
     for obj in scene.objects:

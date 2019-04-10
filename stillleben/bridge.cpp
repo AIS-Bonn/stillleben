@@ -370,13 +370,6 @@ static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
     return readRGBATensor(texture);
 }
 
-static at::Tensor renderPhysicsDebugImage(const std::shared_ptr<sl::Scene>& scene)
-{
-    auto texture = sl::renderPhysicsDebugImage(*scene);
-    return readRGBATensor(texture);
-}
-
-
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def("init", &init, "Init without CUDA support");
     m.def("init_cuda", &initCUDA, R"EOS(
@@ -390,10 +383,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     m.def("render_debug_image", &renderDebugImage, R"EOS(
         Render a debug image with object coordinate systems
-    )EOS");
-
-    m.def("render_physics_debug_image", &renderPhysicsDebugImage, R"EOS(
-        Render a physics debug image with collision wireframes
     )EOS");
 
     // Basic geometric types
@@ -698,13 +687,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 list: List of sl::Object
         )EOS")
 
-        .def("perform_collision_check", &sl::Scene::performCollisionCheck, R"EOS(
-            Checks if the current arrangement of objects is in collision.
-
-            Returns:
-                bool: True if there is at least one collision
-        )EOS")
-
         .def("find_noncolliding_pose", [](
             const std::shared_ptr<sl::Scene>& scene,
             const std::shared_ptr<sl::Object>& object,
@@ -717,7 +699,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                         object->mesh()->bbox().size().length()
                     };
                     sl::pose::RandomPoseSampler sampler{posSampler};
-                    return scene->findNonCollidingPose(*object, sampler, max_iterations);                }
+                    return scene->findNonCollidingPose(*object, sampler, max_iterations);
+                }
                 else if(sampler == "viewpoint")
                 {
                     if(!kwargs.contains("viewpoint"))
@@ -789,7 +772,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
             Arrange the objects as if they were standing on a supporting surface.
-        )EOS")
+        )EOS", py::arg("vis_cb")=std::function<void()>{})
 
         .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
             Choose a random light position under the following constraints:

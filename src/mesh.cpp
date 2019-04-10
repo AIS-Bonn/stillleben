@@ -5,9 +5,7 @@
 #include <stillleben/context.h>
 #include <stillleben/contrib/ctpl_stl.h>
 #include <stillleben/mesh_tools/simplify_mesh.h>
-
-#include <btBulletDynamicsCommon.h>
-#include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
+#include <stillleben/physx.h>
 
 #include <Corrade/Utility/Configuration.h>
 
@@ -33,66 +31,50 @@
 
 #include <sstream>
 
+#include "physx_impl.h"
+
 using namespace Magnum;
 
 namespace sl
 {
 
 /**
- * @brief Create bullet collision shape from Trade::MeshData3D
- *
- * @warning The resulting collision shape references the original mesh data,
- *   so the MeshData3D instance needs to be kept around!
- **/
-static std::shared_ptr<btCollisionShape> collisionShapeFromMeshData(
-    const Trade::MeshData3D& meshData, bool convexHull = false)
+ * @brief Create PhysX collision shape from Trade::MeshData3D
+ * */
+static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Trade::MeshData3D& meshData)
 {
-    // Source: https://github.com/mosra/magnum-integration/issues/20#issuecomment-246951535
-
     if(meshData.primitive() != MeshPrimitive::Triangles)
     {
-        Error() << "Cannot load collision mesh, skipping";
+        Error{} << "Cannot load collision mesh, skipping";
         return {};
     }
 
-    if(convexHull)
+    if(meshData.positionArrayCount() > 1)
     {
-        auto shape = std::make_shared<btConvexHullShape>(
-            reinterpret_cast<const float*>(meshData.positions(0).data()),
-            meshData.positions(0).size(),
-            sizeof(Vector3)
-        );
-
-        shape->optimizeConvexHull();
-
-        return shape;
+        Warning{} << "Mesh has more than one position array, this is unsupported";
     }
-    else
+
+    Corrade::Containers::Optional<PhysXOutputBuffer> out;
+
+    out.emplace();
+
+    static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
+
+    physx::PxConvexMeshDesc meshDesc;
+    meshDesc.points.count = meshData.positions(0).size();
+    meshDesc.points.stride = sizeof(physx::PxVec3);
+    meshDesc.points.data = meshData.positions(0).data();
+    meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
+
+    physx::PxConvexMeshCookingResult::Enum result;
+    bool status = cooking.cookConvexMesh(meshDesc, *out, &result);
+    if(!status)
     {
-        btIndexedMesh bulletMesh;
-        bulletMesh.m_numTriangles = meshData.indices().size()/3;
-        bulletMesh.m_triangleIndexBase = reinterpret_cast<const unsigned char *>(meshData.indices().data());
-        bulletMesh.m_triangleIndexStride = 3 * sizeof(UnsignedInt);
-        bulletMesh.m_numVertices = meshData.positions(0).size();
-        bulletMesh.m_vertexBase = reinterpret_cast<const unsigned char *>(meshData.positions(0).data());
-        bulletMesh.m_vertexStride = sizeof(Vector3);
-        bulletMesh.m_indexType = PHY_INTEGER;
-        bulletMesh.m_vertexType = PHY_FLOAT;
-
-        auto tivArray = new btTriangleIndexVertexArray();
-        tivArray->addIndexedMesh(bulletMesh, PHY_INTEGER);
-
-        auto shape = std::shared_ptr<btGImpactMeshShape>(
-            new btGImpactMeshShape(tivArray),
-            [=](btGImpactMeshShape* b) {
-                delete b;
-                delete tivArray;
-            }
-        );
-
-        shape->updateBound();
-        return shape;
+        Error{} << "PhysX cooking failed, ignoring mesh";
+        return {};
     }
+
+    return out;
 }
 
 Mesh::Mesh(const std::shared_ptr<Context>& ctx)
@@ -143,6 +125,7 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
     // Simplify meshes if possible
     m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
     m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
+    m_physXBuffers = CookedPhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -170,7 +153,8 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
         }
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
-        m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
+//         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
+        m_physXBuffers[i] = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
     }
 }
 
@@ -232,6 +216,7 @@ void Mesh::loadGL()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -252,6 +237,14 @@ void Mesh::loadGL()
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
+
+        if(auto& buf = m_physXBuffers[i])
+        {
+            physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
+            m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
+                m_ctx->physxPhysics().createConvexMesh(stream)
+            };
+        }
     }
 
     // Update the bounding box

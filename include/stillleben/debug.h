@@ -14,7 +14,7 @@ namespace sl
 class Scene;
 
 Magnum::GL::RectangleTexture renderDebugImage(Scene& scene);
-Magnum::GL::RectangleTexture renderPhysicsDebugImage(Scene& scene);
+// Magnum::GL::RectangleTexture renderPhysicsDebugImage(Scene& scene);
 
 }
 

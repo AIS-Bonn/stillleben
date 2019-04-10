@@ -4,12 +4,9 @@
 #ifndef STILLLEBEN_OBJECT_H
 #define STILLLEBEN_OBJECT_H
 
-#include <stillleben/math.h>
-
-#include <memory>
-#include <limits>
-
 #include <stillleben/common.h>
+#include <stillleben/math.h>
+#include <stillleben/physx.h>
 
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
@@ -18,11 +15,13 @@
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/GL/Mesh.h>
 
-class btCompoundShape;
-class btRigidBody;
-class btDiscreteDynamicsWorld;
+#include <memory>
 
-namespace Magnum { namespace BulletIntegration { class MotionState; } }
+namespace physx
+{
+    class PxScene;
+    class PxRigidDynamic;
+}
 
 namespace sl
 {
@@ -69,6 +68,9 @@ public:
     Object();
     ~Object();
 
+    Object(const Object&) = delete;
+    Object& operator=(const Object&) = delete;
+
     static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh);
 
     void setPose(const Magnum::Matrix4& pose);
@@ -76,7 +78,7 @@ public:
     { return m_sceneObject.transformationMatrix(); }
 
     void setParentSceneObject(Object3D* parent);
-    void setPhysicsWorld(btDiscreteDynamicsWorld* world);
+    void setPhysicsScene(physx::PxScene* scene);
 
     void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
@@ -90,7 +92,10 @@ public:
     Magnum::SceneGraph::DrawableGroup3D& debugDrawables()
     { return m_debugDrawables; }
 
-    btRigidBody& rigidBody();
+    physx::PxRigidDynamic& rigidBody()
+    { return *m_rigidBody; }
+
+    void updateFromPhysics();
 
 private:
     void load();
@@ -115,11 +120,8 @@ private:
 
     unsigned int m_instanceIndex = 0;
 
-    std::unique_ptr<btCompoundShape> m_collisionShape;
-    std::unique_ptr<btRigidBody> m_rigidBody;
-    btDiscreteDynamicsWorld* m_physicsWorld = 0;
-
-    std::unique_ptr<Magnum::BulletIntegration::MotionState> m_motionState;
+    physx::PxScene* m_physicsScene = nullptr;
+    PhysXHolder<physx::PxRigidDynamic> m_rigidBody;
 };
 
 }

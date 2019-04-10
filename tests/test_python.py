@@ -16,14 +16,18 @@ TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 class PythonTest(unittest.TestCase):
     def setUp(self):
         if torch.cuda.is_available():
+            print('Running tests with CUDA')
             sl.init_cuda(0)
         else:
+            print('Running tests without CUDA')
             sl.init()
 
+    @Timer('test_render')
     def test_render(self):
         scene = sl.Scene((640,480))
 
-        mesh = sl.Mesh(os.path.join(TESTS_PATH, 'stanford_bunny', 'scene.gltf'))
+        with Timer('Mesh load'):
+            mesh = sl.Mesh(os.path.join(TESTS_PATH, 'stanford_bunny', 'scene.gltf'))
         mesh.center_bbox()
         mesh.scale_to_bbox_diagonal(0.5)
         object = sl.Object(mesh)
@@ -34,10 +38,12 @@ class PythonTest(unittest.TestCase):
         pose[2,3] = 0.5
         object.set_pose(pose)
 
-        renderer = sl.RenderPass()
-        result = renderer.render(scene)
+        with Timer('render'):
+            renderer = sl.RenderPass()
+            result = renderer.render(scene)
 
-        rgb = result.rgb()
+        with Timer('retrieve'):
+            rgb = result.rgb()
 
         print("First pixel:", rgb[0,0])
         print("min: {}, max: {}".format(rgb.min(), rgb.max()))

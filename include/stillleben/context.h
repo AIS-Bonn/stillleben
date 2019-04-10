@@ -21,6 +21,12 @@ namespace Magnum
     }
 }
 
+namespace physx
+{
+    class PxPhysics;
+    class PxCooking;
+}
+
 namespace sl
 {
 
@@ -43,6 +49,9 @@ public:
     Corrade::Containers::Pointer<Importer> instantiateImporter();
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
+
+    physx::PxPhysics& physxPhysics();
+    physx::PxCooking& physxCooking();
 private:
     class Private;
 
