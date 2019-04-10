@@ -9,6 +9,8 @@ stages: [build, pages]
 build:
   stage: build
   script:
+    - export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
+    - export LD_LIBRARY_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib:$LD_LIBRARY_PATH
     - python setup.py install
     - python setup.py bdist_wheel
     - cpp_build/tests/tests
@@ -21,6 +23,8 @@ build:
 cpp_debug:
   stage: build
   script:
+    - export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
+    - export LD_LIBRARY_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib:$LD_LIBRARY_PATH
     - mkdir build_debug && cd build_debug
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address -GNinja ..
     - ninja install
