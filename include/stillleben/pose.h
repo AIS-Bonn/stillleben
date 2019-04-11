@@ -51,7 +51,7 @@ Magnum::Matrix3 rotationCorrectionForTranslation(const Magnum::Vector3& pos);
 
 // Sampler
 
-constexpr float DEFAULT_MIN_SIZE_FACTOR = 0.2f;
+constexpr float DEFAULT_MIN_SIZE_FACTOR = 0.4f;
 
 class RandomPositionSampler
 {
