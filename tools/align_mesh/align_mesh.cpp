@@ -465,6 +465,20 @@ void AlignMesh::drawEvent() {
         }
 
         ImGui::SameLine();
+        if(ImGui::Button("r+"))
+        {
+            Matrix4 rot = Matrix4::rotation(Deg(5.0f), axis.axis());
+            _mesh.setTransformation(rot * _mesh.transformationMatrix());
+        }
+
+        ImGui::SameLine();
+        if(ImGui::Button("r-"))
+        {
+            Matrix4 rot = Matrix4::rotation(Deg(-5.0f), axis.axis());
+            _mesh.setTransformation(rot * _mesh.transformationMatrix());
+        }
+
+        ImGui::SameLine();
         if(ImGui::Button("R-"))
         {
             Matrix4 rot = Matrix4::rotation(Rad(-Constants::piHalf()), axis.axis());
