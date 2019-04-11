@@ -13,6 +13,7 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Functions.h>
+#include <Magnum/Math/Algorithms/Svd.h>
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/PixelFormat.h>
@@ -156,6 +157,9 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
 //         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
         m_physXBuffers[i] = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
     }
+
+    // Load pretransform, if available
+    loadPretransform(filename + ".pretransform");
 }
 
 void Mesh::loadGL()
@@ -268,6 +272,62 @@ void Mesh::loadGL()
     }
 }
 
+void Mesh::loadPretransform(const std::string& filename)
+{
+    std::ifstream stream(filename);
+
+    if(!stream)
+    {
+        Warning{} << "Could not read pretransform file" << filename;
+        return;
+    }
+
+    Matrix4 pretransform;
+    for(int i = 0; i < 4; ++i)
+    {
+        std::string line;
+        if(!std::getline(stream, line))
+        {
+            Error{} << "Short pretransform file" << filename;
+            return;
+        }
+
+        std::stringstream ss(line);
+        ss.imbue(std::locale::classic());
+
+        for(int j = 0; j < 4; ++j)
+        {
+            if(!(ss >> pretransform[j][i]))
+            {
+                Error{} << "Could not read number from pretransform file" << filename;
+                return;
+            }
+        }
+    }
+
+    // We need to separate the transformation matrix into a homogenous scaling
+    // and a rotation+translation.
+
+    Matrix3x3 u{Math::NoInit};
+    Vector3 w{Math::NoInit};
+    Matrix3x3 v{Math::NoInit};
+    std::tie(u, w, v) = Math::Algorithms::svd(pretransform.rotationScaling());
+
+    float minScale = w.min();
+    float maxScale = w.max();
+
+    if(maxScale - minScale > 1e-5f)
+    {
+        Error{} << "Scaling is not uniform:" << w;
+        return;
+    }
+
+    m_scale = (maxScale + minScale) / 2.0f;
+    m_pretransformRigid = Matrix4::from(u*v.transposed(), (1.0f / m_scale) * pretransform.translation());
+
+    updatePretransform();
+}
+
 namespace
 {
     std::shared_ptr<Mesh> loadHelper(
@@ -343,7 +403,7 @@ void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned in
 
 void Mesh::centerBBox()
 {
-    m_translation = -m_bbox.center();
+    m_pretransformRigid.translation() = -m_bbox.center();
     updatePretransform();
 }
 
@@ -368,7 +428,6 @@ void Mesh::scaleToBBoxDiagonal(float targetDiagonal, Scale mode)
 
 void Mesh::updatePretransform()
 {
-    m_pretransformRigid = Matrix4::translation(m_translation);
     m_pretransform = Matrix4::scaling(Vector3(m_scale)) * m_pretransformRigid;
 }
 

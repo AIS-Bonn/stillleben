@@ -129,6 +129,8 @@ private:
     void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
     void updatePretransform();
 
+    void loadPretransform(const std::string& filename);
+
     std::shared_ptr<Context> m_ctx;
 
     std::unique_ptr<Magnum::Trade::AbstractImporter> m_importer;
@@ -147,7 +149,6 @@ private:
         Magnum::Vector3(-std::numeric_limits<float>::infinity())
     };
 
-    Magnum::Vector3 m_translation{Magnum::Math::ZeroInit};
     float m_scale = 1.0f;
 
     Magnum::Matrix4 m_pretransformRigid;
