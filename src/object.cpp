@@ -86,7 +86,6 @@ void Object::load()
 
     // Calculate mass & inertia
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
-    Debug{} << "Object with mass" << m_rigidBody->getMass();
 }
 
 void Object::addMeshObject(Object3D& parent, UnsignedInt i)
