@@ -95,14 +95,14 @@ void main()
     /* Ambient color */
     color = finalAmbientColor;
 
-    mediump vec3 normalizedTransformedNormal = -normalize(transformedNormal);
-    if(!gl_FrontFacing)
-        normalizedTransformedNormal = -normalizedTransformedNormal;
-
+    mediump vec3 normalizedTransformedNormal = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */
     normalOut.xyz = normalizedTransformedNormal;
     normalOut.w = dot(normalizedTransformedNormal, cameraDirection);
 
+    if(gl_FrontFacing)
+        normalizedTransformedNormal = -normalizedTransformedNormal;
+    
     highp vec3 normalizedLightDirection = normalize(lightDirection);
 
     /* Add diffuse color */
