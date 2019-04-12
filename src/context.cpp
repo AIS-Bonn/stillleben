@@ -71,6 +71,15 @@ public:
         }
     }
 
+    ~Private()
+    {
+#if HAVE_EGL
+        eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        eglDestroyContext(egl_display, egl_context);
+        eglTerminate(egl_display);
+#endif
+    }
+
     void* egl_display = nullptr;
     void* egl_context = nullptr;
 
