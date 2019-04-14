@@ -34,7 +34,7 @@
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/Arguments.h>
-// #include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/ConfigurationGroup.h>
 #include <Magnum/Mesh.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -204,6 +204,19 @@ AlignMesh::AlignMesh(const Arguments& arguments):
     PluginManager::Manager<Trade::AbstractImporter> manager;
     Containers::Pointer<Trade::AbstractImporter> importer = manager.loadAndInstantiate(args.value("importer"));
     if(!importer) std::exit(1);
+
+    // Set up postprocess options if using AssimpImporter
+    auto group = importer->configuration().group("postprocess");
+    if(group)
+    {
+        group->setValue("JoinIdenticalVertices", true);
+        group->setValue("Triangulate", true);
+        group->setValue("GenSmoothNormals", true);
+        group->setValue("PreTransformVertices", true);
+        group->setValue("SortByPType", true);
+        group->setValue("GenUVCoords", true);
+        group->setValue("TransformUVCoords", true);
+    }
 
     Debug{} << "Opening file" << args.value("file");
 
