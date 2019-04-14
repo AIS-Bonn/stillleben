@@ -295,14 +295,14 @@ static void init()
         throw std::runtime_error("Could not create stillleben context");
 }
 
-static void initCUDA(unsigned int cudaIndex)
+static void initCUDA(unsigned int cudaIndex, bool useCUDA=true)
 {
     g_context = sl::Context::CreateCUDA(cudaIndex, g_installPrefix);
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
 
     g_cudaIndex = cudaIndex;
-    g_cudaEnabled = true;
+    g_cudaEnabled = useCUDA;
 }
 
 static void setInstallPrefix(const std::string& path)
@@ -378,7 +378,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
         Args:
             device_index (int): Index of CUDA device to use for rendering
-    )EOS", py::arg("device_index") = 0);
+            use_cuda (bool): If false, return results on CPU
+    )EOS", py::arg("device_index") = 0, py::arg("use_cuda")=true);
 
     m.def("_set_install_prefix", &setInstallPrefix, "set Magnum install prefix");
 
