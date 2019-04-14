@@ -16,6 +16,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <Magnum/Image.h>
 #include <Magnum/PixelFormat.h>
+#include <Magnum/GL/TextureFormat.h>
 
 #include <future>
 #include <memory>
@@ -469,6 +470,30 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         }), R"EOS(
             Load the texture from the specified path.
         )EOS", py::arg("path"))
+
+        .def(py::init([](torch::Tensor tensor){
+            if(!g_context)
+                throw std::logic_error("Create a context object before");
+
+            if(tensor.dim() != 3 || tensor.size(2) != 3 || tensor.scalar_type() != torch::kByte || tensor.device().type() != torch::kCPU)
+                throw std::invalid_argument("Input tensor should be a HxWx3 CPU byte tensor");
+
+            tensor = tensor.contiguous();
+
+            Magnum::ImageView2D image{
+                Magnum::PixelFormat::RGB8Unorm,
+                {static_cast<int>(tensor.size(1)), static_cast<int>(tensor.size(0))},
+                Corrade::Containers::ArrayView<uint8_t>(tensor.data<uint8_t>(), tensor.numel())
+            };
+
+            Magnum::GL::RectangleTexture texture;
+            texture.setStorage(Magnum::GL::TextureFormat::RGB8, image.size());
+            texture.setSubImage({}, image);
+
+            return texture;
+        }), R"EOS(
+            Load an RGB texture from the specified HxWx3 CPU byte tensor.
+        )EOS", py::arg("tensor"))
     ;
 
     // sl::Mesh
