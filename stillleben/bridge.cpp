@@ -325,12 +325,13 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(
 
 static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
     const std::vector<std::string>& filenames,
-    std::size_t maxPhysicsTriangles)
+    std::size_t maxPhysicsTriangles,
+    bool quiet)
 {
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
-    return sl::Mesh::loadThreaded(g_context, filenames, maxPhysicsTriangles);
+    return sl::Mesh::loadThreaded(g_context, filenames, maxPhysicsTriangles, quiet);
 }
 
 static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -526,10 +527,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                 filenames (list): List of file names to load
                 max_physics_triangles (int): Maximum number of triangles for
                     collision shape (see :func:`Mesh`).
+                quiet (bool): If true, suppress warnings from mesh loading
 
             Returns:
                 list: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
+        )EOS", py::arg("filenames"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("quiet")=false)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.

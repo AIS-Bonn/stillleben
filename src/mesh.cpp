@@ -333,10 +333,17 @@ namespace
     std::shared_ptr<Mesh> loadHelper(
         const std::shared_ptr<Context>& ctx,
         const std::string& filename,
-        std::size_t maxPhysicsTriangles)
+        std::size_t maxPhysicsTriangles,
+        bool quiet)
     {
+        std::ostringstream ss;
+        Warning redir{&ss};
+
         auto mesh = std::make_shared<Mesh>(ctx);
         mesh->loadNonGL(filename, maxPhysicsTriangles);
+
+        if(!quiet)
+            Warning{} << ss.str();
 
         return mesh;
     }
@@ -345,7 +352,8 @@ namespace
 std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
-    std::size_t maxPhysicsTriangles)
+    std::size_t maxPhysicsTriangles,
+    bool quiet)
 {
     using Future = std::future<std::shared_ptr<sl::Mesh>>;
 
@@ -355,7 +363,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     for(const auto& filename : filenames)
     {
         results.push_back(pool.push(std::bind(&loadHelper,
-            ctx, filename, maxPhysicsTriangles
+            ctx, filename, maxPhysicsTriangles, quiet
         )));
     }
 
