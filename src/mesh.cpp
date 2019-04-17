@@ -336,14 +336,8 @@ namespace
         std::size_t maxPhysicsTriangles,
         bool quiet)
     {
-        std::ostringstream ss;
-        Warning redir{&ss};
-
         auto mesh = std::make_shared<Mesh>(ctx);
         mesh->loadNonGL(filename, maxPhysicsTriangles);
-
-        if(!quiet)
-            Warning{} << ss.str();
 
         return mesh;
     }
