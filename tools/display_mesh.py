@@ -28,6 +28,9 @@ if __name__ == "__main__":
         help='Simulate a tabletop scene')
     parser.add_argument('--normalize', action='store_true',
         help='Normalize mesh scales')
+    parser.add_argument('--shading', type=str, default='phong',
+        choices=['phong', 'flat'],
+        help='Shading type (phong/flat)')
 
     args = parser.parse_args()
 
@@ -69,7 +72,7 @@ if __name__ == "__main__":
                 pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
                 object.set_pose(pose)
 
-    renderer = sl.RenderPass()
+    renderer = sl.RenderPass(shading=args.shading)
 
     def vis_cb(iteration):
         result = renderer.render(scene)

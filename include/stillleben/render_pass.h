@@ -22,7 +22,13 @@ class Scene;
 class RenderPass
 {
 public:
-    RenderPass();
+    enum class Type
+    {
+        Phong,
+        Flat
+    };
+
+    explicit RenderPass(Type type = Type::Phong);
     ~RenderPass();
 
     struct Result

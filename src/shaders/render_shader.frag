@@ -101,6 +101,9 @@ void main()
         specularColor;
 
     /* Ambient color */
+    #ifdef FLAT
+    color = finalDiffuseColor;
+    #else
     color = finalAmbientColor;
 
     mediump vec3 normalizedTransformedNormal = -normalize(transformedNormal);
@@ -123,6 +126,7 @@ void main()
         mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), shininess);
         color += finalSpecularColor*specularity;
     }
+    #endif
 
     color.a = 1.0;
 

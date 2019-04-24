@@ -69,6 +69,7 @@ RenderShader::RenderShader(const Flags flags)
         .addSource((useTexture && (flags & Flag::SpecularTexture)) ? "#define SPECULAR_TEXTURE\n" : "")
         .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(flags & Flag::AlphaMask ? "#define ALPHA_MASK\n" : "")
+        .addSource(flags & Flag::Flat ? "#define FLAT\n" : "")
         .addSource(rs.get("render_shader.frag"));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));

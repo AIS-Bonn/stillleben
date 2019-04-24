@@ -95,6 +95,8 @@ public:
          * Enable per-vertex colors. This automatically disables textures.
          **/
         VertexColors = 1 << 4,
+
+        Flat = 1 << 5
     };
 
     /**

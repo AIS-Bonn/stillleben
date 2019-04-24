@@ -900,7 +900,20 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Renders a :class:`Scene`.
         )EOS")
 
-        .def(py::init(), "Constructor")
+        .def(py::init([](const std::string& shading){
+                if(shading == "phong")
+                    return std::make_unique<sl::RenderPass>(sl::RenderPass::Type::Phong);
+                else if(shading == "flat")
+                    return std::make_unique<sl::RenderPass>(sl::RenderPass::Type::Flat);
+                else
+                    throw std::invalid_argument("unknown shading type specified");
+            }), R"EOS(
+            Constructor.
+
+            Args:
+                shading (str): Shading type ("phong" or "flat"). Defaults to
+                    Phong shading.
+         )EOS", py::arg("shading")="phong")
 
         .def("render", &sl::RenderPass::render, R"EOS(
             Render a scene.

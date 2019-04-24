@@ -31,10 +31,27 @@ using namespace Math::Literals;
 namespace sl
 {
 
-RenderPass::RenderPass()
- : m_shaderTextured{std::make_unique<RenderShader>(RenderShader::Flag::DiffuseTexture)}
- , m_shaderVertexColors{std::make_unique<RenderShader>(RenderShader::Flag::VertexColors)}
- , m_shaderUniform{std::make_unique<RenderShader>()}
+namespace
+{
+constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
+{
+    switch(type)
+    {
+        case RenderPass::Type::Flat:
+            return RenderShader::Flag::Flat;
+        case RenderPass::Type::Phong:
+            return {};
+        default:
+            return {};
+    }
+}
+
+}
+
+RenderPass::RenderPass(Type type)
+ : m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
+ , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
+ , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
  , m_resolveShader{std::make_unique<ResolveShader>(m_msaa_factor)}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
