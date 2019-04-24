@@ -102,6 +102,16 @@ namespace
         }
     };
 
+    template<>
+    struct toTorch<Magnum::Color4>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Color4& vec)
+        {
+            return toTorch<Magnum::Vector4>::convert(vec);
+        }
+    };
+
     // Torch -> Magnum
     template<class T>
     struct fromTorch
@@ -184,6 +194,16 @@ namespace
             memcpy(vec.data(), data, 4*sizeof(float));
 
             return vec;
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Color4>
+    {
+        using Type = at::Tensor;
+        static Magnum::Color4 convert(const at::Tensor& tensor)
+        {
+            return fromTorch<Magnum::Vector4>::convert(tensor);
         }
     };
 
@@ -667,8 +687,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
         .def_property("background_image",
             &sl::Scene::backgroundImage, &sl::Scene::setBackgroundImage, R"EOS(
-            The background image. If None (default), a transparent background
-            is used.
+            The background image. If None (default), the background color
+            (see `background_color`) is used.
+        )EOS")
+
+        .def_property("background_color",
+            wrapShared(&sl::Scene::backgroundColor), wrapShared(&sl::Scene::setBackgroundColor), R"EOS(
+            The background color (RGBA, float, range 0-1). The default is white.
         )EOS")
 
         .def("min_dist_for_object_diameter", &sl::Scene::minimumDistanceForObjectDiameter, R"EOS(

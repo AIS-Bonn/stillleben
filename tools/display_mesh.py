@@ -31,6 +31,8 @@ if __name__ == "__main__":
     parser.add_argument('--shading', type=str, default='phong',
         choices=['phong', 'flat'],
         help='Shading type (phong/flat)')
+    parser.add_argument('--background-color', type=str, default='1,1,1,1',
+        help='Background color (R,G,B,A)')
 
     args = parser.parse_args()
 
@@ -40,6 +42,8 @@ if __name__ == "__main__":
 
     if args.background:
         scene.background_image = sl.Texture(args.background)
+
+    scene.background_color = torch.tensor([ float(a) for a in args.background_color.split(',') ])
 
     print('Loading meshes (this can take some time)...')
     meshes = sl.Mesh.load_threaded(args.mesh)

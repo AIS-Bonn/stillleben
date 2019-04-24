@@ -158,6 +158,11 @@ void Scene::setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& te
     m_backgroundImage = texture;
 }
 
+void Scene::setBackgroundColor(const Magnum::Color4& color)
+{
+    m_backgroundColor = color;
+}
+
 void Scene::drawPhysicsDebug()
 {
     throw std::logic_error("Not implemented");

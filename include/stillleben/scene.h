@@ -59,6 +59,10 @@ public:
     const std::shared_ptr<Magnum::GL::RectangleTexture>& backgroundImage() const
     { return m_backgroundImage; }
 
+    void setBackgroundColor(const Magnum::Color4& color);
+    Magnum::Color4 backgroundColor() const
+    { return m_backgroundColor; }
+
     //! @name Object placement
     //@{
     Magnum::Matrix4 cameraToWorld(const Magnum::Matrix4& poseInCamera) const;
@@ -118,6 +122,7 @@ private:
     std::mt19937 m_randomGenerator;
 
     std::shared_ptr<Magnum::GL::RectangleTexture> m_backgroundImage;
+    Magnum::Color4 m_backgroundColor{1.0f, 1.0f, 1.0f, 1.0f};
 
     PhysXUnique<physx::PxDefaultCpuDispatcher> m_physicsDispatcher;
     PhysXUnique<physx::PxScene> m_physicsScene;
