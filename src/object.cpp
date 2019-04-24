@@ -104,9 +104,12 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
     // Add a drawable if the object has a mesh and the mesh is loaded
     if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_mesh->meshes()[objectData->instance()])
     {
-        const Int materialId = static_cast<Trade::MeshObjectData3D*>(objectData.get())->material();
+        auto meshObjectData = static_cast<Trade::MeshObjectData3D*>(objectData.get());
+        auto mesh = m_mesh->meshes()[objectData->instance()];
+        auto meshData = m_mesh->importer().mesh3D(objectData->instance());
+        const Int materialId = meshObjectData->material();
 
-        auto drawable = new Drawable{*object, m_drawables, m_mesh->meshes()[objectData->instance()], &m_cb};
+        auto drawable = new Drawable{*object, m_drawables, mesh, &m_cb};
 
         if(materialId == -1 || !m_mesh->materials()[materialId])
         {
@@ -128,6 +131,8 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             // Color-only material
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
+
+        drawable->setHasVertexColors(meshData->hasColors());
 
         auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
 

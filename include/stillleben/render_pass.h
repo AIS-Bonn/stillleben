@@ -46,6 +46,7 @@ private:
     Magnum::GL::MultisampleTexture2D m_msaa_normal;
 
     std::unique_ptr<RenderShader> m_shaderTextured;
+    std::unique_ptr<RenderShader> m_shaderVertexColors;
     std::unique_ptr<RenderShader> m_shaderUniform;
 
     std::unique_ptr<ResolveShader> m_resolveShader;

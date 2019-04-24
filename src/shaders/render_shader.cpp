@@ -54,14 +54,20 @@ RenderShader::RenderShader(const Flags flags)
         frag.addSource("#define DISABLE_GL_ARB_explicit_uniform_location\n");
     }
 
+    bool useTexture = static_cast<bool>(flags & (Flag::AmbientTexture|Flag::DiffuseTexture|Flag::SpecularTexture));
+    if(flags & Flag::VertexColors)
+        useTexture = false;
+
     vert.addSource(flags ? "#define TEXTURED\n" : "")
         .addSource(rs.get("compatibility.glsl"))
+        .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(rs.get("generic.glsl"))
         .addSource(rs.get("render_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
-        .addSource(flags & Flag::AmbientTexture ? "#define AMBIENT_TEXTURE\n" : "")
-        .addSource(flags & Flag::DiffuseTexture ? "#define DIFFUSE_TEXTURE\n" : "")
-        .addSource(flags & Flag::SpecularTexture ? "#define SPECULAR_TEXTURE\n" : "")
+        .addSource((useTexture && (flags & Flag::AmbientTexture)) ? "#define AMBIENT_TEXTURE\n" : "")
+        .addSource((useTexture && (flags & Flag::DiffuseTexture)) ? "#define DIFFUSE_TEXTURE\n" : "")
+        .addSource((useTexture && (flags & Flag::SpecularTexture)) ? "#define SPECULAR_TEXTURE\n" : "")
+        .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(flags & Flag::AlphaMask ? "#define ALPHA_MASK\n" : "")
         .addSource(rs.get("render_shader.frag"));
 
@@ -77,7 +83,14 @@ RenderShader::RenderShader(const Flags flags)
     {
         bindAttributeLocation(Position::Location, "position");
         bindAttributeLocation(Normal::Location, "normal");
-        if(flags & (Flag::AmbientTexture|Flag::DiffuseTexture|Flag::SpecularTexture))
+
+        if(flags & Flag::VertexColors)
+        {
+            bindAttributeLocation(VertexColors::Location, "vertexColors");
+            useTexture = false;
+        }
+
+        if(useTexture)
             bindAttributeLocation(TextureCoordinates::Location, "textureCoordinates");
     }
 

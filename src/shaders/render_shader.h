@@ -44,6 +44,8 @@ public:
      */
     typedef Shaders::Generic3D::TextureCoordinates TextureCoordinates;
 
+    typedef Shaders::Generic3D::Color4 VertexColors;
+
     enum: UnsignedInt {
         ColorOutput = 0,
         ObjectCoordinatesOutput = 1,
@@ -87,7 +89,12 @@ public:
          * with proper depth sorting and blending you'll usually get much
          * better performance and output quality.
          */
-        AlphaMask = 1 << 3
+        AlphaMask = 1 << 3,
+
+        /**
+         * Enable per-vertex colors. This automatically disables textures.
+         **/
+        VertexColors = 1 << 4,
     };
 
     /**

@@ -33,8 +33,17 @@ layout(location = TEXTURECOORDINATES_ATTRIBUTE_LOCATION)
 in mediump vec2 textureCoords;
 #endif
 
+#ifdef VERTEX_COLORS
+layout(location = VERTEXCOLORS_ATTRIBUTE_LOCATION)
+in mediump vec4 vertexColors;
+#endif
+
 #ifdef TEXTURED
 out mediump vec2 interpolatedTextureCoords;
+#endif
+
+#ifdef VERTEX_COLORS
+out mediump vec4 interpolatedVertexColors;
 #endif
 
 out mediump vec3 transformedNormal;
@@ -68,5 +77,9 @@ void main()
     #ifdef TEXTURED
     /* Texture coordinates, if needed */
     interpolatedTextureCoords = textureCoords;
+    #endif
+
+    #ifdef VERTEX_COLORS
+    interpolatedVertexColors = vertexColors;
     #endif
 }

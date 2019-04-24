@@ -33,6 +33,7 @@ namespace sl
 
 RenderPass::RenderPass()
  : m_shaderTextured{std::make_unique<RenderShader>(RenderShader::Flag::DiffuseTexture)}
+ , m_shaderVertexColors{std::make_unique<RenderShader>(RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>()}
  , m_resolveShader{std::make_unique<ResolveShader>(m_msaa_factor)}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
@@ -137,7 +138,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         Matrix4 objectToCam = scene.camera().object().absoluteTransformationMatrix().inverted() * object->pose();
         Matrix4 objectToCamInv = objectToCam.inverted();
 
-        for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform)})
+        for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
         {
             (*shader.get())
                 .setObjectToCamMatrix(objectToCam)
@@ -160,6 +161,18 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 ;
 
                 drawable->mesh().draw(*m_shaderTextured);
+            }
+            else if(drawable->hasVertexColors())
+            {
+                (*m_shaderVertexColors)
+                    .setLightPosition(scene.lightPosition())
+                    .setMeshToObjectMatrix(meshToObject)
+                    .setNormalMatrix(meshToCam.rotation())
+                    .setProjectionMatrix(cam.projectionMatrix())
+                    .setDiffuseColor(drawable->color())
+                ;
+
+                drawable->mesh().draw(*m_shaderVertexColors);
             }
             else
             {

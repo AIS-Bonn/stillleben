@@ -62,6 +62,10 @@ in highp vec3 cameraDirection;
 in mediump vec2 interpolatedTextureCoords;
 #endif
 
+#ifdef VERTEX_COLORS
+in mediump vec4 interpolatedVertexColors;
+#endif
+
 centroid in highp vec3 objectCoordinates;
 
 layout(location = 0) out lowp vec4 color;
@@ -85,7 +89,11 @@ void main()
         #ifdef DIFFUSE_TEXTURE
         texture(diffuseTexture, interpolatedTextureCoords)*
         #endif
+        #ifdef VERTEX_COLORS
+        interpolatedVertexColors;
+        #else
         diffuseColor;
+        #endif
     lowp const vec4 finalSpecularColor =
         #ifdef SPECULAR_TEXTURE
         texture(specularTexture, interpolatedTextureCoords)*

@@ -54,12 +54,19 @@ public:
     Magnum::GL::Mesh& mesh()
     { return *m_mesh; }
 
+    void setHasVertexColors(bool hasVertexColors)
+    { m_hasVertexColors = hasVertexColors; }
+
+    inline bool hasVertexColors() const
+    { return m_hasVertexColors; }
+
     void draw(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera) override;
 private:
     std::shared_ptr<Magnum::GL::Mesh> m_mesh;
     Magnum::GL::Texture2D* m_texture = nullptr;
     Magnum::Color4 m_color{};
     DrawCallback* m_cb = nullptr;
+    bool m_hasVertexColors = false;
 };
 
 class Object
