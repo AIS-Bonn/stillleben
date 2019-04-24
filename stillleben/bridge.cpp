@@ -297,6 +297,11 @@ static at::Tensor readCoordTensor(Magnum::GL::RectangleTexture& texture)
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
 }
 
+static at::Tensor readDepthTensor(Magnum::GL::RectangleTexture& texture)
+{
+    return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).select(2, 3);
+}
+
 static at::Tensor readByteTensor(Magnum::GL::RectangleTexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::R8UI, 1, at::kByte);
@@ -903,6 +908,31 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
                 Returns:
                     tensor: (H x W x 3) float tensor with coordinates.
+            )EOS")
+
+        .def("depth", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+                return readDepthTensor(result->objectCoordinates);
+            }, R"EOS(
+                Read depth map. Each pixel specifies Z depth in camera frame.
+
+                If CUDA support is active, the tensor will reside on the GPU
+                which was used during rendering.
+
+                Returns:
+                    tensor: (H x W) float tensor with depth values.
+            )EOS")
+
+        .def("coordDepth", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+                return readXYZWTensor(result->objectCoordinates);
+            }, R"EOS(
+                Read combined coordinate + depth map.
+
+                This is the concatenation of the `coordinates` and `depth`
+                fields. Using this avoids a copy.
+
+                Returns:
+                    tensor: (H x W x 4) float tensor with coordinate and depth
+                        values.
             )EOS")
 
         .def("normals", [](const std::shared_ptr<sl::RenderPass::Result>& result){

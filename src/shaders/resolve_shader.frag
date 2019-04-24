@@ -15,7 +15,7 @@ in highp vec2 textureCoords;
 // Outputs
 layout(location = 0) out highp vec4 fragmentColor;
 
-layout(location = 1) out highp vec3 objectCoordinatesOut;
+layout(location = 1) out highp vec4 objectCoordinatesOut;
 layout(location = 2) out highp uint classIndexOut;
 layout(location = 3) out highp uint instanceIndexOut;
 layout(location = 4) out highp vec4 normalOut;
@@ -63,7 +63,7 @@ void main()
 
     fragmentColor = multisampleAverage(rgb, texCoord);
 
-    objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0).rgb;
+    objectCoordinatesOut = texelFetch(objectCoordinates, texCoord, 0);
     classIndexOut = texelFetch(classIndex, texCoord, 0).r;
     instanceIndexOut = texelFetch(instanceIndex, texCoord, 0).r;
 

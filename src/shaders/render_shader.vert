@@ -50,17 +50,20 @@ out mediump vec3 transformedNormal;
 out highp vec3 lightDirection;
 out highp vec3 cameraDirection;
 
-centroid out highp vec3 objectCoordinates;
+centroid out highp vec4 objectCoordinates;
 
 void main()
 {
     /* Mesh points to object coordinates */
     highp vec4 objectCoordinates4 = meshToObject * position;
-    objectCoordinates = objectCoordinates4.xyz / objectCoordinates4.w;
+    objectCoordinates = objectCoordinates4 / objectCoordinates4.w;
 
     /* Object coordinates to camera coordinates */
     highp vec4 camCoordinates4 = objectToCam * objectCoordinates4;
     highp vec3 camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
+
+    /* Output depth in fourth channel of the coordinate output */
+    objectCoordinates.w = camCoordinates.z;
 
     /* Transformed normal vector */
     transformedNormal = normalMatrix*normal;

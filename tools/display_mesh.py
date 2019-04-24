@@ -33,6 +33,8 @@ if __name__ == "__main__":
         help='Shading type (phong/flat)')
     parser.add_argument('--background-color', type=str, default='1,1,1,1',
         help='Background color (R,G,B,A)')
+    parser.add_argument('--show-depth', action='store_true',
+        help='Show depth image as well')
 
     args = parser.parse_args()
 
@@ -137,3 +139,9 @@ if __name__ == "__main__":
         normal_img.clamp_(0,255)
         normal_img = Image.fromarray(normal_img.byte().cpu().numpy())
         normal_img.show()
+
+    if args.show_depth:
+        depth = result.depth()
+        depth = depth.clamp_(0,1.0) / 1.0 * 255.0
+        depth = Image.fromarray(depth.byte().cpu().numpy())
+        depth.show()

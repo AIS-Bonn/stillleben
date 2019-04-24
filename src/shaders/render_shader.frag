@@ -66,10 +66,10 @@ in mediump vec2 interpolatedTextureCoords;
 in mediump vec4 interpolatedVertexColors;
 #endif
 
-centroid in highp vec3 objectCoordinates;
+centroid in highp vec4 objectCoordinates;
 
 layout(location = 0) out lowp vec4 color;
-layout(location = 1) out highp vec3 objectCoordinatesOut;
+layout(location = 1) out highp vec4 objectCoordinatesOut;
 layout(location = 2) out uint classIndexOut;
 layout(location = 3) out uint instanceIndexOut;
 layout(location = 4) out highp vec4 normalOut;
