@@ -8,6 +8,83 @@ from PIL import Image
 
 import time
 
+import math
+from math import sin, cos
+
+def rotx(theta):
+    """
+    Rotation about X-axis
+
+    @type theta: number
+    @param theta: the rotation angle
+    @rtype: 3x3 orthonormal matrix
+    @return: rotation about X-axis
+    @see: L{roty}, L{rotz}, L{rotvec}
+    """
+
+    ct = cos(theta)
+    st = sin(theta)
+    return torch.tensor([[1,  0,    0],
+            [0,  ct, -st],
+            [0,  st,  ct]])
+
+def roty(theta):
+    """
+    Rotation about Y-axis
+
+    @type theta: number
+    @param theta: the rotation angle
+    @rtype: 3x3 orthonormal matrix
+    @return: rotation about Y-axis
+    @see: L{rotx}, L{rotz}, L{rotvec}
+    """
+
+    ct = cos(theta)
+    st = sin(theta)
+
+    return torch.tensor([[ct,   0,   st],
+            [0,    1,    0],
+            [-st,  0,   ct]])
+
+def rotz(theta):
+    """
+    Rotation about Z-axis
+
+    @type theta: number
+    @param theta: the rotation angle
+    @rtype: 3x3 orthonormal matrix
+    @return: rotation about Z-axis
+    @see: L{rotx}, L{roty}, L{rotvec}
+    """
+
+    ct = cos(theta)
+    st = sin(theta)
+
+    return torch.tensor([[ct,      -st,  0],
+            [st,       ct,  0],
+            [ 0, 0, 1]])
+
+def rpy2r(roll, pitch=None,yaw=None):
+    """
+    Rotation from RPY angles.
+
+    Two call forms:
+        - R = rpy2r(S{theta}, S{phi}, S{psi})
+        - R = rpy2r([S{theta}, S{phi}, S{psi}])
+    These correspond to rotations about the Z, Y, X axes respectively.
+    @type roll: number or list/array/matrix of angles
+    @param roll: roll angle, or a list/array/matrix of angles
+    @type pitch: number
+    @param pitch: pitch angle
+    @type yaw: number
+    @param yaw: yaw angle
+    @rtype: 4x4 homogenous matrix
+    @return: R([S{theta} S{phi} S{psi}])
+    @see:  L{tr2rpy}, L{rpy2r}, L{tr2eul}
+    """
+    r = rotz(roll) @ roty(pitch) @ rotx(yaw)
+    return r
+
 if __name__ == "__main__":
     import argparse
 
@@ -24,6 +101,9 @@ if __name__ == "__main__":
         help='Render physics debug image with collision wireframes')
     parser.add_argument('--normals', action='store_true',
         help='Display normals')
+    parser.add_argument('--placement', type=str, choices=['center', 'random', 'tabletop'],
+        default='center',
+        help='Object placement')
     parser.add_argument('--tabletop', action='store_true',
         help='Simulate a tabletop scene')
     parser.add_argument('--normalize', action='store_true',
@@ -39,11 +119,20 @@ if __name__ == "__main__":
     parser.add_argument('--serialize', action='store_true',
         help='Display serialized scene string')
 
+    parser.add_argument('--rpy', type=str,
+        help='RPY rotation in degrees')
+
+    parser.add_argument('--out', type=str,
+        help='Save output in file')
+
+    parser.add_argument('--size', type=str,
+        help='Image size (WxH)', default="640x480")
+
     args = parser.parse_args()
 
     sl.init()
 
-    scene = sl.Scene((640,480))
+    scene = sl.Scene([ int(d) for d in args.size.split('x')])
 
     if args.background:
         scene.background_image = sl.Texture(args.background)
@@ -75,34 +164,36 @@ if __name__ == "__main__":
         object = sl.Object(mesh, options=opts)
         scene.add_object(object)
 
-        if not args.tabletop:
+        if args.placement == 'center':
+            pose = torch.eye(4)
+
+            if args.rpy:
+                rpy = [ math.pi / 180.0 * float(a) for a in args.rpy.split(',') ]
+                pose[:3,:3] = rpy2r(rpy[0], rpy[1], rpy[2])
+                print(pose[:3,:3])
+
+            pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
+            object.set_pose(pose)
+        elif args.placement == 'random':
             if True:
                 if not scene.find_noncolliding_pose(object, sampler='random', max_iterations=50, viewpoint=torch.tensor([1.0, 0.0, 0.0])):
                     print('WARNING: Could not find non-colliding pose')
             elif True:
                 pose = scene.place_object_randomly(mesh.bbox.diagonal)
                 object.set_pose(pose)
-            else:
-                pose = torch.eye(4)
-                pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
-                object.set_pose(pose)
 
     renderer = sl.RenderPass(shading=args.shading)
 
-    def vis_cb(iteration):
-        result = renderer.render(scene)
-        rgb = result.rgb()
-        rgb = rgb[:,:,:3]
-        rgb_np = rgb.cpu().numpy()
+    if args.placement == 'tabletop':
+        def vis_cb(iteration):
+            result = renderer.render(scene)
+            rgb = result.rgb()
+            rgb = rgb[:,:,:3]
+            rgb_np = rgb.cpu().numpy()
 
-        img = Image.fromarray(rgb_np, mode='RGB')
-        img.save('/tmp/iter{:03}.png'.format(iteration))
+            img = Image.fromarray(rgb_np, mode='RGB')
+            img.save('/tmp/iter{:03}.png'.format(iteration))
 
-        #dbg_rgb = sl.render_physics_debug_image(scene)
-        #dbg_img = Image.fromarray(dbg_rgb.cpu().numpy()[:,:,:3], mode='RGB')
-        #dbg_img.save('/tmp/physics{:03}.png'.format(iteration))
-
-    if args.tabletop:
         s1 = time.time()
         scene.simulate_tabletop_scene()
         s2 = time.time()
@@ -126,7 +217,11 @@ if __name__ == "__main__":
     rgb_np = rgb.cpu().numpy()
 
     img = Image.fromarray(rgb_np, mode='RGB')
-    img.show()
+
+    if args.out:
+        img.save(args.out)
+    else:
+        img.show()
 
     if args.debug:
         dbg_rgb = sl.render_debug_image(scene)
