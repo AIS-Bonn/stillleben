@@ -595,12 +595,31 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             properties.
         )EOS")
 
-        .def(py::init(&sl::Object::instantiate), R"EOS(
+        .def(py::init([](const std::shared_ptr<sl::Mesh>& mesh, const py::dict& options){
+                sl::InstantiationOptions opts;
+                for(const auto& entry : options)
+                {
+                    auto key = entry.first.cast<std::string>();
+                    if(key == "color")
+                        opts.color = fromTorch<Magnum::Color4>::convert(entry.second.cast<torch::Tensor>());
+                    else if(key == "force_color")
+                        opts.forceColor = entry.second.cast<bool>();
+                    else
+                        throw std::invalid_argument("Invalid key in options");
+                }
+
+                return sl::Object::instantiate(mesh, opts);
+            }), R"EOS(
             Constructor
 
             Args:
                 mesh (Mesh): Mesh to instantiate
-        )EOS", py::arg("mesh"))
+                options (dict): Dictionary of options. Supported keys:
+                    * color (tensor): RGBA color used if no color information is
+                      present in the mesh. Defaults to white.
+                    * force_color (bool): If true, the color specified in
+                      `color` is used even if the mesh is colored.
+        )EOS", py::arg("mesh"), py::arg("options"))
 
         .def("pose", wrapShared(&sl::Object::pose), R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global

@@ -69,6 +69,19 @@ private:
     bool m_hasVertexColors = false;
 };
 
+struct InstantiationOptions
+{
+    /**
+     * Default color if the mesh does not have texture or vertex colors
+     **/
+    Magnum::Color4 color{1.0f, 1.0f, 1.0f, 1.0f};
+
+    /**
+     * If true, always render the mesh with this color, regardless of texture
+     **/
+    bool forceColor = false;
+};
+
 class Object
 {
 public:
@@ -78,7 +91,7 @@ public:
     Object(const Object&) = delete;
     Object& operator=(const Object&) = delete;
 
-    static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh);
+    static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options = {});
 
     void setPose(const Magnum::Matrix4& pose);
     Magnum::Matrix4 pose() const
@@ -105,8 +118,8 @@ public:
     void updateFromPhysics();
 
 private:
-    void load();
-    void addMeshObject(Object3D& parent, Magnum::UnsignedInt i);
+    void load(const InstantiationOptions& options);
+    void addMeshObject(Object3D& parent, Magnum::UnsignedInt i, const InstantiationOptions& options);
 
     std::shared_ptr<Mesh> m_mesh;
 

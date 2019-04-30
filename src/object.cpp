@@ -48,7 +48,7 @@ Object::~Object()
 {
 }
 
-void Object::load()
+void Object::load(const InstantiationOptions& options)
 {
     m_rigidBody.reset(
         m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
@@ -73,13 +73,13 @@ void Object::load()
 
         // Recursively add all children
         for(UnsignedInt objectId : sceneData->children3D())
-            addMeshObject(m_meshObject, objectId);
+            addMeshObject(m_meshObject, objectId, options);
     }
     else if(!m_mesh->meshes().empty() && m_mesh->meshes()[0])
     {
         // The format has no scene support, display just the first loaded mesh with
         // a default material and be done with it
-        addMeshObject(m_meshObject, 0);
+        addMeshObject(m_meshObject, 0, options);
     }
 
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
@@ -88,7 +88,7 @@ void Object::load()
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
 }
 
-void Object::addMeshObject(Object3D& parent, UnsignedInt i)
+void Object::addMeshObject(Object3D& parent, UnsignedInt i, const InstantiationOptions& options)
 {
     std::unique_ptr<Trade::ObjectData3D> objectData = m_mesh->importer().object3D(i);
     if(!objectData)
@@ -111,10 +111,10 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
 
         auto drawable = new Drawable{*object, m_drawables, mesh, &m_cb};
 
-        if(materialId == -1 || !m_mesh->materials()[materialId])
+        if(options.forceColor || materialId == -1 || !m_mesh->materials()[materialId])
         {
             // Material not available / not loaded, use a default material
-            drawable->setColor(0xffffff_rgbf);
+            drawable->setColor(options.color);
         }
         else if(m_mesh->materials()[materialId]->flags() & Trade::PhongMaterialData::Flag::DiffuseTexture)
         {
@@ -124,7 +124,7 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             if(texture)
                 drawable->setTexture(&*texture);
             else
-                drawable->setColor(0xffffff_rgbf);
+                drawable->setColor(options.color);
         }
         else
         {
@@ -132,7 +132,7 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
             drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
         }
 
-        drawable->setHasVertexColors(meshData->hasColors());
+        drawable->setHasVertexColors(!options.forceColor && meshData->hasColors());
 
         auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
 
@@ -176,10 +176,10 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i)
 
     // Recursively add children
     for(std::size_t id: objectData->children())
-        addMeshObject(*object, id);
+        addMeshObject(*object, id, options);
 }
 
-std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh)
+std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options)
 {
     if(!mesh)
         throw std::invalid_argument("Got nullptr mesh");
@@ -188,7 +188,7 @@ std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh)
 
     object->m_mesh = mesh;
 
-    object->load();
+    object->load(options);
 
     return object;
 }

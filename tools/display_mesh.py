@@ -35,6 +35,7 @@ if __name__ == "__main__":
         help='Background color (R,G,B,A)')
     parser.add_argument('--show-depth', action='store_true',
         help='Show depth image as well')
+    parser.add_argument('--force-color', type=str)
 
     args = parser.parse_args()
 
@@ -62,8 +63,14 @@ if __name__ == "__main__":
 
     print("Meshes loaded.")
 
+    opts = {}
+
+    if args.force_color:
+        opts['color'] = torch.tensor([ float(a) for a in args.force_color.split(',') ])
+        opts['force_color'] = True
+
     for mesh in meshes:
-        object = sl.Object(mesh)
+        object = sl.Object(mesh, options=opts)
         scene.add_object(object)
 
         if not args.tabletop:
