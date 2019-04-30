@@ -619,7 +619,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                       present in the mesh. Defaults to white.
                     * force_color (bool): If true, the color specified in
                       `color` is used even if the mesh is colored.
-        )EOS", py::arg("mesh"), py::arg("options"))
+        )EOS", py::arg("mesh"), py::arg("options")=py::dict())
 
         .def("pose", wrapShared(&sl::Object::pose), R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global
