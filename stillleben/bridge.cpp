@@ -508,6 +508,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             tensor = tensor.contiguous();
 
             Magnum::ImageView2D image{
+                Magnum::PixelStorage{}.setAlignment(1),
                 Magnum::PixelFormat::RGB8Unorm,
                 {static_cast<int>(tensor.size(1)), static_cast<int>(tensor.size(0))},
                 Corrade::Containers::ArrayView<uint8_t>(tensor.data<uint8_t>(), tensor.numel())
