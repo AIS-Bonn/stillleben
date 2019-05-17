@@ -499,6 +499,13 @@ void AlignMesh::drawEvent() {
         }
 
         ImGui::SameLine();
+        if(ImGui::Button("T++"))
+        {
+            Matrix4 T = Matrix4::translation(0.1f * axis.axis());
+            _mesh.setTransformation(T * _mesh.transformationMatrix());
+        }
+
+        ImGui::SameLine();
         if(ImGui::Button("T+"))
         {
             Matrix4 T = Matrix4::translation(0.01f * axis.axis());
@@ -512,6 +519,13 @@ void AlignMesh::drawEvent() {
             _mesh.setTransformation(T * _mesh.transformationMatrix());
         }
 
+        ImGui::SameLine();
+        if(ImGui::Button("T--"))
+        {
+            Matrix4 T = Matrix4::translation(-0.1f * axis.axis());
+            _mesh.setTransformation(T * _mesh.transformationMatrix());
+        }
+
         ImGui::PopID();
     }
 
@@ -522,6 +536,20 @@ void AlignMesh::drawEvent() {
     if(ImGui::Button("S+"))
     {
         Matrix4 T = Matrix4::scaling(Vector3{10.0f});
+        _mesh.setTransformation(T * _mesh.transformationMatrix());
+    }
+
+    ImGui::SameLine();
+    if(ImGui::Button("s+"))
+    {
+        Matrix4 T = Matrix4::scaling(Vector3{1.5f});
+        _mesh.setTransformation(T * _mesh.transformationMatrix());
+    }
+
+    ImGui::SameLine();
+    if(ImGui::Button("s-"))
+    {
+        Matrix4 T = Matrix4::scaling(Vector3{1.0f/1.5f});
         _mesh.setTransformation(T * _mesh.transformationMatrix());
     }
 
