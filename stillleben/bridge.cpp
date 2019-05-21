@@ -30,6 +30,47 @@ static bool g_cudaEnabled = false;
 static unsigned int g_cudaIndex = 0;
 static std::string g_installPrefix;
 
+// shared pointer with reference to the context
+template<class T>
+class ContextSharedPtr : public std::shared_ptr<T>
+{
+public:
+    ContextSharedPtr()
+    {
+        check();
+    }
+
+    explicit ContextSharedPtr(T* ptr)
+     : std::shared_ptr<T>(ptr)
+    {
+        check();
+    }
+
+    ContextSharedPtr(const std::shared_ptr<T>& ptr)
+     : std::shared_ptr<T>(ptr)
+    {
+        check();
+    }
+
+    ~ContextSharedPtr()
+    {
+        // Delete our pointee before we release the context.
+        this->reset();
+    }
+
+    void check()
+    {
+        if(!g_context)
+            throw std::logic_error("Call sl::init() first");
+
+        m_context = g_context;
+    }
+
+private:
+    std::shared_ptr<sl::Context> m_context;
+};
+
+PYBIND11_DECLARE_HOLDER_TYPE(T, ContextSharedPtr<T>);
 // Conversion functions
 namespace
 {
@@ -860,11 +901,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         )EOS")
     ;
 
-    py::class_<sl::RenderPass::Result, std::shared_ptr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(
+    py::class_<sl::RenderPass::Result, ContextSharedPtr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(
             Result of a :class:`RenderPass` run.
         )EOS")
 
-        .def("rgb", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("rgb", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readRGBATensor(result->rgb);
             }, R"EOS(
                 Read RGBA tensor.
@@ -876,7 +917,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W x 4) byte tensor with R,G,B,A values.
             )EOS")
 
-        .def("class_index", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("class_index", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readShortTensor(result->classIndex);
             }, R"EOS(
                 Read class index map.
@@ -888,7 +929,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W) short tensor with class values.
             )EOS")
 
-        .def("instance_index", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("instance_index", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readShortTensor(result->instanceIndex);
             }, R"EOS(
                 Read class index map.
@@ -900,7 +941,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W) short tensor with instance values.
             )EOS")
 
-        .def("valid_mask", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("valid_mask", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readByteTensor(result->validMask);
             }, R"EOS(
                 Read valid mask. If and only if :func:`class_index`,
@@ -916,7 +957,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W) byte tensor
             )EOS")
 
-        .def("coordinates", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readCoordTensor(result->objectCoordinates);
             }, R"EOS(
                 Read object coordinates map. Each pixel specifies the XYZ
@@ -930,7 +971,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W x 3) float tensor with coordinates.
             )EOS")
 
-        .def("depth", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("depth", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readDepthTensor(result->objectCoordinates);
             }, R"EOS(
                 Read depth map. Each pixel specifies Z depth in camera frame.
@@ -942,7 +983,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     tensor: (H x W) float tensor with depth values.
             )EOS")
 
-        .def("coordDepth", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("coordDepth", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readXYZWTensor(result->objectCoordinates);
             }, R"EOS(
                 Read combined coordinate + depth map.
@@ -955,7 +996,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                         values.
             )EOS")
 
-        .def("normals", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+        .def("normals", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readXYZWTensor(result->normals);
             }, R"EOS(
                 Read normal map. Each pixel (XYZW) specifies the normal
@@ -971,15 +1012,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
     ;
 
-    py::class_<sl::RenderPass>(m, "RenderPass", R"EOS(
+    py::class_<sl::RenderPass, ContextSharedPtr<sl::RenderPass>>(m, "RenderPass", R"EOS(
             Renders a :class:`Scene`.
         )EOS")
 
         .def(py::init([](const std::string& shading){
                 if(shading == "phong")
-                    return std::make_unique<sl::RenderPass>(sl::RenderPass::Type::Phong);
+                    return ContextSharedPtr<sl::RenderPass>(
+                        new sl::RenderPass(sl::RenderPass::Type::Phong)
+                    );
                 else if(shading == "flat")
-                    return std::make_unique<sl::RenderPass>(sl::RenderPass::Type::Flat);
+                    return ContextSharedPtr<sl::RenderPass>(
+                        new sl::RenderPass(sl::RenderPass::Type::Flat)
+                    );
                 else
                     throw std::invalid_argument("unknown shading type specified");
             }), R"EOS(
@@ -990,7 +1035,10 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     Phong shading.
          )EOS", py::arg("shading")="phong")
 
-        .def("render", &sl::RenderPass::render, R"EOS(
+        .def("render",
+            [](const ContextSharedPtr<sl::RenderPass>& pass, const std::shared_ptr<sl::Scene>& scene){
+                return ContextSharedPtr<sl::RenderPass::Result>{pass->render(*scene)};
+            }, R"EOS(
             Render a scene.
 
             Args:
@@ -1023,4 +1071,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
         .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
     ;
+
+    // We need to release our context pointer when the python module is
+    // unloaded. Otherwise, we release it very late (basically, when the
+    // atexit handlers are called. MESA also has atexit handlers, and if they
+    // get called before our cleanup code, bad things happen.
+    auto cleanup_callback = []() {
+        g_context.reset();
+    };
+
+    m.add_object("_cleanup", py::capsule(cleanup_callback));
 }
