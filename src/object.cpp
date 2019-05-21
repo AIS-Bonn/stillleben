@@ -8,11 +8,14 @@
 
 #include <limits>
 
+#include <Corrade/Utility/ConfigurationGroup.h>
+
 #include <Magnum/DebugTools/ObjectRenderer.h>
 
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/Math/ConfigurationValue.h>
 
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -233,6 +236,13 @@ void Object::setInstanceIndex(unsigned int index)
         throw std::invalid_argument("Object::setInstanceIndex(): out of range");
 
     m_instanceIndex = index;
+}
+
+void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
+{
+    group.setValue("mesh", m_mesh->filename());
+    group.setValue("pose", m_sceneObject.absoluteTransformationMatrix());
+    group.setValue("instanceIndex", m_instanceIndex);
 }
 
 }

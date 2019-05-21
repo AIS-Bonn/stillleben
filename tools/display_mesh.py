@@ -36,6 +36,8 @@ if __name__ == "__main__":
     parser.add_argument('--show-depth', action='store_true',
         help='Show depth image as well')
     parser.add_argument('--force-color', type=str)
+    parser.add_argument('--serialize', action='store_true',
+        help='Display serialized scene string')
 
     args = parser.parse_args()
 
@@ -152,3 +154,7 @@ if __name__ == "__main__":
         depth = depth.clamp_(0,1.0) / 1.0 * 255.0
         depth = Image.fromarray(depth.byte().cpu().numpy())
         depth.show()
+
+    if args.serialize:
+        print('Serialized scene description:\n')
+        print(scene.serialize())

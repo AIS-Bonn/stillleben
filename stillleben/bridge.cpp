@@ -13,7 +13,9 @@
 #include <stillleben/animator.h>
 #include <stillleben/contrib/ctpl_stl.h>
 
+#include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/Debug.h>
+
 #include <Magnum/Image.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -71,6 +73,7 @@ private:
 };
 
 PYBIND11_DECLARE_HOLDER_TYPE(T, ContextSharedPtr<T>);
+
 // Conversion functions
 namespace
 {
@@ -899,6 +902,20 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             * The light comes from above (negative Y direction)
             * The light never comes from behind the objects.
         )EOS")
+
+
+        .def("serialize",
+            [](const std::shared_ptr<sl::Scene>& scene){
+                std::ostringstream ss;
+                Corrade::Utility::Configuration config;
+
+                scene->serialize(config);
+                config.save(ss);
+
+                return ss.str();
+            }, R"EOS(
+                Serialize the scene to a string
+            )EOS")
     ;
 
     py::class_<sl::RenderPass::Result, ContextSharedPtr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

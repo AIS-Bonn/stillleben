@@ -126,6 +126,9 @@ public:
     unsigned int classIndex() const
     { return m_classIndex; }
 
+    std::string filename() const
+    { return m_filename; }
+
 private:
     void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
     void updatePretransform();
@@ -133,6 +136,8 @@ private:
     void loadPretransform(const std::string& filename);
 
     std::shared_ptr<Context> m_ctx;
+
+    std::string m_filename;
 
     std::unique_ptr<Magnum::Trade::AbstractImporter> m_importer;
 

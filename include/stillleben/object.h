@@ -93,6 +93,8 @@ public:
 
     static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options = {});
 
+    void serialize(Corrade::Utility::ConfigurationGroup& group);
+
     void setPose(const Magnum::Matrix4& pose);
     Magnum::Matrix4 pose() const
     { return m_sceneObject.transformationMatrix(); }

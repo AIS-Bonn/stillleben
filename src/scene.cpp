@@ -7,10 +7,14 @@
 #include <stillleben/object.h>
 #include <stillleben/mesh.h>
 
+#include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/Format.h>
+
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Quaternion.h>
+#include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Camera.h>
@@ -425,6 +429,22 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         {
             obj->updateFromPhysics();
         }
+    }
+}
+
+void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
+{
+    group.setValue("projection", m_camera->projectionMatrix());
+    group.setValue("cameraPose", m_cameraObject.absoluteTransformationMatrix());
+    group.setValue("lightPosition", m_lightPosition);
+    group.setValue("numObjects", m_objects.size());
+
+    for(std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const auto& obj = m_objects[i];
+
+        auto objGroup = group.addGroup("object");
+        obj->serialize(*objGroup);
     }
 }
 

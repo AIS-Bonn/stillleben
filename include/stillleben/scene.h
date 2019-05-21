@@ -29,6 +29,40 @@ namespace sl
 
 class Context;
 
+/**
+ * @brief Scene
+ *
+ * This class represents an arrangement of objects. Scenes can be simulated
+ * (yielding a different arrangement) or rendered (creating an image).
+ *
+ * Scenes can also be serialized and deserialized to/from an internal data
+ * format. This functionality uses the @ref Corrade::Utility::Configuration
+ * framework. The resulting format looks like this:
+ *
+ * @code{.ini}
+ * # The OpenGL projection matrix
+ * projection=<4x4 projection matrix>
+ *
+ * # The camera pose
+ * cameraPose=<4x4 transformation matrix>
+ *
+ * # The light position
+ * lightPosition=<3D vector>
+ *
+ * # The number of objects
+ * numObjects=N
+ *
+ * # Description of the first object
+ * [object]
+ * mesh="/path/to/my/mesh.gltf"
+ * pose=<4x4 transformation matrix>
+ * instanceIndex=N
+ *
+ * # Description of the second object
+ * [object]
+ * ...
+ * @endcode
+ **/
 class Scene
 {
 public:
@@ -36,6 +70,14 @@ public:
     Scene(const Scene& other) = delete;
     Scene(Scene&& other) = delete;
     ~Scene();
+
+    //! @name Serialization & Deserialization
+    //@{
+
+    void serialize(Corrade::Utility::ConfigurationGroup& group) const;
+    void deserialize(const Corrade::Utility::ConfigurationGroup& group);
+
+    //@}
 
     //! @name Camera and viewport settings
     //@{

@@ -97,6 +97,8 @@ void Mesh::load(const std::string& filename, std::size_t maxPhysicsTriangles)
 
 void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles)
 {
+    m_filename = filename;
+
     // Load a scene importer plugin
     m_importer = m_ctx->instantiateImporter();
     if(!m_importer)
