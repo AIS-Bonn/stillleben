@@ -26,7 +26,9 @@ namespace physx
 namespace sl
 {
 
+class Context;
 class Mesh;
+class MeshCache;
 
 class Drawable;
 typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera, Drawable* drawable)> DrawCallback;
@@ -94,6 +96,7 @@ public:
     static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options = {});
 
     void serialize(Corrade::Utility::ConfigurationGroup& group);
+    void deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& meshCache);
 
     void setPose(const Magnum::Matrix4& pose);
     Magnum::Matrix4 pose() const

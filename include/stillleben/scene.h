@@ -28,6 +28,7 @@ namespace sl
 {
 
 class Context;
+class MeshCache;
 
 /**
  * @brief Scene
@@ -75,7 +76,7 @@ public:
     //@{
 
     void serialize(Corrade::Utility::ConfigurationGroup& group) const;
-    void deserialize(const Corrade::Utility::ConfigurationGroup& group);
+    void deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache = nullptr);
 
     //@}
 
@@ -126,6 +127,8 @@ public:
     void addObject(const std::shared_ptr<Object>& object);
     const std::vector<std::shared_ptr<Object>>& objects() const
     { return m_objects; }
+
+    void clearObjects();
 
     //! @name Physics
     //@{

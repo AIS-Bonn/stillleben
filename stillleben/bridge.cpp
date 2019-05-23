@@ -916,6 +916,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             }, R"EOS(
                 Serialize the scene to a string
             )EOS")
+
+        .def("deserialize",
+            [](const std::shared_ptr<sl::Scene>& scene, const std::string& str){
+                std::istringstream ss{str};
+                Corrade::Utility::Configuration config{ss};
+
+                scene->deserialize(config);
+            }, R"EOS(
+                Deserialize the scene from a string
+            )EOS")
     ;
 
     py::class_<sl::RenderPass::Result, ContextSharedPtr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

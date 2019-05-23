@@ -5,6 +5,7 @@
 
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
+#include <stillleben/mesh_cache.h>
 
 #include <limits>
 
@@ -240,9 +241,29 @@ void Object::setInstanceIndex(unsigned int index)
 
 void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
 {
-    group.setValue("mesh", m_mesh->filename());
+    auto meshGroup = group.addGroup("mesh");
+    m_mesh->serialize(*meshGroup);
+
     group.setValue("pose", m_sceneObject.absoluteTransformationMatrix());
     group.setValue("instanceIndex", m_instanceIndex);
+}
+
+void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
+{
+    auto meshGroup = group.group("mesh");
+    if(!meshGroup)
+        throw std::runtime_error("Did not find mesh subgroup in object");
+
+    m_mesh = cache.load(*meshGroup);
+
+    // FIXME: support InstantiationOptions
+    load({});
+
+    if(group.hasValue("pose"))
+        m_sceneObject.setTransformation(group.value<Magnum::Matrix4>("pose"));
+
+    if(group.hasValue("instanceIndex"))
+        setInstanceIndex(group.value<unsigned int>("instanceIndex"));
 }
 
 }

@@ -75,6 +75,9 @@ public:
     std::shared_ptr<Context>& context()
     { return m_ctx; }
 
+    void serialize(Corrade::Utility::ConfigurationGroup& group);
+    void deserialize(const Corrade::Utility::ConfigurationGroup& group);
+
     void load(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 
     void loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);

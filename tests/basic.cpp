@@ -6,9 +6,12 @@
 #include <stillleben/scene.h>
 #include <stillleben/object.h>
 #include <stillleben/pose.h>
+#include <stillleben/mesh_cache.h>
 
 #include <stillleben/phong_pass.h>
 #include <stillleben/render_pass.h>
+
+#include <Corrade/Utility/Configuration.h>
 
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Image.h>
@@ -320,4 +323,69 @@ TEST_CASE("physics")
 
         objects.push_back(std::move(object));
     }
+}
+
+TEST_CASE("serialization")
+{
+    // Create our stillleben Context
+    auto context = sl::Context::Create();
+    REQUIRE(context);
+
+    // Load a mesh file
+    auto mesh = std::make_shared<sl::Mesh>(context);
+    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf", 100);
+
+    // Create a scene
+    sl::Scene scene(context, sl::ViewportSize(640, 480));
+
+    // Instantiate the mesh to create a movable scene object
+    auto object = sl::Object::instantiate(mesh);
+    REQUIRE(object);
+
+    float distance = sl::pose::minimumDistanceForObjectDiameter(
+        mesh->bbox().size().length(),
+        scene.projectionMatrix()
+    );
+
+    object->setPose(Matrix4::translation(Vector3(0.0, 0.0, distance)));
+
+    object->setInstanceIndex(15);
+
+    // Add it to the scene
+    scene.addObject(object);
+
+    Corrade::Utility::Configuration config;
+    scene.serialize(config);
+
+    std::ostringstream ss;
+    config.save(ss);
+
+    CAPTURE(ss.str());
+
+    std::istringstream ssInput{ss.str()};
+
+    Corrade::Utility::Configuration config2{ssInput};
+
+    sl::MeshCache cache(context);
+
+    sl::Scene nScene0(context, sl::ViewportSize(640, 480));
+    nScene0.deserialize(config2, &cache);
+
+    REQUIRE(nScene0.objects().size() == 1);
+
+    auto nScene0Obj = nScene0.objects()[0];
+    CHECK(nScene0Obj->mesh()->pretransformScale() == mesh->pretransformScale());
+
+    CHECK(nScene0Obj->pose().translation().x() == 0);
+    CHECK(nScene0Obj->pose().translation().y() == 0);
+    CHECK(nScene0Obj->pose().translation().z() == Approx(distance));
+
+    CHECK(nScene0Obj->instanceIndex() == 15);
+
+    // Check cache functionality
+    sl::Scene nScene1(context, sl::ViewportSize(640, 480));
+    nScene1.deserialize(config2, &cache);
+
+    REQUIRE(nScene1.objects().size() == 1);
+    CHECK(nScene1.objects()[0]->mesh() == nScene0Obj->mesh());
 }
