@@ -5,14 +5,18 @@
 
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
+#include <stillleben/mesh_cache.h>
 
 #include <limits>
+
+#include <Corrade/Utility/ConfigurationGroup.h>
 
 #include <Magnum/DebugTools/ObjectRenderer.h>
 
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/Math/ConfigurationValue.h>
 
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -233,6 +237,33 @@ void Object::setInstanceIndex(unsigned int index)
         throw std::invalid_argument("Object::setInstanceIndex(): out of range");
 
     m_instanceIndex = index;
+}
+
+void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
+{
+    auto meshGroup = group.addGroup("mesh");
+    m_mesh->serialize(*meshGroup);
+
+    group.setValue("pose", m_sceneObject.absoluteTransformationMatrix());
+    group.setValue("instanceIndex", m_instanceIndex);
+}
+
+void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
+{
+    auto meshGroup = group.group("mesh");
+    if(!meshGroup)
+        throw std::runtime_error("Did not find mesh subgroup in object");
+
+    m_mesh = cache.load(*meshGroup);
+
+    // FIXME: support InstantiationOptions
+    load({});
+
+    if(group.hasValue("pose"))
+        m_sceneObject.setTransformation(group.value<Magnum::Matrix4>("pose"));
+
+    if(group.hasValue("instanceIndex"))
+        setInstanceIndex(group.value<unsigned int>("instanceIndex"));
 }
 
 }

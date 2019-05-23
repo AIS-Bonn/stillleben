@@ -12,6 +12,7 @@
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Algorithms/Svd.h>
 #include <Magnum/Mesh.h>
@@ -97,6 +98,8 @@ void Mesh::load(const std::string& filename, std::size_t maxPhysicsTriangles)
 
 void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles)
 {
+    m_filename = filename;
+
     // Load a scene importer plugin
     m_importer = m_ctx->instantiateImporter();
     if(!m_importer)
@@ -447,6 +450,28 @@ void Mesh::setClassIndex(unsigned int index)
         throw std::invalid_argument("Mesh::setClassIndex(): out of range");
 
     m_classIndex = index;
+}
+
+void Mesh::serialize(Corrade::Utility::ConfigurationGroup& group)
+{
+    group.setValue("filename", m_filename);
+    group.setValue("classIndex", m_classIndex);
+    group.setValue("scale", m_scale);
+    group.setValue("rigidPretransform", m_pretransformRigid);
+}
+
+void Mesh::deserialize(const Corrade::Utility::ConfigurationGroup& group)
+{
+    load(group.value("filename"));
+
+    if(group.hasValue("classIndex"))
+        setClassIndex(group.value<unsigned int>("classIndex"));
+
+    if(group.hasValue("scale"))
+        m_scale = group.value<float>("scale");
+
+    if(group.hasValue("rigidPretransform"))
+        m_pretransformRigid = group.value<Magnum::Matrix4>("rigidPretransform");
 }
 
 }

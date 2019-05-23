@@ -6,11 +6,16 @@
 #include <stillleben/context.h>
 #include <stillleben/object.h>
 #include <stillleben/mesh.h>
+#include <stillleben/mesh_cache.h>
+
+#include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/Format.h>
 
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Quaternion.h>
+#include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Camera.h>
@@ -55,13 +60,19 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
 Scene::~Scene()
 {
-    // The SceneObject destructor of this instance will delete child objects,
-    // but they are reference counted using shared_ptr => first release them
+    clearObjects();
+}
+
+void Scene::clearObjects()
+{
+    // First unset back-references to us, then release the shared_ptr
     for(auto& obj : m_objects)
     {
         obj->setParentSceneObject(nullptr);
         obj->setPhysicsScene(nullptr);
     }
+
+    m_objects.clear();
 }
 
 void Scene::setCameraPose(const Magnum::Matrix4& pose)
@@ -425,6 +436,52 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         {
             obj->updateFromPhysics();
         }
+    }
+}
+
+void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
+{
+    group.setValue("projection", m_camera->projectionMatrix());
+    group.setValue("cameraPose", m_cameraObject.absoluteTransformationMatrix());
+    group.setValue("lightPosition", m_lightPosition);
+    group.setValue("numObjects", m_objects.size());
+
+    for(std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const auto& obj = m_objects[i];
+
+        auto objGroup = group.addGroup("object");
+        obj->serialize(*objGroup);
+    }
+}
+
+void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
+{
+    if(group.hasValue("projection"))
+        m_camera->setProjectionMatrix(group.value<Magnum::Matrix4>("projection"));
+
+    if(group.hasValue("cameraPose"))
+        m_cameraObject.setTransformation(group.value<Magnum::Matrix4>("cameraPose"));
+
+    if(group.hasValue("lightPosition"))
+        m_lightPosition = group.value<Magnum::Vector3>("lightPosition");
+
+    std::unique_ptr<MeshCache> localCache;
+    if(!cache)
+    {
+        localCache = std::make_unique<MeshCache>(m_ctx);
+        cache = localCache.get();
+    }
+
+    clearObjects();
+
+    auto objectGroups = group.groups("object");
+    for(const auto& objectGroup : group.groups("object"))
+    {
+        auto obj = std::make_shared<Object>();
+        obj->deserialize(*objectGroup, *cache);
+
+        addObject(obj);
     }
 }
 
