@@ -78,6 +78,9 @@ public:
     void serialize(Corrade::Utility::ConfigurationGroup& group) const;
     void deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache = nullptr);
 
+    void loadVisual();
+    void loadPhysics();
+
     //@}
 
     //! @name Camera and viewport settings
@@ -180,6 +183,8 @@ private:
 template<class Sampler>
 bool Scene::findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations)
 {
+    loadPhysics();
+
     for(int i = 0; i < maxIterations; ++i)
     {
         // Sample new pose

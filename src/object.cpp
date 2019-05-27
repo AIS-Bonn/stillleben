@@ -52,12 +52,23 @@ Object::~Object()
 {
 }
 
-void Object::load(const InstantiationOptions& options)
+void Object::setMesh(const std::shared_ptr<sl::Mesh>& mesh)
 {
-    m_rigidBody.reset(
-        m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
-    );
-    m_rigidBody->userData = this;
+    if(m_mesh)
+        throw std::logic_error("Re-setting the mesh via setMesh() is currently not supported");
+
+    m_mesh = mesh;
+}
+
+void Object::setInstantiationOptions(const InstantiationOptions& opts)
+{
+    m_options = opts;
+}
+
+void Object::populateParts()
+{
+    if(!m_parts.empty())
+        return; // already done
 
     // pretransform is handled differently for Magnum & PhysX:
     // For Magnum, we just use the pretransform directly, while for PhysX
@@ -77,22 +88,135 @@ void Object::load(const InstantiationOptions& options)
 
         // Recursively add all children
         for(UnsignedInt objectId : sceneData->children3D())
-            addMeshObject(m_meshObject, objectId, options);
+            addPart(m_meshObject, objectId);
     }
     else if(!m_mesh->meshes().empty() && m_mesh->meshes()[0])
     {
         // The format has no scene support, display just the first loaded mesh with
         // a default material and be done with it
-        addMeshObject(m_meshObject, 0, options);
+        addPart(m_meshObject, 0);
+    }
+}
+
+void Object::loadVisual()
+{
+    m_mesh->loadVisual();
+    populateParts();
+
+    for(auto part : m_parts)
+    {
+        auto objectData = m_mesh->importer().object3D(part->index());
+
+        // Add a drawable if the object has a mesh and the mesh is loaded
+        if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_mesh->meshes()[objectData->instance()])
+        {
+            auto meshObjectData = static_cast<Trade::MeshObjectData3D*>(objectData.get());
+            auto mesh = m_mesh->meshes()[objectData->instance()];
+            auto meshData = m_mesh->importer().mesh3D(objectData->instance());
+            const Int materialId = meshObjectData->material();
+
+            auto drawable = new Drawable{*part, m_drawables, mesh, &m_cb};
+
+            if(m_options.forceColor || materialId == -1 || !m_mesh->materials()[materialId])
+            {
+                // Material not available / not loaded, use a default material
+                drawable->setColor(m_options.color);
+            }
+            else if(m_mesh->materials()[materialId]->flags() & Trade::PhongMaterialData::Flag::DiffuseTexture)
+            {
+                // Textured material. If the texture failed to load, again just use a
+                // default colored material.
+                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[m_mesh->materials()[materialId]->diffuseTexture()];
+                if(texture)
+                    drawable->setTexture(&*texture);
+                else
+                    drawable->setColor(m_options.color);
+            }
+            else
+            {
+                // Color-only material
+                drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
+            }
+
+            drawable->setHasVertexColors(!m_options.forceColor && meshData->hasColors());
+        }
     }
 
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
+}
+
+void Object::loadPhysics()
+{
+    if(m_rigidBody)
+        return;
+
+    m_mesh->loadPhysics();
+    populateParts();
+
+    m_rigidBody.reset(
+        m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
+    );
+    m_rigidBody->userData = this;
+    m_rigidBody->setGlobalPose(physx::PxTransform{m_sceneObject.transformation()});
+
+    if(m_physicsScene)
+        m_physicsScene->addActor(*m_rigidBody);
+
+    for(auto part : m_parts)
+    {
+        auto objectData = m_mesh->importer().object3D(part->index());
+
+        if(!objectData || objectData->instanceType() != Trade::ObjectInstanceType3D::Mesh)
+            continue;
+
+        if(objectData->instance() == -1)
+            continue;
+
+        auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
+
+        if(!physxMesh)
+            continue;
+
+        auto& physics = m_mesh->context()->physxPhysics();
+
+        PhysXHolder<physx::PxMaterial> material{
+            physics.createMaterial(0.5f, 0.5f, 0.0f)
+        };
+        physx::PxMeshScale meshScale(m_mesh->pretransformScale());
+
+        physx::PxConvexMeshGeometry geometry(physxMesh->get(), meshScale);
+
+        PhysXHolder<physx::PxShape> shape{
+            physics.createShape(geometry, *material, true)
+        };
+
+        // Where are we relative to m_meshObject?
+        Matrix4 poseInMeshObject = m_meshObject.absoluteTransformationMatrix().inverted() * part->absoluteTransformationMatrix();
+
+        // The transformation between m_sceneObject and m_meshObject is
+        // composed of a rigid part and a scale.
+        Matrix4 poseInSceneObjectRigid = m_mesh->pretransformRigid() * poseInMeshObject;
+
+        // PhysX applies scale locally in the shape.
+        // => This is pretransformScale(), but we need to adjust the
+        //    translation part of poseInSceneObjectRigid from scaled
+        //    coordinates to unscaled ones.
+
+        Matrix4 pose = Matrix4::from(
+            poseInSceneObjectRigid.rotationScaling(),
+            m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
+        );
+
+        shape->setLocalPose(physx::PxTransform{pose});
+
+        m_rigidBody->attachShape(*shape);
+    }
 
     // Calculate mass & inertia
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
 }
 
-void Object::addMeshObject(Object3D& parent, UnsignedInt i, const InstantiationOptions& options)
+void Object::addPart(Object3D& parent, UnsignedInt i)
 {
     std::unique_ptr<Trade::ObjectData3D> objectData = m_mesh->importer().object3D(i);
     if(!objectData)
@@ -102,99 +226,14 @@ void Object::addMeshObject(Object3D& parent, UnsignedInt i, const InstantiationO
     }
 
     // Add the object to the scene and set its transformation
-    auto* object = new Object3D{&parent};
+    auto* object = new Part{i, &parent};
     object->setTransformation(objectData->transformation());
 
-    // Add a drawable if the object has a mesh and the mesh is loaded
-    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_mesh->meshes()[objectData->instance()])
-    {
-        auto meshObjectData = static_cast<Trade::MeshObjectData3D*>(objectData.get());
-        auto mesh = m_mesh->meshes()[objectData->instance()];
-        auto meshData = m_mesh->importer().mesh3D(objectData->instance());
-        const Int materialId = meshObjectData->material();
-
-        auto drawable = new Drawable{*object, m_drawables, mesh, &m_cb};
-
-        if(options.forceColor || materialId == -1 || !m_mesh->materials()[materialId])
-        {
-            // Material not available / not loaded, use a default material
-            drawable->setColor(options.color);
-        }
-        else if(m_mesh->materials()[materialId]->flags() & Trade::PhongMaterialData::Flag::DiffuseTexture)
-        {
-            // Textured material. If the texture failed to load, again just use a
-            // default colored material.
-            Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[m_mesh->materials()[materialId]->diffuseTexture()];
-            if(texture)
-                drawable->setTexture(&*texture);
-            else
-                drawable->setColor(options.color);
-        }
-        else
-        {
-            // Color-only material
-            drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
-        }
-
-        drawable->setHasVertexColors(!options.forceColor && meshData->hasColors());
-
-        auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
-
-        if(physxMesh)
-        {
-            auto& physics = m_mesh->context()->physxPhysics();
-
-            PhysXHolder<physx::PxMaterial> material{
-                physics.createMaterial(0.5f, 0.5f, 0.0f)
-            };
-            physx::PxMeshScale meshScale(m_mesh->pretransformScale());
-
-            physx::PxConvexMeshGeometry geometry(physxMesh->get(), meshScale);
-
-            PhysXHolder<physx::PxShape> shape{
-                physics.createShape(geometry, *material, true)
-            };
-
-            // Where are we relative to m_meshObject?
-            Matrix4 poseInMeshObject = m_meshObject.absoluteTransformationMatrix().inverted() * object->absoluteTransformationMatrix();
-
-            // The transformation between m_sceneObject and m_meshObject is
-            // composed of a rigid part and a scale.
-            Matrix4 poseInSceneObjectRigid = m_mesh->pretransformRigid() * poseInMeshObject;
-
-            // PhysX applies scale locally in the shape.
-            // => This is pretransformScale(), but we need to adjust the
-            //    translation part of poseInSceneObjectRigid from scaled
-            //    coordinates to unscaled ones.
-
-            Matrix4 pose = Matrix4::from(
-                poseInSceneObjectRigid.rotationScaling(),
-                m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
-            );
-
-            shape->setLocalPose(physx::PxTransform{pose});
-
-            m_rigidBody->attachShape(*shape);
-        }
-    }
+    m_parts.push_back(object);
 
     // Recursively add children
     for(std::size_t id: objectData->children())
-        addMeshObject(*object, id, options);
-}
-
-std::shared_ptr<Object> Object::instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options)
-{
-    if(!mesh)
-        throw std::invalid_argument("Got nullptr mesh");
-
-    auto object = std::make_shared<Object>();
-
-    object->m_mesh = mesh;
-
-    object->load(options);
-
-    return object;
+        addPart(*object, id);
 }
 
 void Object::draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb)
@@ -210,11 +249,14 @@ void Object::setParentSceneObject(Object3D* parent)
 
 void Object::setPhysicsScene(physx::PxScene* scene)
 {
-    if(m_physicsScene)
-        m_physicsScene->removeActor(*m_rigidBody);
+    if(m_rigidBody)
+    {
+        if(m_physicsScene)
+            m_physicsScene->removeActor(*m_rigidBody);
 
-    if(scene)
-        scene->addActor(*m_rigidBody);
+        if(scene)
+            scene->addActor(*m_rigidBody);
+    }
 
     m_physicsScene = scene;
 }
@@ -223,7 +265,8 @@ void Object::setPose(const Magnum::Matrix4& matrix)
 {
     m_sceneObject.setTransformation(matrix);
 
-    m_rigidBody->setGlobalPose(physx::PxTransform{matrix});
+    if(m_rigidBody)
+        m_rigidBody->setGlobalPose(physx::PxTransform{matrix});
 }
 
 void Object::updateFromPhysics()
@@ -244,7 +287,7 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     auto meshGroup = group.addGroup("mesh");
     m_mesh->serialize(*meshGroup);
 
-    group.setValue("pose", m_sceneObject.absoluteTransformationMatrix());
+    group.setValue("pose", pose());
     group.setValue("instanceIndex", m_instanceIndex);
 }
 
@@ -254,13 +297,13 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
     if(!meshGroup)
         throw std::runtime_error("Did not find mesh subgroup in object");
 
-    m_mesh = cache.load(*meshGroup);
+    setMesh(cache.load(*meshGroup));
 
     // FIXME: support InstantiationOptions
-    load({});
+    populateParts();
 
     if(group.hasValue("pose"))
-        m_sceneObject.setTransformation(group.value<Magnum::Matrix4>("pose"));
+        setPose(group.value<Magnum::Matrix4>("pose"));
 
     if(group.hasValue("instanceIndex"))
         setInstanceIndex(group.value<unsigned int>("instanceIndex"));

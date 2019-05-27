@@ -33,6 +33,12 @@ class MeshCache;
 class Drawable;
 typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera, Drawable* drawable)> DrawCallback;
 
+class ObjectPart : public Object3D
+{
+public:
+
+};
+
 class Drawable : public Magnum::SceneGraph::Drawable3D
 {
 public:
@@ -87,13 +93,34 @@ struct InstantiationOptions
 class Object
 {
 public:
+    class Part : public Object3D
+    {
+    public:
+        explicit Part(Magnum::UnsignedInt index, Object3D* parent)
+         : Object3D{parent}
+         , m_index{index}
+        {}
+
+        ~Part() = default;
+
+        constexpr Magnum::UnsignedInt index()
+        { return m_index; }
+    private:
+        Magnum::UnsignedInt m_index;
+    };
+
+
     Object();
     ~Object();
 
     Object(const Object&) = delete;
     Object& operator=(const Object&) = delete;
 
-    static std::shared_ptr<Object> instantiate(const std::shared_ptr<Mesh>& mesh, const InstantiationOptions& options = {});
+    void setMesh(const std::shared_ptr<Mesh>& mesh);
+    void setInstantiationOptions(const InstantiationOptions& options);
+
+    void loadVisual();
+    void loadPhysics();
 
     void serialize(Corrade::Utility::ConfigurationGroup& group);
     void deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& meshCache);
@@ -123,10 +150,11 @@ public:
     void updateFromPhysics();
 
 private:
-    void load(const InstantiationOptions& options);
-    void addMeshObject(Object3D& parent, Magnum::UnsignedInt i, const InstantiationOptions& options);
+    void populateParts();
+    void addPart(Object3D& parent, Magnum::UnsignedInt i);
 
     std::shared_ptr<Mesh> m_mesh;
+    InstantiationOptions m_options;
 
     // This is the scene object that contains everything in this object.
     // setPose() acts upon this object.
@@ -135,6 +163,8 @@ private:
     // This holds the actual mesh.
     // Mesh::scaleToBBoxDiagonal() acts upon this object.
     Object3D m_meshObject{&m_sceneObject};
+
+    std::vector<Part*> m_parts;
 
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
     Magnum::SceneGraph::DrawableGroup3D m_debugDrawables;

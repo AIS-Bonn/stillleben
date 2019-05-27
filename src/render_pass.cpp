@@ -68,6 +68,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 //     GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
 //     GL::DebugOutput::setDefaultCallback();
 
+    scene.loadVisual();
+
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);

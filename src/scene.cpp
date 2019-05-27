@@ -336,6 +336,8 @@ void Scene::chooseRandomLightPosition()
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
+    loadPhysics();
+
     // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
     std::uniform_real_distribution<float> angleDist(30.0*M_PI/180.0, M_PI/2.0 - 30.0*M_PI/180.0);
     Magnum::Rad angle{angleDist(m_randomGenerator)};
@@ -483,6 +485,18 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
 
         addObject(obj);
     }
+}
+
+void Scene::loadVisual()
+{
+    for(auto& obj : m_objects)
+        obj->loadVisual();
+}
+
+void Scene::loadPhysics()
+{
+    for(auto& obj : m_objects)
+        obj->loadPhysics();
 }
 
 }

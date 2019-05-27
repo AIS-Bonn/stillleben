@@ -79,8 +79,9 @@ static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCo
     return out;
 }
 
-Mesh::Mesh(const std::shared_ptr<Context>& ctx)
+Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx)
  : m_ctx{ctx}
+ , m_filename{filename}
 {
 }
 
@@ -90,15 +91,17 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::load(const std::string& filename, std::size_t maxPhysicsTriangles)
+void Mesh::load(std::size_t maxPhysicsTriangles)
 {
-    loadNonGL(filename, maxPhysicsTriangles);
-    loadGL();
+    openFile();
+    loadPhysics(maxPhysicsTriangles);
+    loadVisual();
 }
 
-void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles)
+void Mesh::openFile()
 {
-    m_filename = filename;
+    if(m_importer)
+        return;
 
     // Load a scene importer plugin
     m_importer = m_ctx->instantiateImporter();
@@ -120,16 +123,30 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
 
     // Load file
     {
-        if(!m_importer->openFile(filename))
+        if(!m_importer->openFile(m_filename))
         {
-            throw LoadException("Could not load file");
+            m_importer.reset();
+            throw LoadException("Could not load file: " + m_filename);
         }
     }
+
+    // Load pretransform, if available
+    loadPretransform(m_filename + ".pretransform");
+}
+
+void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
+{
+    if(m_physicsLoaded)
+        return;
+
+    if(!m_importer)
+        throw std::logic_error("You need to call openFile() first");
 
     // Simplify meshes if possible
     m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
     m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
     m_physXBuffers = CookedPhysXMeshArray{m_importer->mesh3DCount()};
+    m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -158,17 +175,26 @@ void Mesh::loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangle
 
         m_simplifiedMeshes[i] = std::move(simplifiedMesh);
 //         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
-        m_physXBuffers[i] = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
+        auto buf = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
+
+        physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
+        m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
+            m_ctx->physxPhysics().createConvexMesh(stream)
+        };
+
+        m_physXBuffers[i] = std::move(buf);
     }
 
-    // Load pretransform, if available
-    loadPretransform(filename + ".pretransform");
+    m_physicsLoaded = true;
 }
 
-void Mesh::loadGL()
+void Mesh::loadVisual()
 {
+    if(m_visualLoaded)
+        return;
+
     if(!m_importer)
-        throw std::logic_error("You need to call loadNonGL() first");
+        throw std::logic_error("You need to call openFile() first");
 
     // Load all textures. Textures that fail to load will be NullOpt.
     m_textures = Containers::Array<Containers::Optional<GL::Texture2D>>{m_importer->textureCount()};
@@ -223,7 +249,6 @@ void Mesh::loadGL()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
-    m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -244,14 +269,6 @@ void Mesh::loadGL()
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
-
-        if(auto& buf = m_physXBuffers[i])
-        {
-            physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
-            m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
-                m_ctx->physxPhysics().createConvexMesh(stream)
-            };
-        }
     }
 
     // Update the bounding box
@@ -273,6 +290,8 @@ void Mesh::loadGL()
             updateBoundingBox(Matrix4{}, 0);
         }
     }
+
+    m_visualLoaded = true;
 }
 
 void Mesh::loadPretransform(const std::string& filename)
@@ -336,11 +355,14 @@ namespace
     std::shared_ptr<Mesh> loadHelper(
         const std::shared_ptr<Context>& ctx,
         const std::string& filename,
-        std::size_t maxPhysicsTriangles,
-        bool quiet)
+        bool physics,
+        std::size_t maxPhysicsTriangles)
     {
-        auto mesh = std::make_shared<Mesh>(ctx);
-        mesh->loadNonGL(filename, maxPhysicsTriangles);
+        auto mesh = std::make_shared<Mesh>(filename, ctx);
+        mesh->openFile();
+
+        if(physics)
+            mesh->loadPhysics(maxPhysicsTriangles);
 
         return mesh;
     }
@@ -349,8 +371,8 @@ namespace
 std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
-    std::size_t maxPhysicsTriangles,
-    bool quiet)
+    bool visual, bool physics,
+    std::size_t maxPhysicsTriangles)
 {
     using Future = std::future<std::shared_ptr<sl::Mesh>>;
 
@@ -360,7 +382,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     for(const auto& filename : filenames)
     {
         results.push_back(pool.push(std::bind(&loadHelper,
-            ctx, filename, maxPhysicsTriangles, quiet
+            ctx, filename, physics, maxPhysicsTriangles
         )));
     }
 
@@ -369,7 +391,8 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     {
         auto mesh = future.get(); // may throw if we had a load error
 
-        mesh->loadGL();
+        if(visual)
+            mesh->loadVisual();
 
         ret.push_back(std::move(mesh));
     }
@@ -462,7 +485,9 @@ void Mesh::serialize(Corrade::Utility::ConfigurationGroup& group)
 
 void Mesh::deserialize(const Corrade::Utility::ConfigurationGroup& group)
 {
-    load(group.value("filename"));
+    m_filename = group.value("filename");
+
+    openFile();
 
     if(group.hasValue("classIndex"))
         setClassIndex(group.value<unsigned int>("classIndex"));

@@ -41,6 +41,8 @@ std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Range3D<T>& v
 
 #include "catch.hpp"
 
+constexpr const char* BUNNY = PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf";
+
 TEST_CASE("basic")
 {
     // Create our stillleben Context
@@ -48,8 +50,8 @@ TEST_CASE("basic")
     REQUIRE(context);
 
     // Load a mesh file
-    auto mesh = std::make_shared<sl::Mesh>(context);
-    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf");
+    auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
+    mesh->load();
 
     // Check mesh file details
     {
@@ -71,8 +73,9 @@ TEST_CASE("basic")
     sl::Scene scene(context, sl::ViewportSize(640, 480));
 
     // Instantiate the mesh to create a movable scene object
-    auto object = sl::Object::instantiate(mesh);
-    REQUIRE(object);
+    auto object = std::make_shared<sl::Object>();
+    object->setMesh(mesh);
+    object->loadVisual();
 
     float distance = sl::pose::minimumDistanceForObjectDiameter(
         mesh->bbox().size().length(),
@@ -126,8 +129,8 @@ TEST_CASE("render")
     REQUIRE(context);
 
     // Load a mesh file
-    auto mesh = std::make_shared<sl::Mesh>(context);
-    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf");
+    auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
+    mesh->load();
 
     // Check mesh file details
     {
@@ -149,8 +152,9 @@ TEST_CASE("render")
     sl::Scene scene(context, sl::ViewportSize(640, 480));
 
     // Instantiate the mesh to create a movable scene object
-    auto object = sl::Object::instantiate(mesh);
-    REQUIRE(object);
+    auto object = std::make_shared<sl::Object>();
+    object->setMesh(mesh);
+    object->loadVisual();
 
     float distance = sl::pose::minimumDistanceForObjectDiameter(
         mesh->bbox().size().length(),
@@ -287,8 +291,8 @@ TEST_CASE("physics")
     REQUIRE(context);
 
     // Load a mesh file
-    auto mesh = std::make_shared<sl::Mesh>(context);
-    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf", 100);
+    auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
+    mesh->load(100);
 
     mesh->centerBBox();
     mesh->scaleToBBoxDiagonal(0.5);
@@ -301,8 +305,9 @@ TEST_CASE("physics")
     for(int i = 0; i < 2; ++i)
     {
         // Instantiate the mesh to create a movable scene object
-        auto object = sl::Object::instantiate(mesh);
-        REQUIRE(object);
+        auto object = std::make_shared<sl::Object>();
+        object->setMesh(mesh);
+        object->loadPhysics();
 
         float distance = sl::pose::minimumDistanceForObjectDiameter(
             mesh->bbox().size().length(),
@@ -332,15 +337,15 @@ TEST_CASE("serialization")
     REQUIRE(context);
 
     // Load a mesh file
-    auto mesh = std::make_shared<sl::Mesh>(context);
-    mesh->load(PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf", 100);
+    auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
+    mesh->load(100);
 
     // Create a scene
     sl::Scene scene(context, sl::ViewportSize(640, 480));
 
     // Instantiate the mesh to create a movable scene object
-    auto object = sl::Object::instantiate(mesh);
-    REQUIRE(object);
+    auto object = std::make_shared<sl::Object>();
+    object->setMesh(mesh);
 
     float distance = sl::pose::minimumDistanceForObjectDiameter(
         mesh->bbox().size().length(),

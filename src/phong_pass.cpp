@@ -20,6 +20,8 @@ namespace sl
 
 std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
 {
+    scene.loadVisual();
+
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 

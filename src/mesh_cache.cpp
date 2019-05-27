@@ -27,7 +27,7 @@ std::shared_ptr<Mesh> MeshCache::load(const Corrade::Utility::ConfigurationGroup
     if(it != m_cache.end())
         return it->second;
 
-    auto mesh = std::make_shared<Mesh>(m_ctx);
+    auto mesh = std::make_shared<Mesh>(filename, m_ctx);
     mesh->deserialize(group);
 
     m_cache[filename] = mesh;

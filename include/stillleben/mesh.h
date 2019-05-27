@@ -67,7 +67,7 @@ public:
         OrderOfMagnitude,
     };
 
-    Mesh(const std::shared_ptr<Context>& ctx);
+    Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx);
     Mesh(const Mesh& other) = delete;
     Mesh(Mesh&& other);
     ~Mesh();
@@ -78,17 +78,41 @@ public:
     void serialize(Corrade::Utility::ConfigurationGroup& group);
     void deserialize(const Corrade::Utility::ConfigurationGroup& group);
 
-    void load(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
+    //! @name Loading mesh data
+    //@{
 
-    void loadNonGL(const std::string& filename, std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
-    void loadGL();
+    /**
+     * @brief Load everything
+     *
+     * This is your one-catch-all method: Loads visual & collision meshes.
+     **/
+    void load(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
+
+    /**
+     * @brief Open input file & preprocess
+     **/
+    void openFile();
+
+    /**
+     * @brief Load visual meshes onto the GPU
+     *
+     * This needs to be called from the main thread.
+     **/
+    void loadVisual();
+
+    /**
+     * @brief Load physics meshes
+     **/
+    void loadPhysics(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
         const std::shared_ptr<Context>& ctx,
         const std::vector<std::string>& filenames,
-        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles,
-        bool quiet = false
+        bool visual = true, bool physics = true,
+        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles
     );
+
+    //@}
 
     Magnum::Range3D bbox() const;
 
@@ -143,6 +167,9 @@ private:
     std::string m_filename;
 
     std::unique_ptr<Magnum::Trade::AbstractImporter> m_importer;
+
+    bool m_visualLoaded = false;
+    bool m_physicsLoaded = false;
 
     MeshArray m_meshes;
     PointArray m_meshPoints;

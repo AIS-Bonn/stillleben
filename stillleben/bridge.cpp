@@ -386,21 +386,21 @@ static std::shared_ptr<sl::Mesh> Mesh_factory(
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
-    auto mesh = std::make_shared<sl::Mesh>(g_context);
-    mesh->load(filename, maxPhysicsTriangles);
+    auto mesh = std::make_shared<sl::Mesh>(filename, g_context);
+    mesh->load(maxPhysicsTriangles);
 
     return mesh;
 }
 
 static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
     const std::vector<std::string>& filenames,
-    std::size_t maxPhysicsTriangles,
-    bool quiet)
+    bool visual, bool physics,
+    std::size_t maxPhysicsTriangles)
 {
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
-    return sl::Mesh::loadThreaded(g_context, filenames, maxPhysicsTriangles, quiet);
+    return sl::Mesh::loadThreaded(g_context, filenames, visual, physics, maxPhysicsTriangles);
 }
 
 static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -595,13 +595,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Args:
                 filenames (list): List of file names to load
+                visual (bool): Should we load visual componencts?
+                physics (bool): Should we load collision meshes?
                 max_physics_triangles (int): Maximum number of triangles for
                     collision shape (see :func:`Mesh`).
-                quiet (bool): If true, suppress warnings from mesh loading
 
             Returns:
                 list: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("quiet")=false)
+        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.
@@ -653,7 +654,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                         throw std::invalid_argument("Invalid key in options");
                 }
 
-                return sl::Object::instantiate(mesh, opts);
+                auto obj = std::make_shared<sl::Object>();
+                obj->setMesh(mesh);
+                obj->setInstantiationOptions(opts);
+
+                return obj;
             }), R"EOS(
             Constructor
 
