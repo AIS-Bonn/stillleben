@@ -100,6 +100,9 @@ void Object::populateParts()
 
 void Object::loadVisual()
 {
+    if(m_visualLoaded)
+        return;
+
     m_mesh->loadVisual();
     populateParts();
 
@@ -112,7 +115,7 @@ void Object::loadVisual()
         {
             auto meshObjectData = static_cast<Trade::MeshObjectData3D*>(objectData.get());
             auto mesh = m_mesh->meshes()[objectData->instance()];
-            auto meshData = m_mesh->importer().mesh3D(objectData->instance());
+            auto meshFlags = m_mesh->meshFlags()[objectData->instance()];
             const Int materialId = meshObjectData->material();
 
             auto drawable = new Drawable{*part, m_drawables, mesh, &m_cb};
@@ -138,11 +141,13 @@ void Object::loadVisual()
                 drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
             }
 
-            drawable->setHasVertexColors(!m_options.forceColor && meshData->hasColors());
+            drawable->setHasVertexColors(!m_options.forceColor && (meshFlags & Mesh::MeshFlag::HasVertexColors));
         }
     }
 
     new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
+
+    m_visualLoaded = true;
 }
 
 void Object::loadPhysics()

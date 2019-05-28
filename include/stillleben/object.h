@@ -177,6 +177,8 @@ private:
 
     physx::PxScene* m_physicsScene = nullptr;
     PhysXHolder<physx::PxRigidDynamic> m_rigidBody;
+
+    bool m_visualLoaded = false;
 };
 
 }

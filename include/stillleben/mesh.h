@@ -44,7 +44,14 @@ class PhysXHolder;
 class Mesh
 {
 public:
+    enum class MeshFlag
+    {
+        HasVertexColors = (1 << 0),
+    };
+    using MeshFlags = Corrade::Containers::EnumSet<MeshFlag>;
+
     using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
+    using MeshFlagArray = Corrade::Containers::Array<MeshFlags>;
     using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
     using CollisionArray = Corrade::Containers::Array<std::shared_ptr<btCollisionShape>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
@@ -134,6 +141,9 @@ public:
     MeshArray& meshes()
     { return m_meshes; }
 
+    MeshFlagArray& meshFlags()
+    { return m_meshFlags; }
+
     PointArray& meshPoints()
     { return m_meshPoints; }
 
@@ -172,6 +182,7 @@ private:
     bool m_physicsLoaded = false;
 
     MeshArray m_meshes;
+    MeshFlagArray m_meshFlags;
     PointArray m_meshPoints;
     CollisionArray m_collisionShapes;
     TextureArray m_textures;

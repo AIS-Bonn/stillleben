@@ -312,6 +312,7 @@ void Mesh::loadVisual()
 
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
+    m_meshFlags = Containers::Array<MeshFlags>{m_importer->mesh3DCount()};
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
@@ -333,6 +334,9 @@ void Mesh::loadVisual()
             MeshTools::compile(*meshData)
         );
         m_meshPoints[i] = points;
+
+        if(meshData->hasColors())
+            m_meshFlags[i] |= MeshFlag::HasVertexColors;
     }
 
     // Update the bounding box
