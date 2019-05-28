@@ -48,6 +48,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 corrade_add_resource(stillleben_RESOURCES src/shaders/resources.conf)
 
+set(FILESYSTEM_LIBRARY "")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8.0)
+    set(FILESYSTEM_LIBRARY "stdc++fs")
+endif()
+
 add_library(stillleben SHARED
     src/animator.cpp
     src/context.cpp
@@ -79,6 +84,7 @@ target_link_libraries(stillleben PUBLIC
     MagnumIntegration::Bullet
     Magnum::${MAGNUM_GL_APP}
     PhysX
+    ${FILESYSTEM_LIBRARY}
 )
 
 if(CUDA_FOUND)

@@ -24,6 +24,9 @@ public:
     {
         m_data = std::move(other.m_data);
     }
+    PhysXOutputBuffer(std::vector<uint8_t>&& data)
+     : m_data{std::move(data)}
+    {}
 
     PhysXOutputBuffer& operator=(PhysXOutputBuffer&& other)
     {

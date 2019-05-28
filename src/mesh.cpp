@@ -8,6 +8,7 @@
 #include <stillleben/physx.h>
 
 #include <Corrade/Utility/Configuration.h>
+#include <Corrade/Utility/Format.h>
 
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -32,6 +33,11 @@
 #include <Magnum/Image.h>
 
 #include <sstream>
+#include <fstream>
+#include <experimental/filesystem>
+
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "physx_impl.h"
 
@@ -136,6 +142,8 @@ void Mesh::openFile()
 
 void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 {
+    namespace fs = std::experimental::filesystem;
+
     if(m_physicsLoaded)
         return;
 
@@ -156,31 +164,82 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             continue;
         }
 
-        Trade::MeshData3D simplifiedMesh{
-            MeshPrimitive::Triangles,
-            meshData->indices(),
-            {meshData->positions(0)},
-            {}, {}, {}
-        };
+        Corrade::Containers::Optional<PhysXOutputBuffer> buf;
 
-        if(meshData->indices().size()/3 > maxPhysicsTriangles)
+        // We want to cache the simplified & cooked PhysX mesh.
+        fs::path cacheFile(Corrade::Utility::formatString("{}.mesh{}", m_filename, i));
+        if(fs::exists(cacheFile))
         {
-            // simplify in-place
-            mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
-                simplifiedMesh.indices(), simplifiedMesh.positions(0)
+            std::ifstream stream(cacheFile.string(), std::ios::binary);
+            if(!stream)
+                throw std::runtime_error("Cannot read cache file: " + cacheFile.string());
+
+            // copies all data into buffer
+            std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(stream), {});
+
+            buf = PhysXOutputBuffer{std::move(buffer)};
+        }
+        else
+        {
+            Trade::MeshData3D simplifiedMesh{
+                MeshPrimitive::Triangles,
+                meshData->indices(),
+                {meshData->positions(0)},
+                {}, {}, {}
             };
 
-            simplification.simplify(maxPhysicsTriangles);
+            if(meshData->indices().size()/3 > maxPhysicsTriangles)
+            {
+                // simplify in-place
+                mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
+                    simplifiedMesh.indices(), simplifiedMesh.positions(0)
+                };
+
+                simplification.simplify(maxPhysicsTriangles);
+            }
+
+            m_simplifiedMeshes[i] = std::move(simplifiedMesh);
+            buf = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
+
+            // In order to make this atomic, we create a temporary file, fill
+            // it, and move it to the destination.
+            std::string TEMPLATE = cacheFile.string() + ".temp-XXXXXX";
+            std::vector<char> filename{TEMPLATE.begin(), TEMPLATE.end()+1};
+
+            int fd = mkstemp(filename.data());
+            if(fd < 0)
+                throw std::runtime_error("Could not create temporary cache file");
+
+            // Make it world-readable
+            fchmod(fd, 0644);
+
+            if(write(fd, buf->data(), buf->size()) != static_cast<ssize_t>(buf->size()))
+            {
+                throw std::runtime_error(Corrade::Utility::formatString(
+                    "Could not write to file {}: {}",
+                    filename.data(), strerror(errno)
+                ));
+            }
+
+            close(fd);
+
+            // Now move it to the right location (this is atomic)
+            if(rename(filename.data(), cacheFile.c_str()) != 0)
+            {
+                if(unlink(filename.data()) != 0)
+                {
+                    Warning{} << "Could not delete temporary file " << filename.data();
+                }
+            }
         }
 
-        m_simplifiedMeshes[i] = std::move(simplifiedMesh);
-//         m_collisionShapes[i] = collisionShapeFromMeshData(*m_simplifiedMeshes[i]);
-        auto buf = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
-
-        physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
-        m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
-            m_ctx->physxPhysics().createConvexMesh(stream)
-        };
+        if(buf)
+        {
+            physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
+            m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
+                m_ctx->physxPhysics().createConvexMesh(stream)
+            };
+        }
 
         m_physXBuffers[i] = std::move(buf);
     }
@@ -359,10 +418,20 @@ namespace
         std::size_t maxPhysicsTriangles)
     {
         auto mesh = std::make_shared<Mesh>(filename, ctx);
+
+        auto t1 = std::chrono::high_resolution_clock::now();
         mesh->openFile();
+        auto t2 = std::chrono::high_resolution_clock::now();
 
         if(physics)
             mesh->loadPhysics(maxPhysicsTriangles);
+
+        auto t3 = std::chrono::high_resolution_clock::now();
+
+        Debug{}
+            << "openFile:" << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+            << "physics:" << std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count()
+        ;
 
         return mesh;
     }
