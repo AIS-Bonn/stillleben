@@ -208,7 +208,12 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
             int fd = mkstemp(filename.data());
             if(fd < 0)
-                throw std::runtime_error("Could not create temporary cache file");
+            {
+                throw std::runtime_error(Corrade::Utility::formatString(
+                    "Could not create temporary cache file {}: {}",
+                    filename.data(), strerror(errno)
+                ));
+            }
 
             // Make it world-readable
             fchmod(fd, 0644);
