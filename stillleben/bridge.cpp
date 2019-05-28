@@ -11,6 +11,7 @@
 #include <stillleben/debug.h>
 #include <stillleben/cuda_interop.h>
 #include <stillleben/animator.h>
+#include <stillleben/mesh_cache.h>
 #include <stillleben/contrib/ctpl_stl.h>
 
 #include <Corrade/Utility/Configuration.h>
@@ -923,13 +924,20 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             )EOS")
 
         .def("deserialize",
-            [](const std::shared_ptr<sl::Scene>& scene, const std::string& str){
+            [](const std::shared_ptr<sl::Scene>& scene, const std::string& str, sl::MeshCache* cache){
                 std::istringstream ss{str};
                 Corrade::Utility::Configuration config{ss};
 
-                scene->deserialize(config);
+                scene->deserialize(config, cache);
             }, R"EOS(
                 Deserialize the scene from a string
+            )EOS", py::arg("str"), py::arg("cache")=nullptr)
+
+        .def("load_visual", &sl::Scene::loadVisual, R"EOS(
+                Load visual meshes
+            )EOS")
+        .def("load_physics", &sl::Scene::loadPhysics, R"EOS(
+                Load physics meshes
             )EOS")
     ;
 
@@ -1102,6 +1110,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         })
 
         .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
+    ;
+
+    py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
+            Caches Mesh instances.
+        )EOS")
+
+        .def(py::init([](){ return new sl::MeshCache(g_context); }))
     ;
 
     // We need to release our context pointer when the python module is
