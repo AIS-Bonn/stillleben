@@ -12,11 +12,15 @@
 namespace sl
 {
 
-class CUDAMapper
+class CUDAMapper;
+
+class CUDAMap
 {
 public:
-    explicit CUDAMapper(Magnum::GL::RectangleTexture& tex, std::size_t bytesPerPixel);
-    ~CUDAMapper();
+    class Private;
+
+    explicit CUDAMap(CUDAMapper& mapper, Magnum::GL::RectangleTexture& texture, std::size_t bytesPerPixel);
+    ~CUDAMap();
 
     /**
      * @brief Copy data into CUDA buffer
@@ -28,7 +32,24 @@ public:
      **/
     void readInto(void* dest) const;
 private:
+    CUDAMapper& m_parent;
+    std::unique_ptr<Private> m_d;
+};
+
+class CUDAMapper
+{
+public:
+    CUDAMapper();
+    ~CUDAMapper();
+
+    void mapAll();
+    void unmapAll();
+private:
     class Private;
+    friend class CUDAMap;
+
+    void registerMap(CUDAMap::Private& map);
+    void unregisterMap(CUDAMap::Private& map);
 
     std::unique_ptr<Private> m_d;
 };

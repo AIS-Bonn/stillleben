@@ -3,6 +3,8 @@
 
 #include <stillleben/cuda_interop.h>
 
+#include <vector>
+
 #if HAVE_CUDA
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -19,7 +21,7 @@ using namespace Magnum;
 namespace sl
 {
 
-class CUDAMapper::Private
+class CUDAMap::Private
 {
 public:
 #if HAVE_CUDA
@@ -34,9 +36,10 @@ public:
 #endif
 };
 
-CUDAMapper::CUDAMapper(GL::RectangleTexture& texture, std::size_t bytesPerPixel)
+CUDAMap::CUDAMap(CUDAMapper& mapper, GL::RectangleTexture& texture, std::size_t bytesPerPixel)
+ : m_parent{mapper}
 #if HAVE_CUDA
- : m_d(new Private(texture, bytesPerPixel))
+ , m_d(new Private(texture, bytesPerPixel))
 #endif
 {
 #if HAVE_CUDA
@@ -47,24 +50,17 @@ CUDAMapper::CUDAMapper(GL::RectangleTexture& texture, std::size_t bytesPerPixel)
         std::abort();
     }
 
-    if(cudaGraphicsMapResources(1, &m_d->cuda_resource) != cudaSuccess)
-    {
-        Error{} << "Could not map texture for CUDA";
-        std::abort();
-    }
+    mapper.registerMap(*m_d);
 #else
     throw std::runtime_error("stillleben was compiled without CUDA interop");
 #endif
 }
 
-CUDAMapper::~CUDAMapper()
+CUDAMap::~CUDAMap()
 {
+    m_parent.unregisterMap(*m_d);
+
 #if HAVE_CUDA
-    if(cudaGraphicsUnmapResources(1, &m_d->cuda_resource) != cudaSuccess)
-    {
-        Error{} << "Could not map render buffers for CUDA";
-        std::abort();
-    }
     if(cudaGraphicsUnregisterResource(m_d->cuda_resource) != cudaSuccess)
     {
         Error{} << "Could not unregister texture with CUDA";
@@ -73,7 +69,7 @@ CUDAMapper::~CUDAMapper()
 #endif
 }
 
-void CUDAMapper::readInto(void* cudaDest) const
+void CUDAMap::readInto(void* cudaDest) const
 {
 #if HAVE_CUDA
     cudaArray_t array = nullptr;
@@ -92,5 +88,69 @@ void CUDAMapper::readInto(void* cudaDest) const
     }
 #endif
 }
+
+
+class CUDAMapper::Private
+{
+public:
+#if HAVE_CUDA
+    std::vector<cudaGraphicsResource*> resources;
+    bool mapped = false;
+#endif
+};
+
+CUDAMapper::CUDAMapper()
+ : m_d{new CUDAMapper::Private}
+{
+}
+
+CUDAMapper::~CUDAMapper()
+{
+}
+
+void CUDAMapper::registerMap(CUDAMap::Private& map)
+{
+#if HAVE_CUDA
+    m_d->resources.push_back(map.cuda_resource);
+#endif
+}
+
+void CUDAMapper::unregisterMap(CUDAMap::Private& map)
+{
+#if HAVE_CUDA
+    if(m_d->mapped)
+        cudaGraphicsUnmapResources(1, &map.cuda_resource);
+
+    auto it = std::find(m_d->resources.begin(), m_d->resources.end(), map.cuda_resource);
+    if(it != m_d->resource.end())
+        m_d->resources.erase(it);
+#endif
+}
+
+void CUDAMapper::mapAll()
+{
+#if HAVE_CUDA
+    if(cudaGraphicsMapResources(m_d->resources.size(), m_d->resources.data()) != cudaSuccess)
+    {
+        Error{} << "Could not map textures for CUDA";
+        std::abort();
+    }
+
+    m_d->mapped = true;
+#endif
+}
+
+void CUDAMapper::unmapAll()
+{
+#if HAVE_CUDA
+    if(cudaGraphicsUnmapResources(m_d->resources.size(), m_d->resources.data()) != cudaSuccess)
+    {
+        Error{} << "Could not unmap textures from CUDA";
+    }
+
+    m_d->mapped = false;
+#endif
+}
+
 
 }

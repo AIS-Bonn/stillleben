@@ -5,6 +5,7 @@
 #include <stillleben/scene.h>
 #include <stillleben/object.h>
 #include <stillleben/mesh.h>
+#include <stillleben/cuda_interop.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -18,6 +19,8 @@
 #include <Magnum/MeshTools/Compile.h>
 
 #include <Magnum/Primitives/Square.h>
+
+#include <Magnum/PixelFormat.h>
 
 #include <Magnum/Trade/MeshData2D.h>
 
@@ -48,14 +51,88 @@ constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
 
 }
 
-RenderPass::RenderPass(Type type)
- : m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
+class RenderPass::Result::CUDA
+{
+public:
+    explicit CUDA(RenderPass::Result& result)
+     : map_rgb{mapper, result.rgb, Magnum::pixelSize(Magnum::PixelFormat::RGBA8Unorm)}
+     , map_objectCoordinates{mapper, result.objectCoordinates, Magnum::pixelSize(Magnum::PixelFormat::RGBA32F)}
+     , map_classIndex{mapper, result.classIndex, Magnum::pixelSize(Magnum::PixelFormat::R16UI)}
+     , map_instanceIndex{mapper, result.instanceIndex, Magnum::pixelSize(Magnum::PixelFormat::R16UI)}
+     , map_normals{mapper, result.normals, Magnum::pixelSize(Magnum::PixelFormat::RGBA32F)}
+     , map_validMask{mapper, result.normals, Magnum::pixelSize(Magnum::PixelFormat::R8UI)}
+    {
+    }
+
+    CUDAMapper mapper;
+    CUDAMap map_rgb;
+    CUDAMap map_objectCoordinates;
+    CUDAMap map_classIndex;
+    CUDAMap map_instanceIndex;
+    CUDAMap map_normals;
+    CUDAMap map_validMask;
+};
+
+RenderPass::Result::~Result() = default;
+
+void RenderPass::Result::mapCUDA()
+{
+    if(!m_cuda)
+        m_cuda = std::make_unique<CUDA>(*this);
+
+    m_cuda->mapper.mapAll();
+}
+
+void RenderPass::Result::unmapCUDA()
+{
+    if(!m_cuda)
+        m_cuda = std::make_unique<CUDA>(*this);
+
+    m_cuda->mapper.unmapAll();
+}
+
+void RenderPass::Result::cudaReadRGB(void* dest)
+{
+    m_cuda->map_rgb.readInto(dest);
+}
+
+void RenderPass::Result::cudaReadObjectCoordinates(void* dest)
+{
+    m_cuda->map_objectCoordinates.readInto(dest);
+}
+
+void RenderPass::Result::cudaReadClassIndex(void* dest)
+{
+    m_cuda->map_classIndex.readInto(dest);
+}
+
+void RenderPass::Result::cudaReadInstanceIndex(void* dest)
+{
+    m_cuda->map_instanceIndex.readInto(dest);
+}
+
+void RenderPass::Result::cudaReadNormals(void* dest)
+{
+    m_cuda->map_normals.readInto(dest);
+}
+
+void RenderPass::Result::cudaReadValidMask(void* dest)
+{
+    m_cuda->map_validMask.readInto(dest);
+}
+
+RenderPass::RenderPass(Type type, bool cuda)
+ : m_cuda{cuda}
+ , m_framebuffer{Magnum::NoCreate}
+ , m_resolvedBuffer{Magnum::NoCreate}
+ , m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
  , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
  , m_resolveShader{std::make_unique<ResolveShader>(m_msaa_factor)}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
+    m_result = std::make_shared<Result>();
 }
 
 RenderPass::~RenderPass()
@@ -64,10 +141,6 @@ RenderPass::~RenderPass()
 
 std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 {
-//     GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
-//     GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
-//     GL::DebugOutput::setDefaultCallback();
-
     scene.loadVisual();
 
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
@@ -76,22 +149,45 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
     // Setup the framebuffer
-    // TODO: Is it worth it to recycle the framebuffer?
     auto viewport = scene.viewport();
-    GL::Framebuffer framebuffer{Range2Di::fromSize({}, viewport)};
 
-    m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
-    m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
-    m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
+    if(!m_initialized || m_framebuffer.viewport().size() != scene.viewport())
+    {
+        m_result.reset();
 
-    // Note: We use float format here because of a bug in Mesa
-    // https://bugs.freedesktop.org/show_bug.cgi?id=109057
-    m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
-    m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+        m_framebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
+        m_resolvedBuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
-    m_msaa_normal.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
+        m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
+        m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
+        m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
 
-    framebuffer
+        // Note: We use float format here because of a bug in Mesa
+        // https://bugs.freedesktop.org/show_bug.cgi?id=109057
+        m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+        m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
+
+        m_msaa_normal.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
+
+        m_result = std::make_shared<Result>();
+
+        m_result->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
+        m_result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
+        m_result->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
+        m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
+        m_result->normals.setStorage(GL::TextureFormat::RGBA32F, viewport);
+        m_result->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
+
+        m_initialized = true;
+    }
+    else
+    {
+        // Unmap from CUDA so that we can write into it
+        if(m_cuda)
+            m_result->unmapCUDA();
+    }
+
+    m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
             m_msaa_rgb
@@ -122,15 +218,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         })
     ;
 
-    if(framebuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
+    if(m_framebuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
     {
-        Error{} << "Invalid MSAA framebuffer status:" << framebuffer.checkStatus(GL::FramebufferTarget::Draw);
+        Error{} << "Invalid MSAA framebuffer status:" << m_framebuffer.checkStatus(GL::FramebufferTarget::Draw);
         std::abort();
     }
 
-    framebuffer.bind();
+    m_framebuffer.bind();
 
-    framebuffer.clear(GL::FramebufferClear::Depth);
+    m_framebuffer.clear(GL::FramebufferClear::Depth);
 
     // Do we have a background texture?
     if(scene.backgroundImage())
@@ -139,17 +235,17 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         m_quadMesh.draw(*m_backgroundShader);
 
         // Draw on top
-        framebuffer.clear(GL::FramebufferClear::Depth);
+        m_framebuffer.clear(GL::FramebufferClear::Depth);
     }
     else
     {
-        framebuffer.clearColor(0, scene.backgroundColor());
+        m_framebuffer.clearColor(0, scene.backgroundColor());
     }
 
-    framebuffer.clearColor(1, invalid);
-    framebuffer.clearColor(2, Vector4ui{0});
-    framebuffer.clearColor(3, Vector4ui{0});
-    framebuffer.clearColor(4, 0x00000000_rgbaf);
+    m_framebuffer.clearColor(1, invalid);
+    m_framebuffer.clearColor(2, Vector4ui{0});
+    m_framebuffer.clearColor(3, Vector4ui{0});
+    m_framebuffer.clearColor(4, 0x00000000_rgbaf);
 
     // Let the fun begin!
     for(auto& object : scene.objects())
@@ -208,56 +304,18 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         });
     }
 
-    // DEBUG
-//     {
-//         GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
-//
-//         GL::RectangleTexture texture;
-//         texture.setStorage(GL::TextureFormat::R8UI, viewport);
-//
-//         resolvedBuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, texture);
-//
-//         framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{3});
-//         resolvedBuffer.mapForDraw(GL::Framebuffer::ColorAttachment{0});
-//         GL::AbstractFramebuffer::blit(framebuffer, resolvedBuffer,
-//         {{}, resolvedBuffer.viewport().size()}, GL::FramebufferBlit::Color);
-//
-//         Image2D img = texture.image({PixelFormat::R8UI});
-//         {
-//             unsigned int instanceCount = 0;
-//
-//             const auto data = reinterpret_cast<uint8_t*>(img.data().data());
-//
-//             printf("OpenGL resolved:\n");
-//             for(int i = 0; i < 100; ++i)
-//                 printf("%04X ", data[i]);
-//             printf("\n");
-//         }
-//     }
-
     // Resolve the MSAA render buffers
     // For this purpose, we render a quad with a custom shader.
 
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
-    auto ret = std::make_shared<Result>();
-
-    GL::Framebuffer resolvedBuffer{Range2Di::fromSize({}, viewport)};
-
-    ret->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
-    ret->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
-    ret->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
-    ret->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
-    ret->normals.setStorage(GL::TextureFormat::RGBA32F, viewport);
-    ret->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
-
-    resolvedBuffer
-        .attachTexture(GL::Framebuffer::ColorAttachment{0}, ret->rgb)
-        .attachTexture(GL::Framebuffer::ColorAttachment{1}, ret->objectCoordinates)
-        .attachTexture(GL::Framebuffer::ColorAttachment{2}, ret->classIndex)
-        .attachTexture(GL::Framebuffer::ColorAttachment{3}, ret->instanceIndex)
-        .attachTexture(GL::Framebuffer::ColorAttachment{4}, ret->normals)
-        .attachTexture(GL::Framebuffer::ColorAttachment{5}, ret->validMask)
+    m_resolvedBuffer
+        .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_result->rgb)
+        .attachTexture(GL::Framebuffer::ColorAttachment{1}, m_result->objectCoordinates)
+        .attachTexture(GL::Framebuffer::ColorAttachment{2}, m_result->classIndex)
+        .attachTexture(GL::Framebuffer::ColorAttachment{3}, m_result->instanceIndex)
+        .attachTexture(GL::Framebuffer::ColorAttachment{4}, m_result->normals)
+        .attachTexture(GL::Framebuffer::ColorAttachment{5}, m_result->validMask)
         .mapForDraw({
             {ResolveShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {ResolveShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
@@ -269,14 +327,14 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         .bind()
     ;
 
-    resolvedBuffer.clearColor(0, 0x00000000_rgbaf);
-    resolvedBuffer.clearColor(3, Vector4ui(1));
-    resolvedBuffer.clearColor(4, 0x00000000_rgbaf);
-    resolvedBuffer.clearColor(5, Vector4ui(6));
+    m_resolvedBuffer.clearColor(0, 0x00000000_rgbaf);
+    m_resolvedBuffer.clearColor(3, Vector4ui(1));
+    m_resolvedBuffer.clearColor(4, 0x00000000_rgbaf);
+    m_resolvedBuffer.clearColor(5, Vector4ui(6));
 
-    if(resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
+    if(m_resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
     {
-        Error{} << "Invalid output framebuffer status:" << resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw);
+        Error{} << "Invalid output framebuffer status:" << m_resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw);
         std::abort();
     }
 
@@ -290,7 +348,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     m_quadMesh.draw(*m_resolveShader);
 
-    return ret;
+    if(m_cuda)
+        m_result->unmapCUDA();
+
+    return m_result;
 }
 
 }
