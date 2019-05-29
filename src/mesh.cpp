@@ -509,7 +509,7 @@ void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned in
 
 void Mesh::centerBBox()
 {
-    m_pretransformRigid.translation() = -m_bbox.center();
+    m_pretransformRigid.translation() = -m_pretransformRigid.rotationScaling() * m_bbox.center();
     updatePretransform();
 }
 
