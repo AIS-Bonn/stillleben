@@ -305,7 +305,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     m_quadMesh.draw(*m_resolveShader);
 
-    m_result->unmapCUDA();
+    m_result->mapCUDA();
 
     return m_result;
 }
