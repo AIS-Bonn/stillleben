@@ -366,11 +366,10 @@ void Mesh::loadPretransform(const std::string& filename)
 {
     std::ifstream stream(filename);
 
+    // If there is no file, we silently ignore that and use identity
+    // pretransform.
     if(!stream)
-    {
-        Warning{} << "Could not read pretransform file" << filename;
         return;
-    }
 
     Matrix4 pretransform;
     for(int i = 0; i < 4; ++i)
