@@ -4,6 +4,7 @@
 #include <stillleben/cuda_interop.h>
 
 #include <vector>
+#include <algorithm>
 
 #if HAVE_CUDA
 #pragma GCC diagnostic push
@@ -21,55 +22,85 @@ using namespace Magnum;
 namespace sl
 {
 
-class CUDAMap::Private
+class CUDATexture::Private
 {
 public:
 #if HAVE_CUDA
-    explicit Private(GL::RectangleTexture& texture, std::size_t bytesPerPixel)
-     : texture(texture)
-     , bytesPerPixel(bytesPerPixel)
+    explicit Private(std::size_t bytesPerPixel)
+     : bytesPerPixel(bytesPerPixel)
     {}
 
-    GL::RectangleTexture& texture;
+    ~Private()
+    {
+#if HAVE_CUDA
+        if(cudaGraphicsUnregisterResource(cuda_resource) != cudaSuccess)
+        {
+            Error{} << "Could not unregister texture with CUDA";
+            std::abort();
+        }
+#endif
+    }
+
     std::size_t bytesPerPixel;
     cudaGraphicsResource* cuda_resource = nullptr;
 #endif
 };
 
-CUDAMap::CUDAMap(CUDAMapper& mapper, GL::RectangleTexture& texture, std::size_t bytesPerPixel)
- : m_parent{mapper}
-#if HAVE_CUDA
- , m_d(new Private(texture, bytesPerPixel))
-#endif
+CUDATexture::CUDATexture(CUDAMapper& mapper, Magnum::NoCreateT)
+ : RectangleTexture{Magnum::NoCreate}
+ , m_parent{mapper}
 {
+}
+
+CUDATexture::CUDATexture(CUDAMapper& mapper)
+ : m_parent{mapper}
+{
+}
+
+CUDATexture::CUDATexture(CUDATexture&& other)
+ : m_parent{other.m_parent}
+ , m_d{std::move(other.m_d)}
+{
+}
+
+CUDATexture::~CUDATexture()
+{
+    if(m_d)
+        m_parent.unregisterMap(*m_d);
+}
+
+CUDATexture& CUDATexture::operator=(CUDATexture&& other)
+{
+    std::swap(m_d, other.m_d);
+    RectangleTexture::operator=(std::move(other));
+
+    return *this;
+}
+
+void CUDATexture::setStorage(Magnum::GL::TextureFormat internalFormat, std::size_t pixelSize, const Magnum::Vector2i& size)
+{
+    if(m_d)
+        m_parent.unregisterMap(*m_d);
+
+    m_d.reset();
+
+    RectangleTexture::setStorage(internalFormat, size);
+
 #if HAVE_CUDA
-    auto err = cudaGraphicsGLRegisterImage(&m_d->cuda_resource, texture.id(), GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsReadOnly);
+    m_d = std::make_unique<Private>(pixelSize);
+
+    auto err = cudaGraphicsGLRegisterImage(&m_d->cuda_resource, id(), GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsReadOnly);
     if(err != cudaSuccess)
     {
         Error{} << "Could not register texture with CUDA:" << cudaGetErrorString(err);
         std::abort();
     }
 
-    mapper.registerMap(*m_d);
-#else
-    throw std::runtime_error("stillleben was compiled without CUDA interop");
+    m_parent.registerMap(*m_d);
 #endif
 }
 
-CUDAMap::~CUDAMap()
-{
-    m_parent.unregisterMap(*m_d);
-
-#if HAVE_CUDA
-    if(cudaGraphicsUnregisterResource(m_d->cuda_resource) != cudaSuccess)
-    {
-        Error{} << "Could not unregister texture with CUDA";
-        std::abort();
-    }
-#endif
-}
-
-void CUDAMap::readInto(void* cudaDest) const
+void CUDATexture::readIntoCUDA(void* cudaDest)
 {
 #if HAVE_CUDA
     cudaArray_t array = nullptr;
@@ -79,13 +110,15 @@ void CUDAMap::readInto(void* cudaDest) const
         std::abort();
     }
 
-    auto size = m_d->texture.imageSize();
+    auto size = imageSize();
     auto err = cudaMemcpy2DFromArray(cudaDest, size.x()*m_d->bytesPerPixel, array, 0, 0, size.x()*m_d->bytesPerPixel, size.y(), cudaMemcpyDeviceToDevice);
     if(err != cudaSuccess)
     {
         Error{} << "Could not cudaMemcpy:" << cudaGetErrorString(err);
         std::abort();
     }
+#else
+    throw std::runtime_error("CUDATexture::readIntoCUDA(): stillleben was compiled without CUDA support");
 #endif
 }
 
@@ -108,21 +141,21 @@ CUDAMapper::~CUDAMapper()
 {
 }
 
-void CUDAMapper::registerMap(CUDAMap::Private& map)
+void CUDAMapper::registerMap(CUDATexture::Private& map)
 {
 #if HAVE_CUDA
     m_d->resources.push_back(map.cuda_resource);
 #endif
 }
 
-void CUDAMapper::unregisterMap(CUDAMap::Private& map)
+void CUDAMapper::unregisterMap(CUDATexture::Private& map)
 {
 #if HAVE_CUDA
     if(m_d->mapped)
         cudaGraphicsUnmapResources(1, &map.cuda_resource);
 
     auto it = std::find(m_d->resources.begin(), m_d->resources.end(), map.cuda_resource);
-    if(it != m_d->resource.end())
+    if(it != m_d->resources.end())
         m_d->resources.erase(it);
 #endif
 }

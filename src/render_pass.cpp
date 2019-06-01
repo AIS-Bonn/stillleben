@@ -51,75 +51,33 @@ constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
 
 }
 
-class RenderPass::Result::CUDA
+RenderPass::Result::Result()
+ : rgb{m_mapper}
+ , objectCoordinates{m_mapper}
+ , classIndex{m_mapper}
+ , instanceIndex{m_mapper}
+ , normals{m_mapper}
+ , validMask{m_mapper}
 {
-public:
-    explicit CUDA(RenderPass::Result& result)
-     : map_rgb{mapper, result.rgb, Magnum::pixelSize(Magnum::PixelFormat::RGBA8Unorm)}
-     , map_objectCoordinates{mapper, result.objectCoordinates, Magnum::pixelSize(Magnum::PixelFormat::RGBA32F)}
-     , map_classIndex{mapper, result.classIndex, Magnum::pixelSize(Magnum::PixelFormat::R16UI)}
-     , map_instanceIndex{mapper, result.instanceIndex, Magnum::pixelSize(Magnum::PixelFormat::R16UI)}
-     , map_normals{mapper, result.normals, Magnum::pixelSize(Magnum::PixelFormat::RGBA32F)}
-     , map_validMask{mapper, result.normals, Magnum::pixelSize(Magnum::PixelFormat::R8UI)}
-    {
-    }
-
-    CUDAMapper mapper;
-    CUDAMap map_rgb;
-    CUDAMap map_objectCoordinates;
-    CUDAMap map_classIndex;
-    CUDAMap map_instanceIndex;
-    CUDAMap map_normals;
-    CUDAMap map_validMask;
-};
+}
 
 RenderPass::Result::~Result() = default;
 
+
 void RenderPass::Result::mapCUDA()
 {
-    if(!m_cuda)
-        m_cuda = std::make_unique<CUDA>(*this);
-
-    m_cuda->mapper.mapAll();
+#if HAVE_CUDA
+    m_mapper.mapAll();
+#endif
 }
 
 void RenderPass::Result::unmapCUDA()
 {
-    if(!m_cuda)
-        m_cuda = std::make_unique<CUDA>(*this);
-
-    m_cuda->mapper.unmapAll();
+#if HAVE_CUDA
+    m_mapper.unmapAll();
+#endif
 }
 
-void RenderPass::Result::cudaReadRGB(void* dest)
-{
-    m_cuda->map_rgb.readInto(dest);
-}
-
-void RenderPass::Result::cudaReadObjectCoordinates(void* dest)
-{
-    m_cuda->map_objectCoordinates.readInto(dest);
-}
-
-void RenderPass::Result::cudaReadClassIndex(void* dest)
-{
-    m_cuda->map_classIndex.readInto(dest);
-}
-
-void RenderPass::Result::cudaReadInstanceIndex(void* dest)
-{
-    m_cuda->map_instanceIndex.readInto(dest);
-}
-
-void RenderPass::Result::cudaReadNormals(void* dest)
-{
-    m_cuda->map_normals.readInto(dest);
-}
-
-void RenderPass::Result::cudaReadValidMask(void* dest)
-{
-    m_cuda->map_validMask.readInto(dest);
-}
 
 RenderPass::RenderPass(Type type, bool cuda)
  : m_cuda{cuda}
@@ -171,12 +129,12 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
         m_result = std::make_shared<Result>();
 
-        m_result->rgb.setStorage(GL::TextureFormat::RGBA8, viewport);
-        m_result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, viewport);
-        m_result->classIndex.setStorage(GL::TextureFormat::R16UI, viewport);
-        m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, viewport);
-        m_result->normals.setStorage(GL::TextureFormat::RGBA32F, viewport);
-        m_result->validMask.setStorage(GL::TextureFormat::R8UI, viewport);
+        m_result->rgb.setStorage(GL::TextureFormat::RGBA8, 4, viewport);
+        m_result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        m_result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
+        m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
+        m_result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        m_result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
 
         m_initialized = true;
     }

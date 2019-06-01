@@ -10,6 +10,8 @@
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
 
+#include <stillleben/cuda_interop.h>
+
 #include <memory>
 
 namespace sl
@@ -34,30 +36,25 @@ public:
 
     struct Result
     {
+        Result();
         ~Result();
 
-        Magnum::GL::RectangleTexture rgb;
-        Magnum::GL::RectangleTexture objectCoordinates;
-        Magnum::GL::RectangleTexture classIndex;
-        Magnum::GL::RectangleTexture instanceIndex;
-        Magnum::GL::RectangleTexture normals;
-        Magnum::GL::RectangleTexture validMask;
+    private:
+        CUDAMapper m_mapper;
 
-        void cudaReadRGB(void* dest);
-        void cudaReadObjectCoordinates(void* dest);
-        void cudaReadClassIndex(void* dest);
-        void cudaReadInstanceIndex(void* dest);
-        void cudaReadNormals(void* dest);
-        void cudaReadValidMask(void* dest);
+    public:
+        CUDATexture rgb;
+        CUDATexture objectCoordinates;
+        CUDATexture classIndex;
+        CUDATexture instanceIndex;
+        CUDATexture normals;
+        CUDATexture validMask;
 
     private:
-        class CUDA;
         friend class RenderPass;
 
         void mapCUDA();
         void unmapCUDA();
-
-        std::unique_ptr<CUDA> m_cuda;
     };
 
     std::shared_ptr<Result> render(Scene& scene);

@@ -294,19 +294,17 @@ namespace
     }
 }
 
-at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
+at::Tensor extract(sl::CUDATexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
 {
 #if HAVE_CUDA
     if(g_cudaEnabled)
     {
-        sl::CUDAMapper mapper(texture, Magnum::pixelSize(format));
-
         auto size = texture.imageSize();
         at::Tensor tensor = torch::empty(
             {size.y(), size.x(), channels},
             opts.device(torch::kCUDA, g_cudaIndex)
         );
-        mapper.readInto(static_cast<uint8_t*>(tensor.data_ptr()));
+        texture.readIntoCUDA(static_cast<uint8_t*>(tensor.data_ptr()));
 
         return tensor;
     }
@@ -327,32 +325,32 @@ at::Tensor extract(Magnum::GL::RectangleTexture& texture, Magnum::PixelFormat fo
     }
 }
 
-static at::Tensor readRGBATensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readRGBATensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA8Unorm, 4, at::kByte);
 }
 
-static at::Tensor readXYZWTensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readXYZWTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat);
 }
 
-static at::Tensor readCoordTensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readCoordTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
 }
 
-static at::Tensor readDepthTensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readDepthTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).select(2, 3);
 }
 
-static at::Tensor readByteTensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readByteTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::R8UI, 1, at::kByte);
 }
 
-static at::Tensor readShortTensor(Magnum::GL::RectangleTexture& texture)
+static at::Tensor readShortTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::R16UI, 1, at::kShort);
 }
@@ -439,7 +437,17 @@ static std::tuple<int, int> Scene_viewport(const std::shared_ptr<sl::Scene>& sce
 static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
 {
     auto texture = sl::renderDebugImage(*scene);
-    return readRGBATensor(texture);
+    Magnum::Image2D* img = new Magnum::Image2D{Magnum::PixelFormat::RGBA8Unorm};
+
+    texture.image(*img);
+
+    at::Tensor tensor = torch::from_blob(img->data(),
+        {img->size().y(), img->size().x(), 4},
+        [=](void*){ delete img; },
+        at::kByte
+    );
+
+    return tensor;
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
