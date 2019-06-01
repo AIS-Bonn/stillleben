@@ -33,10 +33,13 @@ public:
     ~Private()
     {
 #if HAVE_CUDA
-        if(cudaGraphicsUnregisterResource(cuda_resource) != cudaSuccess)
+        if(cuda_resource)
         {
-            Error{} << "Could not unregister texture with CUDA";
-            std::abort();
+            if(cudaGraphicsUnregisterResource(cuda_resource) != cudaSuccess)
+            {
+                Error{} << "Could not unregister texture with CUDA";
+                std::abort();
+            }
         }
 #endif
     }
@@ -87,22 +90,28 @@ void CUDATexture::setStorage(Magnum::GL::TextureFormat internalFormat, std::size
     RectangleTexture::setStorage(internalFormat, size);
 
 #if HAVE_CUDA
-    m_d = std::make_unique<Private>(pixelSize);
-
-    auto err = cudaGraphicsGLRegisterImage(&m_d->cuda_resource, id(), GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsReadOnly);
-    if(err != cudaSuccess)
+    if(m_parent.active())
     {
-        Error{} << "Could not register texture with CUDA:" << cudaGetErrorString(err);
-        std::abort();
-    }
+        m_d = std::make_unique<Private>(pixelSize);
 
-    m_parent.registerMap(*m_d);
+        auto err = cudaGraphicsGLRegisterImage(&m_d->cuda_resource, id(), GL_TEXTURE_RECTANGLE, cudaGraphicsRegisterFlagsReadOnly);
+        if(err != cudaSuccess)
+        {
+            Error{} << "Could not register texture with CUDA:" << cudaGetErrorString(err);
+            std::abort();
+        }
+
+        m_parent.registerMap(*m_d);
+    }
 #endif
 }
 
 void CUDATexture::readIntoCUDA(void* cudaDest)
 {
 #if HAVE_CUDA
+    if(!m_parent.active())
+        throw std::logic_error("CUDATexture::readIntoCUDA(): called but CUDAMapper is not active");
+
     cudaArray_t array = nullptr;
     if(cudaGraphicsSubResourceGetMappedArray(&array, m_d->cuda_resource, 0, 0) != cudaSuccess)
     {
@@ -132,8 +141,9 @@ public:
 #endif
 };
 
-CUDAMapper::CUDAMapper()
- : m_d{new CUDAMapper::Private}
+CUDAMapper::CUDAMapper(bool active)
+ : m_active{active}
+ , m_d{new CUDAMapper::Private}
 {
 }
 
@@ -144,6 +154,9 @@ CUDAMapper::~CUDAMapper()
 void CUDAMapper::registerMap(CUDATexture::Private& map)
 {
 #if HAVE_CUDA
+    if(!m_active)
+        return;
+
     m_d->resources.push_back(map.cuda_resource);
 #endif
 }
@@ -151,6 +164,9 @@ void CUDAMapper::registerMap(CUDATexture::Private& map)
 void CUDAMapper::unregisterMap(CUDATexture::Private& map)
 {
 #if HAVE_CUDA
+    if(!m_active)
+        return;
+
     if(m_d->mapped)
         cudaGraphicsUnmapResources(1, &map.cuda_resource);
 
@@ -163,6 +179,9 @@ void CUDAMapper::unregisterMap(CUDATexture::Private& map)
 void CUDAMapper::mapAll()
 {
 #if HAVE_CUDA
+    if(!m_active)
+        return;
+
     if(cudaGraphicsMapResources(m_d->resources.size(), m_d->resources.data()) != cudaSuccess)
     {
         Error{} << "Could not map textures for CUDA";
@@ -176,6 +195,9 @@ void CUDAMapper::mapAll()
 void CUDAMapper::unmapAll()
 {
 #if HAVE_CUDA
+    if(!m_active)
+        return;
+
     if(cudaGraphicsUnmapResources(m_d->resources.size(), m_d->resources.data()) != cudaSuccess)
     {
         Error{} << "Could not unmap textures from CUDA";

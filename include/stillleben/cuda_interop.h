@@ -49,11 +49,14 @@ private:
 class CUDAMapper
 {
 public:
-    CUDAMapper();
+    explicit CUDAMapper(bool active);
     ~CUDAMapper();
 
     void mapAll();
     void unmapAll();
+
+    constexpr bool active() const
+    { return m_active; }
 private:
     class Private;
     friend class CUDATexture;
@@ -61,6 +64,7 @@ private:
     void registerMap(CUDATexture::Private& map);
     void unregisterMap(CUDATexture::Private& map);
 
+    bool m_active;
     std::unique_ptr<Private> m_d;
 };
 

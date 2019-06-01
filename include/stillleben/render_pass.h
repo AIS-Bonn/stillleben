@@ -36,7 +36,7 @@ public:
 
     struct Result
     {
-        Result();
+        explicit Result(bool cuda);
         ~Result();
 
     private:

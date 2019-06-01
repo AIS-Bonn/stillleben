@@ -51,8 +51,9 @@ constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
 
 }
 
-RenderPass::Result::Result()
- : rgb{m_mapper}
+RenderPass::Result::Result(bool cuda)
+ : m_mapper{cuda}
+ , rgb{m_mapper}
  , objectCoordinates{m_mapper}
  , classIndex{m_mapper}
  , instanceIndex{m_mapper}
@@ -90,7 +91,6 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
-    m_result = std::make_shared<Result>();
 }
 
 RenderPass::~RenderPass()
@@ -127,7 +127,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
         m_msaa_normal.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
 
-        m_result = std::make_shared<Result>();
+        m_result = std::make_shared<Result>(m_cuda);
 
         m_result->rgb.setStorage(GL::TextureFormat::RGBA8, 4, viewport);
         m_result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
@@ -140,11 +140,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     }
     else
     {
-        if(m_cuda)
-        {
-            // Unmap from CUDA so that we can write into it
-            m_result->unmapCUDA();
-        }
+        // Unmap from CUDA so that we can write into it
+        m_result->unmapCUDA();
     }
 
     m_framebuffer
@@ -309,8 +306,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_quadMesh.draw(*m_resolveShader);
 
     // Map for CUDA access
-    if(m_cuda)
-        m_result->mapCUDA();
+    m_result->mapCUDA();
 
     return m_result;
 }
