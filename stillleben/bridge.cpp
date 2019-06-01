@@ -1067,11 +1067,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def(py::init([](const std::string& shading){
                 if(shading == "phong")
                     return ContextSharedPtr<sl::RenderPass>(
-                        new sl::RenderPass(sl::RenderPass::Type::Phong)
+                        new sl::RenderPass(sl::RenderPass::Type::Phong, g_cudaEnabled)
                     );
                 else if(shading == "flat")
                     return ContextSharedPtr<sl::RenderPass>(
-                        new sl::RenderPass(sl::RenderPass::Type::Flat)
+                        new sl::RenderPass(sl::RenderPass::Type::Flat, g_cudaEnabled)
                     );
                 else
                     throw std::invalid_argument("unknown shading type specified");

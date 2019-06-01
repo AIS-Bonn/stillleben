@@ -140,8 +140,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     }
     else
     {
-        // Unmap from CUDA so that we can write into it
-        m_result->unmapCUDA();
+        if(m_cuda)
+        {
+            // Unmap from CUDA so that we can write into it
+            m_result->unmapCUDA();
+        }
     }
 
     m_framebuffer
@@ -305,7 +308,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     m_quadMesh.draw(*m_resolveShader);
 
-    m_result->mapCUDA();
+    // Map for CUDA access
+    if(m_cuda)
+        m_result->mapCUDA();
 
     return m_result;
 }
