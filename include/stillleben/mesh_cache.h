@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <map>
+#include <vector>
 
 namespace Corrade { namespace Utility { class ConfigurationGroup; } }
 
@@ -22,6 +23,8 @@ public:
     ~MeshCache();
 
     std::shared_ptr<Mesh> load(const Corrade::Utility::ConfigurationGroup& group);
+
+    void add(const std::vector<std::shared_ptr<Mesh>>& meshes);
 private:
     std::shared_ptr<Context> m_ctx;
     std::map<std::string, std::shared_ptr<Mesh>> m_cache;

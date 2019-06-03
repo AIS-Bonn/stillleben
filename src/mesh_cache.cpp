@@ -35,4 +35,12 @@ std::shared_ptr<Mesh> MeshCache::load(const Corrade::Utility::ConfigurationGroup
     return mesh;
 }
 
+void MeshCache::add(const std::vector<std::shared_ptr<Mesh>>& meshes)
+{
+    for(auto& mesh : meshes)
+    {
+        m_cache[mesh->filename()] = mesh;
+    }
+}
+
 }

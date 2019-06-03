@@ -1125,6 +1125,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         )EOS")
 
         .def(py::init([](){ return new sl::MeshCache(g_context); }))
+
+        .def("add", &sl::MeshCache::add, R"EOS(
+            Add a list of meshes to the cache.
+
+            Args:
+                meshes (list): list of :class:`Mesh` instances
+        )EOS", py::arg("meshes"))
     ;
 
     // We need to release our context pointer when the python module is
