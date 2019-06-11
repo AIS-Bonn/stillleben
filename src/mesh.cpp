@@ -138,6 +138,44 @@ void Mesh::openFile()
 
     // Load pretransform, if available
     loadPretransform(m_filename + ".pretransform");
+
+    // Compute bounding box
+    m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
+    {
+        Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
+        if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
+            continue; // we print a proper warning in loadVisual()
+
+        std::vector<Vector3> points;
+        for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
+        {
+            auto array = meshData->positions(j);
+            std::copy(array.begin(), array.end(), std::back_inserter(points));
+        }
+
+        m_meshPoints[i] = std::move(points);
+    }
+
+    // Update the bounding box
+    {
+        // Inspect the scene if available
+        if(m_importer->defaultScene() != -1)
+        {
+            auto sceneData = m_importer->scene(m_importer->defaultScene());
+            if(!sceneData)
+                throw Exception("Could not load scene data");
+
+            // Recursively inspect all children
+            for(UnsignedInt objectId : sceneData->children3D())
+                updateBoundingBox(Matrix4{}, objectId);
+        }
+        else if(!m_meshPoints.empty() && m_meshPoints[0])
+        {
+            // The format has no scene support, use first mesh
+            updateBoundingBox(Matrix4{}, 0);
+        }
+    }
 }
 
 void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
@@ -313,7 +351,6 @@ void Mesh::loadVisual()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
     m_meshFlags = Containers::Array<MeshFlags>{m_importer->mesh3DCount()};
-    m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -323,40 +360,12 @@ void Mesh::loadVisual()
             continue;
         }
 
-        std::vector<Vector3> points;
-        for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
-        {
-            auto array = meshData->positions(j);
-            std::copy(array.begin(), array.end(), std::back_inserter(points));
-        }
-
         m_meshes[i] = std::make_shared<GL::Mesh>(
             MeshTools::compile(*meshData)
         );
-        m_meshPoints[i] = points;
 
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
-    }
-
-    // Update the bounding box
-    {
-        // Inspect the scene if available
-        if(m_importer->defaultScene() != -1)
-        {
-            auto sceneData = m_importer->scene(m_importer->defaultScene());
-            if(!sceneData)
-                throw Exception("Could not load scene data");
-
-            // Recursively inspect all children
-            for(UnsignedInt objectId : sceneData->children3D())
-                updateBoundingBox(Matrix4{}, objectId);
-        }
-        else if(!m_meshes.empty() && m_meshes[0])
-        {
-            // The format has no scene support, use first mesh
-            updateBoundingBox(Matrix4{}, 0);
-        }
     }
 
     m_visualLoaded = true;
