@@ -494,7 +494,7 @@ void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned in
 
     Magnum::Matrix4 transform = parentTransform * objectData->transformation();
 
-    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_meshes[objectData->instance()])
+    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_meshPoints[objectData->instance()])
     {
         for(const auto& point : *m_meshPoints[objectData->instance()])
         {
