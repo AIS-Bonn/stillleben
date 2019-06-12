@@ -100,18 +100,9 @@ void ImageLoader::thread()
         if(!imageData)
             continue;
 
-        Corrade::Containers::Array<char> data{Corrade::Containers::NoInit, imageData->data().size()};
-        std::uninitialized_copy(imageData->data().begin(), imageData->data().end(), data.begin());
-        Magnum::Image2D img{
-            imageData->storage(),
-            imageData->format(),
-            imageData->size(),
-            std::move(data)
-        };
-
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_outputQueue.push(std::move(img));
+            m_outputQueue.emplace(std::move(importer), std::move(*imageData));
             m_outputCond.notify_all();
         }
     }
@@ -125,30 +116,30 @@ Magnum::GL::RectangleTexture ImageLoader::next()
     {
         enqueue();
 
-        Corrade::Containers::Optional<Image2D> img;
+        Corrade::Containers::Optional<Result> result;
         {
             std::unique_lock lock(m_mutex);
             while(m_outputQueue.empty())
                 m_outputCond.wait(lock);
 
-            img = std::move(m_outputQueue.front());
+            result = std::move(m_outputQueue.front());
             m_outputQueue.pop();
         }
 
         GL::TextureFormat format;
-        if(img->format() == PixelFormat::RGB8Unorm)
+        if(result->second.format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
-        else if(img->format() == PixelFormat::RGBA8Unorm)
+        else if(result->second.format() == PixelFormat::RGBA8Unorm)
             format = GL::TextureFormat::RGBA8;
         else
         {
-            Warning{} << "Unsupported texture format:" << img->format();
+            Warning{} << "Unsupported texture format:" << result->second.format();
             continue; // just try the next one
         }
 
         GL::RectangleTexture texture;
-        texture.setStorage(format, img->size());
-        texture.setSubImage({}, *img);
+        texture.setStorage(format, result->second.size());
+        texture.setSubImage({}, result->second);
 
         return texture;
     }

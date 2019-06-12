@@ -19,6 +19,8 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Image.h>
 
+#include <Magnum/Trade/ImageData.h>
+
 namespace Magnum
 {
 namespace Trade
@@ -48,6 +50,7 @@ public:
 private:
     using Importer = Magnum::Trade::AbstractImporter;
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
+    using Result = std::pair<ImporterPtr, Magnum::Trade::ImageData2D>;
 
     void thread();
     void enqueue();
@@ -67,7 +70,7 @@ private:
     std::atomic<bool> m_shouldExit{false};
 
     std::queue<ImporterPtr> m_inputQueue;
-    std::queue<Magnum::Image2D> m_outputQueue;
+    std::queue<Result> m_outputQueue;
 };
 
 }
