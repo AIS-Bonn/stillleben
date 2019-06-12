@@ -46,7 +46,7 @@ public:
     bool makeCurrent();
 
     using Importer = Magnum::Trade::AbstractImporter;
-    Corrade::Containers::Pointer<Importer> instantiateImporter();
+    Corrade::Containers::Pointer<Importer> instantiateImporter(const std::string& name = "AssimpImporter");
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
 

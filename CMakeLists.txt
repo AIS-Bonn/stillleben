@@ -59,6 +59,7 @@ add_library(stillleben SHARED
     src/cuda_interop.cpp
     src/debug.cpp
     src/exception.cpp
+    src/image_loader.cpp
     src/mesh.cpp
     src/mesh_cache.cpp
     src/object.cpp

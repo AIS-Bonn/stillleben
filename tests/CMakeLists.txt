@@ -1,6 +1,7 @@
 
 add_executable(tests
     basic.cpp
+    image_loader.cpp
     runner.cpp
 )
 
