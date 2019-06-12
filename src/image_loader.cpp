@@ -69,11 +69,11 @@ void ImageLoader::thread(ImporterRef& importer, unsigned int id)
         auto path = m_paths[distribution(rd)];
 
         if(!importer->openFile(path))
-            throw std::runtime_error("Could not open image file: " + path);
+            continue;
 
         auto imageData = importer->image2D(0);
         if(!imageData)
-            throw std::runtime_error("Could not load image: " + path);
+            continue;
 
         Corrade::Containers::Array<char> data{Corrade::Containers::NoInit, imageData->data().size()};
         std::uninitialized_copy(imageData->data().begin(), imageData->data().end(), data.begin());
