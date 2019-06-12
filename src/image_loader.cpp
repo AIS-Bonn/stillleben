@@ -110,6 +110,7 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 
         img = std::move(m_outputQueue.front());
         m_outputQueue.pop();
+        m_cond.notify_one();
     }
 
     GL::TextureFormat format;
