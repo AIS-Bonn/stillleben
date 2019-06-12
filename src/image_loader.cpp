@@ -102,31 +102,36 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 {
     using namespace Magnum;
 
-    Corrade::Containers::Optional<Image2D> img;
+    while(1)
     {
-        std::unique_lock lock(m_mutex);
-        while(m_outputQueue.empty())
-            m_outputCond.wait(lock);
+        Corrade::Containers::Optional<Image2D> img;
+        {
+            std::unique_lock lock(m_mutex);
+            while(m_outputQueue.empty())
+                m_outputCond.wait(lock);
 
-        img = std::move(m_outputQueue.front());
-        m_outputQueue.pop();
-        m_cond.notify_one();
+            img = std::move(m_outputQueue.front());
+            m_outputQueue.pop();
+            m_cond.notify_one();
+        }
+
+        GL::TextureFormat format;
+        if(img->format() == PixelFormat::RGB8Unorm)
+            format = GL::TextureFormat::RGB8;
+        else if(img->format() == PixelFormat::RGBA8Unorm)
+            format = GL::TextureFormat::RGBA8;
+        else
+        {
+            Warning{} << "Unsupported texture format:" << img->format();
+            continue; // just try the next one
+        }
+
+        GL::RectangleTexture texture;
+        texture.setStorage(format, img->size());
+        texture.setSubImage({}, *img);
+
+        return texture;
     }
-
-    GL::TextureFormat format;
-    if(img->format() == PixelFormat::RGB8Unorm)
-        format = GL::TextureFormat::RGB8;
-    else if(img->format() == PixelFormat::RGBA8Unorm)
-        format = GL::TextureFormat::RGBA8;
-    else
-        throw std::runtime_error("Unsupported texture format");
-
-    GL::RectangleTexture texture;
-    texture.setStorage(format, img->size());
-    texture.setSubImage({}, *img);
-
-    return texture;
 }
-
 
 }
