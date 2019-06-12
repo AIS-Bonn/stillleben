@@ -143,41 +143,16 @@ void ImageLoader::thread()
     }
 }
 
-namespace {
-class ScopeTimer
-{
-public:
-    explicit ScopeTimer(const std::string& title)
-     : m_title{title}
-     , m_t1{std::chrono::high_resolution_clock::now()}
-    {}
-
-    ~ScopeTimer()
-    {
-        auto t2 = std::chrono::high_resolution_clock::now();
-        Corrade::Utility::Debug{} << m_title << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - m_t1).count() << "ms";
-    }
-private:
-    std::string m_title;
-    std::chrono::high_resolution_clock::time_point m_t1;
-};
-}
-
 Magnum::GL::RectangleTexture ImageLoader::next()
 {
     using namespace Magnum;
 
     while(1)
     {
-        {
-            ScopeTimer timer("enqueue");
-            enqueue();
-        }
+        enqueue();
 
         Corrade::Containers::Optional<Result> result;
         {
-            ScopeTimer timer("dequeue");
-
             std::unique_lock lock(m_mutex);
             while(m_outputQueue.empty())
                 m_outputCond.wait(lock);
@@ -186,24 +161,20 @@ Magnum::GL::RectangleTexture ImageLoader::next()
             m_outputQueue.pop();
         }
 
-        GL::RectangleTexture texture;
+        GL::TextureFormat format;
+        if(result->second.format() == PixelFormat::RGB8Unorm)
+            format = GL::TextureFormat::RGB8;
+        else if(result->second.format() == PixelFormat::RGBA8Unorm)
+            format = GL::TextureFormat::RGBA8;
+        else
         {
-            ScopeTimer timer("upload");
-
-            GL::TextureFormat format;
-            if(result->second.format() == PixelFormat::RGB8Unorm)
-                format = GL::TextureFormat::RGB8;
-            else if(result->second.format() == PixelFormat::RGBA8Unorm)
-                format = GL::TextureFormat::RGBA8;
-            else
-            {
-                Warning{} << "Unsupported texture format:" << result->second.format();
-                continue; // just try the next one
-            }
-
-            texture.setStorage(format, result->second.size());
-            texture.setSubImage({}, result->second);
+            Warning{} << "Unsupported texture format:" << result->second.format();
+            continue; // just try the next one
         }
+
+        GL::RectangleTexture texture;
+        texture.setStorage(format, result->second.size());
+        texture.setSubImage({}, result->second);
 
         return texture;
     }
