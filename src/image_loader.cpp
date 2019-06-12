@@ -66,7 +66,10 @@ void ImageLoader::enqueue()
         auto path = m_paths[distribution(m_generator)];
 
         if(!importer->openFile(path))
+        {
+            Corrade::Utility::Warning{} << "Could not open file" << path;
             continue;
+        }
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
