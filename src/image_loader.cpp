@@ -27,8 +27,7 @@ ImageLoader::ImageLoader(
     std::uint32_t seed)
  : m_path{path}
  , m_context{context}
- , m_queueLength{std::max(10u, std::thread::hardware_concurrency())}
- , m_seed{seed}
+ , m_generator{seed}
 {
     // List files
     namespace fs = std::experimental::filesystem;
@@ -41,35 +40,61 @@ ImageLoader::ImageLoader(
 
     for(unsigned int i = 0; i < std::thread::hardware_concurrency(); ++i)
     {
-        auto importer = m_context->instantiateImporter("AnyImageImporter");
-        if(!importer)
-            throw std::logic_error("Could not load AnyImageImporter plugin");
-
-        m_threads.emplace_back(std::bind(&ImageLoader::thread, this, ImporterRef(*importer), i));
-        m_importers.push_back(std::move(importer));
+        m_threads.emplace_back(std::bind(&ImageLoader::thread, this));
+        enqueue();
     }
 }
 
 ImageLoader::~ImageLoader()
 {
     m_shouldExit = true;
-    m_cond.notify_all();
+    m_inputCond.notify_all();
 
     for(auto& t : m_threads)
         t.join();
 }
 
-void ImageLoader::thread(ImporterRef& importer, unsigned int id)
+void ImageLoader::enqueue()
 {
-    std::mt19937 rd{m_seed + id};
-    std::uniform_int_distribution<std::size_t> distribution(0, m_paths.size()-1);
-
     while(1)
     {
-        auto path = m_paths[distribution(rd)];
+        auto importer = m_context->instantiateImporter("AnyImageImporter");
+        if(!importer)
+            throw std::logic_error("Could not load AnyImageImporter plugin");
+
+        std::uniform_int_distribution<std::size_t> distribution{0, m_paths.size()-1};
+        auto path = m_paths[distribution(m_generator)];
 
         if(!importer->openFile(path))
             continue;
+
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_inputQueue.push(std::move(importer));
+            m_inputCond.notify_one();
+        }
+
+        break;
+    }
+}
+
+void ImageLoader::thread()
+{
+    while(1)
+    {
+        ImporterPtr importer;
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            while(m_inputQueue.empty() && !m_shouldExit)
+                m_inputCond.wait(lock);
+
+            if(m_shouldExit)
+                return;
+
+            importer = std::move(m_inputQueue.front());
+            m_inputQueue.pop();
+        }
 
         auto imageData = importer->image2D(0);
         if(!imageData)
@@ -86,12 +111,6 @@ void ImageLoader::thread(ImporterRef& importer, unsigned int id)
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            while(!m_shouldExit && m_outputQueue.size() >= m_queueLength)
-                m_cond.wait(lock);
-
-            if(m_shouldExit)
-                return;
-
             m_outputQueue.push(std::move(img));
             m_outputCond.notify_all();
         }
@@ -104,6 +123,8 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 
     while(1)
     {
+        enqueue();
+
         Corrade::Containers::Optional<Image2D> img;
         {
             std::unique_lock lock(m_mutex);
@@ -112,7 +133,6 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 
             img = std::move(m_outputQueue.front());
             m_outputQueue.pop();
-            m_cond.notify_one();
         }
 
         GL::TextureFormat format;

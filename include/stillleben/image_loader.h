@@ -10,6 +10,8 @@
 #include <thread>
 #include <vector>
 #include <ctime>
+#include <random>
+#include <atomic>
 
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Reference.h>
@@ -44,25 +46,27 @@ public:
 
     Magnum::GL::RectangleTexture next();
 private:
-    using ImporterRef = Corrade::Containers::Reference<Magnum::Trade::AbstractImporter>;
+    using Importer = Magnum::Trade::AbstractImporter;
+    using ImporterPtr = Corrade::Containers::Pointer<Importer>;
 
-    void thread(ImporterRef& importer, unsigned int id);
+    void thread();
+    void enqueue();
 
     std::string m_path;
     std::vector<std::string> m_paths;
 
     std::shared_ptr<sl::Context> m_context;
 
-    std::vector<Corrade::Containers::Pointer<Magnum::Trade::AbstractImporter>> m_importers;
     std::vector<std::thread> m_threads;
 
-    unsigned int m_queueLength;
-    std::uint32_t m_seed;
+    std::mt19937 m_generator;
 
     std::mutex m_mutex;
-    std::condition_variable m_cond;
+    std::condition_variable m_inputCond;
     std::condition_variable m_outputCond;
-    bool m_shouldExit = false;
+    std::atomic<bool> m_shouldExit{false};
+
+    std::queue<ImporterPtr> m_inputQueue;
     std::queue<Magnum::Image2D> m_outputQueue;
 };
 
