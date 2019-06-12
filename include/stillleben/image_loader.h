@@ -50,6 +50,7 @@ public:
 private:
     using Importer = Magnum::Trade::AbstractImporter;
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
+    using Request = std::pair<ImporterPtr, std::string>;
     using Result = std::pair<ImporterPtr, Magnum::Trade::ImageData2D>;
 
     void thread();
@@ -69,7 +70,7 @@ private:
     std::condition_variable m_outputCond;
     std::atomic<bool> m_shouldExit{false};
 
-    std::queue<ImporterPtr> m_inputQueue;
+    std::queue<Request> m_inputQueue;
     std::queue<Result> m_outputQueue;
 };
 

@@ -447,7 +447,7 @@ bool Context::makeCurrent()
 Corrade::Containers::Pointer<Context::Importer> Context::instantiateImporter(const std::string& name)
 {
     std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
-    return m_d->importerManager->instantiate(name);
+    return m_d->importerManager->loadAndInstantiate(name);
 }
 
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)

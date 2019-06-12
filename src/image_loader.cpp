@@ -18,6 +18,7 @@
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Utility/String.h>
 
 namespace sl
 {
@@ -57,24 +58,43 @@ ImageLoader::~ImageLoader()
 
 void ImageLoader::enqueue()
 {
+    using namespace Corrade::Utility;
+
     while(1)
     {
-        auto importer = m_context->instantiateImporter("AnyImageImporter");
-        if(!importer)
-            throw std::logic_error("Could not load AnyImageImporter plugin");
-
         std::uniform_int_distribution<std::size_t> distribution{0, m_paths.size()-1};
         auto path = m_paths[distribution(m_generator)];
 
-        if(!importer->openFile(path))
+        std::string normalized = String::lowercase(path);
+
+        ImporterPtr importer;
+        bool openHere = false;
+        if(String::endsWith(normalized, ".png"))
+            importer = m_context->instantiateImporter("PngImporter");
+        else if(String::endsWith(normalized, ".jpeg") || String::endsWith(normalized, ".jpg"))
+            importer = m_context->instantiateImporter("JpegImporter");
+        else
         {
-            Corrade::Utility::Warning{} << "Could not open file" << path;
-            continue;
+            importer = m_context->instantiateImporter("AnyImageImporter");
+            openHere = true;
+        }
+
+        if(!importer)
+            throw std::logic_error("Could not load AnyImageImporter plugin");
+
+        if(openHere)
+        {
+            if(!importer->openFile(path))
+            {
+                Corrade::Utility::Warning{} << "Could not open file" << path;
+                continue;
+            }
+            path = {};
         }
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_inputQueue.push(std::move(importer));
+            m_inputQueue.emplace(std::move(importer), path);
             m_inputCond.notify_one();
         }
 
@@ -86,7 +106,7 @@ void ImageLoader::thread()
 {
     while(1)
     {
-        ImporterPtr importer;
+        Request request;
         {
             std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -96,8 +116,19 @@ void ImageLoader::thread()
             if(m_shouldExit)
                 return;
 
-            importer = std::move(m_inputQueue.front());
+            request = std::move(m_inputQueue.front());
             m_inputQueue.pop();
+        }
+
+        ImporterPtr& importer = request.first;
+
+        if(!request.second.empty())
+        {
+            if(!importer->openFile(request.second))
+            {
+                Corrade::Utility::Warning{} << "Could not open file" << request.second;
+                continue;
+            }
         }
 
         auto imageData = importer->image2D(0);
