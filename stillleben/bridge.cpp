@@ -9,6 +9,7 @@
 #include <stillleben/scene.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/debug.h>
+#include <stillleben/image_loader.h>
 #include <stillleben/cuda_interop.h>
 #include <stillleben/animator.h>
 #include <stillleben/mesh_cache.h>
@@ -1132,6 +1133,25 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Args:
                 meshes (list): list of :class:`Mesh` instances
         )EOS", py::arg("meshes"))
+    ;
+
+    py::class_<sl::ImageLoader>(m, "ImageLoader", R"EOS(
+            Multi-threaded image loader.
+        )EOS")
+
+        .def(py::init([](const std::string& path){
+                return new sl::ImageLoader(path, g_context);
+            }), R"EOS(
+            Constructor.
+
+            Args:
+                path: Path to the image directory
+            )EOS", py::arg("path")
+        )
+
+        .def("next", &sl::ImageLoader::next, R"EOS(
+            Return next image (randomly sampled)
+        )EOS")
     ;
 
     // We need to release our context pointer when the python module is
