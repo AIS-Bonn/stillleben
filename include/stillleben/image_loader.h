@@ -14,7 +14,7 @@
 #include <atomic>
 
 #include <Corrade/Containers/Pointer.h>
-#include <Corrade/Containers/Reference.h>
+#include <Corrade/Containers/Optional.h>
 
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/Image.h>
@@ -52,6 +52,7 @@ private:
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
     using Request = std::pair<ImporterPtr, std::string>;
     using Result = std::pair<ImporterPtr, Magnum::Trade::ImageData2D>;
+    using OptionalResult = Corrade::Containers::Optional<Result>;
 
     void thread();
     void enqueue();
@@ -71,7 +72,7 @@ private:
     std::atomic<bool> m_shouldExit{false};
 
     std::queue<Request> m_inputQueue;
-    std::queue<Result> m_outputQueue;
+    std::queue<OptionalResult> m_outputQueue;
 };
 
 }

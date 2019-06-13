@@ -104,6 +104,12 @@ void ImageLoader::enqueue()
 
 void ImageLoader::thread()
 {
+    auto sendEmptyResult = [this](){
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_outputQueue.emplace();
+        m_outputCond.notify_all();
+    };
+
     while(1)
     {
         Request request;
@@ -127,17 +133,21 @@ void ImageLoader::thread()
             if(!importer->openFile(request.second))
             {
                 Corrade::Utility::Warning{} << "Could not open file" << request.second;
+                sendEmptyResult();
                 continue;
             }
         }
 
         auto imageData = importer->image2D(0);
         if(!imageData)
+        {
+            sendEmptyResult();
             continue;
+        }
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_outputQueue.emplace(std::move(importer), std::move(*imageData));
+            m_outputQueue.emplace(Result{std::move(importer), std::move(*imageData)});
             m_outputCond.notify_all();
         }
     }
@@ -160,6 +170,11 @@ Magnum::GL::RectangleTexture ImageLoader::next()
             result = std::move(m_outputQueue.front());
             m_outputQueue.pop();
         }
+
+        // If some error occured in the worker thread, enqueue a new image
+        // and try again.
+        if(!result || !result->first)
+            continue;
 
         GL::TextureFormat format;
         if(result->second.format() == PixelFormat::RGB8Unorm)
