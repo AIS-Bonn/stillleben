@@ -147,8 +147,6 @@ Context::Ptr Context::Create(const std::string& installPrefix)
         return {};
     }
 
-    Debug() << "Supported EGL extensions:" << extensions;
-
     // Load required extensions
     auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
     if(!eglQueryDevicesEXT)
@@ -222,11 +220,14 @@ Context::Ptr Context::Create(const std::string& installPrefix)
         return {};
     }
 
-    Debug{} << "Display initialized for EGL " << major << "." << minor;
+    if constexpr(false)
+    {
+        Debug{} << "Display initialized for EGL " << major << "." << minor;
 
-    const char* vendor = eglQueryString(display, EGL_VENDOR);
-    if(vendor)
-        Debug{} << "EGL vendor:" << vendor;
+        const char* vendor = eglQueryString(display, EGL_VENDOR);
+        if(vendor)
+            Debug{} << "EGL vendor:" << vendor;
+    }
 
     if(!eglBindAPI(EGL_OPENGL_API))
     {
@@ -290,12 +291,6 @@ Context::Ptr Context::Create(const std::string& installPrefix)
     {
         Error() << "Could not create Platform::GLContext";
         return {};
-    }
-
-    {
-        GLint max_samples;
-        glGetIntegerv(GL_MAX_INTEGER_SAMPLES, &max_samples);
-        Debug{} << "GL_MAX_INTEGER_SAMPLES:" << max_samples;
     }
 
     return context;
