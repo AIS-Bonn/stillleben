@@ -359,6 +359,16 @@ static at::Tensor readShortTensor(sl::CUDATexture& texture)
 
 static void init()
 {
+    if(g_context)
+    {
+        if(g_cudaEnabled)
+        {
+            Corrade::Utility::Warning{}
+                << "stillleben context was already created with different CUDA settings";
+        }
+        return;
+    }
+
     g_context = sl::Context::Create(g_installPrefix);
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
@@ -366,6 +376,16 @@ static void init()
 
 static void initCUDA(unsigned int cudaIndex, bool useCUDA=true)
 {
+    if(g_context)
+    {
+        if(g_cudaEnabled != useCUDA || g_cudaIndex != cudaIndex)
+        {
+            Corrade::Utility::Warning{}
+                << "stillleben context was already created with different CUDA settings";
+        }
+        return;
+    }
+
     g_context = sl::Context::CreateCUDA(cudaIndex, g_installPrefix);
     if(!g_context)
         throw std::runtime_error("Could not create stillleben context");
