@@ -118,6 +118,8 @@ if __name__ == "__main__":
     parser.add_argument('--force-color', type=str)
     parser.add_argument('--serialize', action='store_true',
         help='Display serialized scene string')
+    parser.add_argument('--ambient', metavar='COLOR', type=str,
+        help='Set ambient scene color')
 
     parser.add_argument('--rpy', type=str,
         help='RPY rotation in degrees')
@@ -159,6 +161,9 @@ if __name__ == "__main__":
     if args.force_color:
         opts['color'] = torch.tensor([ float(a) for a in args.force_color.split(',') ])
         opts['force_color'] = True
+
+    if args.ambient:
+        scene.ambient_light = torch.tensor([ float(a) for a in args.ambient.split(',') ])
 
     for mesh in meshes:
         object = sl.Object(mesh, options=opts)
