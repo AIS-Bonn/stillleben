@@ -154,6 +154,10 @@ public:
     { return m_lightPosition; }
 
     void chooseRandomLightPosition();
+
+    void setAmbientLight(const Magnum::Color3& ambientLight);
+    Magnum::Color3 ambientLight() const
+    { return m_ambientLight; }
     //@}
 
 private:
@@ -176,6 +180,7 @@ private:
     PhysXUnique<physx::PxScene> m_physicsScene;
 
     Magnum::Vector3 m_lightPosition;
+    Magnum::Color3 m_ambientLight;
 };
 
 // IMPLEMENTATION

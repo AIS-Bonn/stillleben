@@ -83,6 +83,8 @@ void main()
     lowp const vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE
         texture(ambientTexture, interpolatedTextureCoords)*
+        #elif defined(DIFFUSE_TEXTURE)
+        texture(diffuseTexture, interpolatedTextureCoords)*
         #endif
         ambientColor;
     lowp const vec4 finalDiffuseColor =

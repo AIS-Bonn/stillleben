@@ -309,6 +309,11 @@ void Scene::setLightPosition(const Magnum::Vector3& position)
     m_lightPosition = position;
 }
 
+void Scene::setAmbientLight(const Magnum::Color3& color)
+{
+    m_ambientLight = color;
+}
+
 void Scene::chooseRandomLightPosition()
 {
     // We want to have the light coming from above, but not from behind the

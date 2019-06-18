@@ -158,6 +158,16 @@ namespace
         }
     };
 
+    template<>
+    struct toTorch<Magnum::Color3>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Color3& vec)
+        {
+            return toTorch<Magnum::Vector3>::convert(vec);
+        }
+    };
+
     // Torch -> Magnum
     template<class T>
     struct fromTorch
@@ -250,6 +260,16 @@ namespace
         static Magnum::Color4 convert(const at::Tensor& tensor)
         {
             return fromTorch<Magnum::Vector4>::convert(tensor);
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Color3>
+    {
+        using Type = at::Tensor;
+        static Magnum::Color3 convert(const at::Tensor& tensor)
+        {
+            return fromTorch<Magnum::Vector3>::convert(tensor);
         }
     };
 
@@ -924,6 +944,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             R"EOS(
                 The light position in world coordinates. This is a float tensor
                 of size 3.
+            )EOS"
+        )
+
+        .def_property("ambient_light",
+            wrapShared(&sl::Scene::ambientLight),
+            wrapShared(&sl::Scene::setAmbientLight),
+            R"EOS(
+                The color & intensity of the ambient light. This is a float
+                tensor of size 3 (RGB, range 0-1). This color is multiplied
+                with the object color / texture during rendering.
             )EOS"
         )
 
