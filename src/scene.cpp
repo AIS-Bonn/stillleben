@@ -451,6 +451,7 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
     group.setValue("projection", m_camera->projectionMatrix());
     group.setValue("cameraPose", m_cameraObject.absoluteTransformationMatrix());
     group.setValue("lightPosition", m_lightPosition);
+    group.setValue("ambientLight", m_ambientLight);
     group.setValue("numObjects", m_objects.size());
 
     for(std::size_t i = 0; i < m_objects.size(); ++i)
@@ -472,6 +473,9 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
 
     if(group.hasValue("lightPosition"))
         m_lightPosition = group.value<Magnum::Vector3>("lightPosition");
+
+    if(group.hasValue("ambientLight"))
+        m_ambientLight = group.value<Magnum::Color3>("ambientLight");
 
     std::unique_ptr<MeshCache> localCache;
     if(!cache)
