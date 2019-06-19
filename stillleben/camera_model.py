@@ -99,13 +99,13 @@ def exposure(rgb, deltaS):
 
     Args:
         rgb (tensor): 3xHxW input RGB image, float [0-1]
-        deltaS (float): exposure shift (usually 0 to 2)
+        deltaS (float): exposure shift (usually -1 to 1)
 
     Returns:
         tensor: 3xHxW output image
     """
 
-    return 1.0 / (1.0 + deltaS * (1.0 / (rgb + 0.0001) - 1.0))
+    return 1.0 / (1.0 + math.exp(deltaS) * (1.0 / (rgb + 0.0001) - 1.0))
 
 @profiling.Timer('noise')
 def noise(rgb, a, b):
@@ -172,7 +172,7 @@ def color_jitter(tensor_img):
     HSV[2] = M
 
     # Apply jitter
-    hue_jitter = 0.05
+    hue_jitter = 0.2
     hue_factor = random.uniform(-hue_jitter, hue_jitter)
 
     HSV[0] = HSV[0] + hue_factor * 360.0
@@ -210,7 +210,7 @@ def process_image(rgb):
     if random.random() > 0.8:
         rgb = blur(rgb, sigma=random.uniform(0.0, 3.0))
 
-    rgb = exposure(rgb, deltaS=random.uniform(0.001, 2.0))
+    rgb = exposure(rgb, deltaS=random.uniform(-0.6, 1.2))
 
     if random.random() > 0.8:
         rgb = noise(rgb, a=0.001, b=0.03)
