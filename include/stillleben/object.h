@@ -138,6 +138,10 @@ public:
     unsigned int instanceIndex() const
     { return m_instanceIndex; }
 
+    void setSpecularColor(const Magnum::Color4& color);
+    constexpr Magnum::Color4 specularColor() const
+    { return m_specularColor; }
+
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
 
@@ -179,6 +183,9 @@ private:
     PhysXHolder<physx::PxRigidDynamic> m_rigidBody;
 
     bool m_visualLoaded = false;
+
+    // By default, we have a fully specular object
+    Magnum::Color4 m_specularColor{1.0f};
 };
 
 }

@@ -294,6 +294,7 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
 
     group.setValue("pose", pose());
     group.setValue("instanceIndex", m_instanceIndex);
+    group.setValue("specularColor", m_specularColor);
 }
 
 void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
@@ -312,6 +313,14 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
 
     if(group.hasValue("instanceIndex"))
         setInstanceIndex(group.value<unsigned int>("instanceIndex"));
+
+    if(group.hasValue("specularColor"))
+        setSpecularColor(group.value<Magnum::Color4>("specularColor"));
+}
+
+void Object::setSpecularColor(const Magnum::Color4& color)
+{
+    m_specularColor = color;
 }
 
 }

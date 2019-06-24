@@ -754,6 +754,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_property_readonly("mesh", &sl::Object::mesh, R"EOS(
             The associated :class:`Mesh` instance.
         )EOS")
+
+        .def_property("specular_color", &sl::Object::specularColor, &sl::Object::setSpecularColor, R"EOS(
+            Specular color for Phong shading. This is multiplied with the
+            calculated specular intensity. Set to white for a fully-specular
+            object, set to black for a fully diffuse object.
+        )EOS")
     ;
 
     py::class_<sl::Scene, std::shared_ptr<sl::Scene>>(m, "Scene", R"EOS(
