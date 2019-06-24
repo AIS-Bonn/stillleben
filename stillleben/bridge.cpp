@@ -755,7 +755,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             The associated :class:`Mesh` instance.
         )EOS")
 
-        .def_property("specular_color", &sl::Object::specularColor, &sl::Object::setSpecularColor, R"EOS(
+        .def_property("specular_color", wrapShared(&sl::Object::specularColor), wrapShared(&sl::Object::setSpecularColor), R"EOS(
             Specular color for Phong shading. This is multiplied with the
             calculated specular intensity. Set to white for a fully-specular
             object, set to black for a fully diffuse object.
