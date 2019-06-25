@@ -760,6 +760,12 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             calculated specular intensity. Set to white for a fully-specular
             object, set to black for a fully diffuse object.
         )EOS")
+
+        .def_property("shininess", &sl::Object::shininess, &sl::Object::setShininess, R"EOS(
+            Shininess parameter for Phong shading. Low values result in very
+            spread out specular highlights, high values in very small, sharp
+            highlights. Default value is 80 (pretty sharp).
+        )EOS")
     ;
 
     py::class_<sl::Scene, std::shared_ptr<sl::Scene>>(m, "Scene", R"EOS(

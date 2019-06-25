@@ -142,6 +142,10 @@ public:
     constexpr Magnum::Color4 specularColor() const
     { return m_specularColor; }
 
+    void setShininess(float shininess);
+    constexpr float shininess() const
+    { return m_shininess; }
+
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
 
@@ -186,6 +190,9 @@ private:
 
     // By default, we have a fully specular object
     Magnum::Color4 m_specularColor{1.0f};
+
+    // With sharp specular highlights
+    float m_shininess = 80.0f;
 };
 
 }

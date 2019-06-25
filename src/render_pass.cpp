@@ -218,6 +218,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setInstanceIndex(object->instanceIndex())
                 .setAmbientColor(scene.ambientLight())
                 .setSpecularColor(object->specularColor())
+                .setShininess(object->shininess())
             ;
         }
 
