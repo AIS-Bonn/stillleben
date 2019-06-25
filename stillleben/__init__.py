@@ -14,7 +14,6 @@ __all__ = [
     'init',
     'init_cuda',
     'render_debug_image',
-    'render_physics_debug_image',
     'Scene',
     'Mesh',
     'Object',
