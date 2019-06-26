@@ -83,6 +83,37 @@ layout(location = 2) out uint classIndexOut;
 layout(location = 3) out uint instanceIndexOut;
 layout(location = 4) out highp vec4 normalOut;
 
+vec2 dirToSpherical(vec3 dir)
+{
+    // We are in the camera coordinate system, so Y is down, X is right, Z is
+    // into the image.
+
+    return vec2(
+        atan(-dir.x, dir.z) + M_PI,
+        acos(-dir.y)
+    );
+}
+
+vec3 toGamma(vec3 v, float gamma)
+{
+    return pow(v, vec3(1.0 / gamma));
+}
+
+vec4 toGamma(vec4 v, float gamma)
+{
+    return vec4(toGamma(v.rgb, gamma), v.a);
+}
+
+vec3 toLinear(vec3 v, float gamma)
+{
+    return pow(v, vec3(gamma));
+}
+
+vec4 toLinear(vec4 v, float gamma)
+{
+    return vec4(toLinear(v.rgb, gamma), v.a);
+}
+
 void main()
 {
     objectCoordinatesOut = objectCoordinates;
@@ -96,7 +127,7 @@ void main()
         texture(diffuseTexture, interpolatedTextureCoords)*
         #endif
         ambientColor;
-    lowp const vec4 finalDiffuseColor =
+    lowp vec4 finalDiffuseColor =
         #ifdef DIFFUSE_TEXTURE
         texture(diffuseTexture, interpolatedTextureCoords)*
         #endif
@@ -105,7 +136,7 @@ void main()
         #else
         diffuseColor;
         #endif
-    lowp const vec4 finalSpecularColor =
+    lowp vec4 finalSpecularColor =
         #ifdef SPECULAR_TEXTURE
         texture(specularTexture, interpolatedTextureCoords)*
         #endif
@@ -127,21 +158,27 @@ void main()
         if(!gl_FrontFacing)
             normalizedTransformedNormal = -normalizedTransformedNormal;
 
-        mediump vec3 reflected = normalize(reflect(-normalize(cameraDirection), normalizedTransformedNormal));
+        color = toLinear(color, 1.8);
+        finalDiffuseColor = toLinear(finalDiffuseColor, 1.8);
+        finalSpecularColor = toLinear(finalSpecularColor, 1.8);
+
+        mediump vec3 reflected = normalize(reflect(normalize(cameraDirection), normalizedTransformedNormal));
 
         // Convert to spherical coordinates
-        mediump vec2 longlat_diffuse = vec2(atan(normalizedTransformedNormal.y, normalizedTransformedNormal.x), acos(normalizedTransformedNormal.z));
-        mediump vec2 longlat_specular = vec2(atan(reflected.y, reflected.x), acos(reflected.z));
+        mediump vec2 longlat_diffuse = dirToSpherical(normalizedTransformedNormal);
+        mediump vec2 longlat_specular = dirToSpherical(reflected);
 
         // normalize
         longlat_diffuse = longlat_diffuse / vec2(2.0*M_PI, M_PI);
         longlat_specular = longlat_specular / vec2(2.0*M_PI, M_PI);
 
         // Lookup!
-        lowp vec4 diffuse = 50.0 * texture2D(lightMapDiffuse, longlat_diffuse);
+        lowp vec4 diffuse = texture2D(lightMapDiffuse, longlat_diffuse);
         lowp vec4 specular = texture2D(lightMapSpecular, longlat_specular);
 
         color += diffuse*finalDiffuseColor + specular*finalSpecularColor;
+
+        color = toGamma(color, 1.8);
     }
     else
     {
