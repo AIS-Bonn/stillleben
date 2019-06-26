@@ -5,6 +5,7 @@
 
 #include <stillleben/context.h>
 #include <stillleben/object.h>
+#include <stillleben/light_map.h>
 #include <stillleben/mesh.h>
 #include <stillleben/mesh_cache.h>
 
@@ -461,6 +462,11 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
         auto objGroup = group.addGroup("object");
         obj->serialize(*objGroup);
     }
+
+    if(m_lightMap)
+    {
+        group.setValue("lightMap", m_lightMap->path());
+    }
 }
 
 void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
@@ -476,6 +482,9 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
 
     if(group.hasValue("ambientLight"))
         m_ambientLight = group.value<Magnum::Color3>("ambientLight");
+
+    if(group.hasValue("lightMap"))
+        m_lightMap = std::make_shared<LightMap>(group.value("lightMap"), m_ctx);
 
     std::unique_ptr<MeshCache> localCache;
     if(!cache)
@@ -506,6 +515,11 @@ void Scene::loadPhysics()
 {
     for(auto& obj : m_objects)
         obj->loadPhysics();
+}
+
+void Scene::setLightMap(const std::shared_ptr<LightMap>& lightMap)
+{
+    m_lightMap = lightMap;
 }
 
 }

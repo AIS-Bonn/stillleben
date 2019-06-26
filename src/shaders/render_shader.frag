@@ -54,6 +54,15 @@ uniform uint classIndex = 0u;
 layout(location = 12)
 uniform uint instanceIndex = 0u;
 
+// Do we use a light map?
+layout(location = 13)
+uniform bool useLightMap = false;
+
+layout(binding = 3)
+uniform lowp sampler2D lightMapDiffuse;
+layout(binding = 4)
+uniform lowp sampler2D lightMapSpecular;
+
 in mediump vec3 transformedNormal;
 in highp vec3 lightDirection;
 in highp vec3 cameraDirection;
@@ -102,31 +111,56 @@ void main()
         #endif
         specularColor;
 
-    /* Ambient color */
-    #ifdef FLAT
-    color = finalDiffuseColor;
-    #else
-    color = finalAmbientColor;
-
     mediump vec3 normalizedTransformedNormal = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */
     normalOut.xyz = normalizedTransformedNormal;
     normalOut.w = dot(normalizedTransformedNormal, cameraDirection);
 
-    if(gl_FrontFacing)
-        normalizedTransformedNormal = -normalizedTransformedNormal;
-    
-    highp vec3 normalizedLightDirection = normalize(lightDirection);
+    #ifdef FLAT
+    color = finalDiffuseColor;
+    #else
+    // Start with ambient color
+    color = finalAmbientColor;
 
-    /* Add diffuse color */
-    lowp float intensity = max(0.0, dot(normalizedTransformedNormal, normalizedLightDirection));
-    color += finalDiffuseColor*lightColor*intensity;
+    if(useLightMap)
+    {
+        if(!gl_FrontFacing)
+            normalizedTransformedNormal = -normalizedTransformedNormal;
 
-    /* Add specular color, if needed */
-    if(intensity > 0.001) {
-        highp vec3 reflection = reflect(-normalizedLightDirection, normalizedTransformedNormal);
-        mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), shininess);
-        color += finalSpecularColor*specularity;
+        mediump vec3 reflected = normalize(reflect(-normalize(cameraDirection), normalizedTransformedNormal));
+
+        // Convert to spherical coordinates
+        mediump vec2 longlat_diffuse = vec2(atan(normalizedTransformedNormal.y, normalizedTransformedNormal.x), acos(normalizedTransformedNormal.z));
+        mediump vec2 longlat_specular = vec2(atan(reflected.y, reflected.x), acos(reflected.z));
+
+        // normalize
+        longlat_diffuse = longlat_diffuse / vec2(2.0*M_PI, M_PI);
+        longlat_specular = longlat_specular / vec2(2.0*M_PI, M_PI);
+
+        // Lookup!
+        lowp vec4 diffuse = 50.0 * texture2D(lightMapDiffuse, longlat_diffuse);
+        lowp vec4 specular = texture2D(lightMapSpecular, longlat_specular);
+
+        color += diffuse*finalDiffuseColor + specular*finalSpecularColor;
+    }
+    else
+    {
+        // NOTE: from here on, normalizedTransformedNormal points *into* the mesh
+        if(gl_FrontFacing)
+            normalizedTransformedNormal = -normalizedTransformedNormal;
+
+        highp vec3 normalizedLightDirection = normalize(lightDirection);
+
+        /* Add diffuse color */
+        lowp float intensity = max(0.0, dot(normalizedTransformedNormal, normalizedLightDirection));
+        color += finalDiffuseColor*lightColor*intensity;
+
+        /* Add specular color, if needed */
+        if(intensity > 0.001) {
+            highp vec3 reflection = reflect(-normalizedLightDirection, normalizedTransformedNormal);
+            mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), shininess);
+            color += finalSpecularColor*specularity;
+        }
     }
     #endif
 

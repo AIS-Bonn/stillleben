@@ -12,6 +12,7 @@
 #include <stillleben/image_loader.h>
 #include <stillleben/cuda_interop.h>
 #include <stillleben/animator.h>
+#include <stillleben/light_map.h>
 #include <stillleben/mesh_cache.h>
 #include <stillleben/contrib/ctpl_stl.h>
 
@@ -768,6 +769,30 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         )EOS")
     ;
 
+    py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
+            An .ibl light map for image-based lighting.
+        )EOS")
+
+        .def(py::init(), "Constructor")
+
+        .def(py::init([](const std::string& path){
+                return std::make_shared<sl::LightMap>(path, g_context);
+            }),
+            R"EOS(
+                Constructs and calls load().
+            )EOS"
+        )
+
+        .def("load", &sl::LightMap::load, R"EOS(
+            Opens an .ibl file.
+
+            Args:
+                path (str): Path to .ibl file
+            Returns:
+                bool: True if successful
+        )EOS")
+    ;
+
     py::class_<sl::Scene, std::shared_ptr<sl::Scene>>(m, "Scene", R"EOS(
             Represents a scene with multiple objects.
         )EOS")
@@ -1009,6 +1034,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             )EOS")
         .def("load_physics", &sl::Scene::loadPhysics, R"EOS(
                 Load physics meshes
+            )EOS")
+
+
+        .def_property("light_map", &sl::Scene::lightMap, &sl::Scene::setLightMap, R"EOS(
+                Light map used for image-based lighting.
             )EOS")
     ;
 

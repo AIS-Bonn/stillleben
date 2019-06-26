@@ -13,6 +13,8 @@
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Extensions.h>
 
+#include <stillleben/light_map.h>
+
 using namespace Magnum;
 
 namespace sl
@@ -24,7 +26,9 @@ namespace
     {
         AmbientTextureLayer = 0,
         DiffuseTextureLayer = 1,
-        SpecularTextureLayer = 2
+        SpecularTextureLayer = 2,
+        LightMapDiffuseLayer = 3,
+        LightMapSpecularLayer = 4
     };
 }
 
@@ -64,6 +68,7 @@ RenderShader::RenderShader(const Flags flags)
         .addSource(rs.get("generic.glsl"))
         .addSource(rs.get("render_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
+        .addSource(rs.get("generic.glsl"))
         .addSource((useTexture && (flags & Flag::AmbientTexture)) ? "#define AMBIENT_TEXTURE\n" : "")
         .addSource((useTexture && (flags & Flag::DiffuseTexture)) ? "#define DIFFUSE_TEXTURE\n" : "")
         .addSource((useTexture && (flags & Flag::SpecularTexture)) ? "#define SPECULAR_TEXTURE\n" : "")
@@ -113,6 +118,7 @@ RenderShader::RenderShader(const Flags flags)
         _shininessUniform = uniformLocation("shininess");
         _classIndexUniform = uniformLocation("classIndex");
         _instanceIndexUniform = uniformLocation("instanceIndex");
+        _useLightMapUniform = uniformLocation("useLightMap");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 
@@ -123,6 +129,8 @@ RenderShader::RenderShader(const Flags flags)
         if(flags & Flag::AmbientTexture) setUniform(uniformLocation("ambientTexture"), AmbientTextureLayer);
         if(flags & Flag::DiffuseTexture) setUniform(uniformLocation("diffuseTexture"), DiffuseTextureLayer);
         if(flags & Flag::SpecularTexture) setUniform(uniformLocation("specularTexture"), SpecularTextureLayer);
+        setUniform(uniformLocation("lightMapDiffuse"), LightMapDiffuseLayer);
+        setUniform(uniformLocation("lightMapSpecular"), LightMapSpecularLayer);
     }
 }
 
@@ -164,6 +172,19 @@ RenderShader& RenderShader::setAlphaMask(Float mask)
         "Shaders::RenderShader::setAlphaMask(): the shader was not created with alpha mask enabled", *this);
     setUniform(_alphaMaskUniform, mask);
     return *this;
+}
+
+sl::RenderShader& RenderShader::bindLightMap(sl::LightMap& lightMap)
+{
+    setUniform(_useLightMapUniform, true);
+    lightMap.diffuseTexture().bind(LightMapDiffuseLayer);
+    lightMap.specularTexture().bind(LightMapSpecularLayer);
+    return *this;
+}
+
+void RenderShader::disableLightMap()
+{
+    setUniform(_useLightMapUniform, false);
 }
 
 }

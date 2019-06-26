@@ -29,6 +29,7 @@ namespace sl
 
 class Context;
 class MeshCache;
+class LightMap;
 
 /**
  * @brief Scene
@@ -158,6 +159,10 @@ public:
     void setAmbientLight(const Magnum::Color3& ambientLight);
     Magnum::Color3 ambientLight() const
     { return m_ambientLight; }
+
+    void setLightMap(const std::shared_ptr<LightMap>& lightMap);
+    std::shared_ptr<LightMap> lightMap() const
+    { return m_lightMap; }
     //@}
 
 private:
@@ -181,6 +186,8 @@ private:
 
     Magnum::Vector3 m_lightPosition;
     Magnum::Color3 m_ambientLight;
+
+    std::shared_ptr<LightMap> m_lightMap;
 };
 
 // IMPLEMENTATION

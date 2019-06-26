@@ -204,6 +204,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_framebuffer.clearColor(3, Vector4ui{0});
     m_framebuffer.clearColor(4, 0x00000000_rgbaf);
 
+    // Setup image-based lighting if required
+    for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
+    {
+        if(scene.lightMap())
+            shader.get()->bindLightMap(*scene.lightMap());
+        else
+            shader.get()->disableLightMap();
+    }
+
     // Let the fun begin!
     for(auto& object : scene.objects())
     {
@@ -220,6 +229,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setSpecularColor(object->specularColor())
                 .setShininess(object->shininess())
             ;
+
+            if(scene.lightMap())
+                shader.get()->bindLightMap(*scene.lightMap());
+            else
+                shader.get()->disableLightMap();
         }
 
         object->draw(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {

@@ -15,6 +15,8 @@ namespace sl
 
 using namespace Magnum;
 
+class LightMap;
+
 class RenderShader : public GL::AbstractShaderProgram
 {
 public:
@@ -361,6 +363,9 @@ public:
         return *this;
     }
 
+    RenderShader& bindLightMap(LightMap& lightMap);
+    void disableLightMap();
+
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},
@@ -375,7 +380,8 @@ private:
         _shininessUniform{9},
         _alphaMaskUniform{10},
         _classIndexUniform{11},
-        _instanceIndexUniform{12};
+        _instanceIndexUniform{12},
+        _useLightMapUniform{13};
 };
 
 }

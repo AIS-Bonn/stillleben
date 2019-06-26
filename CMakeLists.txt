@@ -60,6 +60,7 @@ add_library(stillleben SHARED
     src/debug.cpp
     src/exception.cpp
     src/image_loader.cpp
+    src/light_map.cpp
     src/mesh.cpp
     src/mesh_cache.cpp
     src/object.cpp

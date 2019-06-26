@@ -130,6 +130,14 @@ if __name__ == "__main__":
     parser.add_argument('--size', type=str,
         help='Image size (WxH)', default="640x480")
 
+    parser.add_argument('--shininess', type=float,
+        help='Phong shininess parameter', default=80.0)
+    parser.add_argument('--specular-color', type=str,
+        help='Specular color (R,G,B)')
+
+    parser.add_argument('--light-map', type=str, metavar='FILE.ibl',
+        help='Use image-based lighting')
+
     args = parser.parse_args()
 
     sl.init()
@@ -165,8 +173,16 @@ if __name__ == "__main__":
     if args.ambient:
         scene.ambient_light = torch.tensor([ float(a) for a in args.ambient.split(',') ])
 
+    if args.light_map:
+        scene.light_map = sl.LightMap(args.light_map)
+
     for mesh in meshes:
         object = sl.Object(mesh, options=opts)
+        object.shininess = args.shininess
+
+        if args.specular_color:
+            object.specular_color = torch.tensor([ float(a) for a in args.specular_color.split(',') ])
+
         scene.add_object(object)
 
         if args.placement == 'center':
