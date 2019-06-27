@@ -90,7 +90,7 @@ vec2 dirToSpherical(vec3 dir)
 
     return vec2(
         atan(-dir.x, dir.z) + M_PI,
-        acos(-dir.y)
+        acos(dir.y)
     );
 }
 
@@ -162,7 +162,8 @@ void main()
         finalDiffuseColor = toLinear(finalDiffuseColor, 1.8);
         finalSpecularColor = toLinear(finalSpecularColor, 1.8);
 
-        mediump vec3 reflected = normalize(reflect(normalize(cameraDirection), normalizedTransformedNormal));
+        // cameraDirection = camera - object
+        mediump vec3 reflected = normalize(reflect(-normalize(cameraDirection), normalizedTransformedNormal));
 
         // Convert to spherical coordinates
         mediump vec2 longlat_diffuse = dirToSpherical(normalizedTransformedNormal);
