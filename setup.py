@@ -7,6 +7,7 @@ import subprocess
 import os
 import sys
 import torch
+import glob
 
 BUILD_PATH = os.path.join(os.getcwd(), 'cpp_build')
 INSTALL_PATH = os.path.join(os.getcwd(), 'stillleben')
@@ -113,9 +114,7 @@ setuptools.setup(
                 os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
                 make_relative_rpath('lib')
             ],
-            depends=[
-                os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
-            ]
+            depends=glob.glob(os.path.join(os.getcwd(), 'stillleben', 'include', '**'), recursive=True),
         )
     ],
 )
