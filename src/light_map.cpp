@@ -186,7 +186,10 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
     depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
     framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
 
+    // Setup the mesh primitive
+    // NOTE: Primitives::cubeSolid() has normals facing outwards
     auto cube = MeshTools::compile(Primitives::cubeSolid());
+    Matrix4 perspective = Matrix4::perspectiveProjection(Deg{90.0}, 1.0f, 0.1f, 10.0f);
 
     // Equirectangular -> Cubemap
     GL::CubeMapTexture hdrCubeMap;
@@ -196,8 +199,6 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear);
-
-        Matrix4 perspective = Matrix4::perspectiveProjection(Deg{90.0}, 1.0f, 0.1f, 10.0f);
 
         CubeMapShader shader;
         shader.setProjection(perspective);
@@ -219,6 +220,41 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         }
 
         hdrCubeMap.generateMipmap();
+    }
+
+    // Create irradiance cubemap
+    GL::CubeMapTexture hdrIrradiance;
+    const Vector2i irradianceSize(32, 32);
+    {
+        hdrIrradiance
+            .setStorage(Math::log2(irradianceSize.x())+1, GL::TextureFormat::RGB32F, irradianceSize)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setMagnificationFilter(GL::SamplerFilter::Linear);
+
+        framebuffer.setViewport(Range2Di::fromSize({}, irradianceSize));
+        depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, irradianceSize);
+        framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
+
+        // FIXME
+        CubeMapShader shader;
+        shader.setProjection(perspective);
+
+        for(const auto& side : CUBE_MAP_SIDES)
+        {
+            framebuffer.attachCubeMapTexture(
+                GL::Framebuffer::ColorAttachment{0}, hdrIrradiance,
+                side.coordinate, 0
+            );
+            framebuffer.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
+            framebuffer.bind();
+
+            framebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+
+            shader.setView(side.view);
+
+            cube.draw(shader);
+        }
     }
 
     m_path = path;
