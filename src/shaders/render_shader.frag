@@ -114,6 +114,13 @@ vec4 toLinear(vec4 v, float gamma)
     return vec4(toLinear(v.rgb, gamma), v.a);
 }
 
+const vec3 plastic_F0 = vec3(0.04);
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
 void main()
 {
     objectCoordinatesOut = objectCoordinates;
@@ -158,9 +165,13 @@ void main()
         if(!gl_FrontFacing)
             normalizedTransformedNormal = -normalizedTransformedNormal;
 
-        color = toLinear(color, 1.8);
-        finalDiffuseColor = toLinear(finalDiffuseColor, 1.8);
-        finalSpecularColor = toLinear(finalSpecularColor, 1.8);
+        float gamma = 2.2;
+        float roughness = 0.5;
+        float metalness = 0.0;
+
+        color = toLinear(color, gamma);
+        finalDiffuseColor = toLinear(finalDiffuseColor, gamma);
+        finalSpecularColor = toLinear(finalSpecularColor, gamma);
 
         // cameraDirection = camera - object
         mediump vec3 reflected = normalize(reflect(-normalize(cameraDirection), normalizedTransformedNormal));
@@ -174,12 +185,19 @@ void main()
         longlat_specular = longlat_specular / vec2(2.0*M_PI, M_PI);
 
         // Lookup!
-        lowp vec4 diffuse = texture2D(lightMapDiffuse, longlat_diffuse);
+        lowp vec4 irradiance = texture2D(lightMapDiffuse, longlat_diffuse);
         lowp vec4 specular = texture2D(lightMapSpecular, longlat_specular);
+        vec3 albedo = finalDiffuseColor.rgb;
 
-        color += diffuse*finalDiffuseColor + specular*finalSpecularColor;
+        vec3 F0 = mix(plastic_F0, albedo, metalness);
+        vec3 kS = fresnelSchlickRoughness(max(dot(normalizedTransformedNormal, cameraDirection), 0.0), F0, roughness);
+        vec3 kD = 1.0 - kS;
+        vec3 diffuse    = irradiance.rgb * albedo;
+        vec3 ambient    = kD * diffuse;
 
-        color = toGamma(color, 1.8);
+        color += vec4(ambient, 1.0) /*+ specular*finalSpecularColor*/;
+
+        color = toGamma(color, gamma);
     }
     else
     {

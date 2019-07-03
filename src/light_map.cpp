@@ -4,6 +4,8 @@
 #include <stillleben/light_map.h>
 #include <stillleben/context.h>
 
+#include "shaders/cubemap_shader.h"
+
 #include <Corrade/Containers/Optional.h>
 
 #include <Corrade/PluginManager/PluginManager.h>
@@ -11,10 +13,20 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/Directory.h>
 
+#include <Magnum/GL/CubeMapTexture.h>
+#include <Magnum/GL/Framebuffer.h>
+#include <Magnum/GL/Mesh.h>
+#include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/Renderbuffer.h>
+#include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Math/Functions.h>
+#include <Magnum/Math/Matrix4.h>
+#include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Primitives/Cube.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
+#include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/Image.h>
 
 
@@ -87,12 +99,27 @@ namespace
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
-            .setStorage(Math::log2(image->size().x())+1, GL::TextureFormat::RGBA32F, image->size())
+            .setStorage(Math::log2(image->size().x())+1, GL::TextureFormat::RGB32F, image->size())
             .setSubImage(0, {}, *image)
             .generateMipmap();
 
         return texture;
     }
+
+    struct CubeMapSide
+    {
+        GL::CubeMapCoordinate coordinate;
+        Matrix4 view;
+    };
+
+    const std::array<CubeMapSide, 6> CUBE_MAP_SIDES{{
+        {GL::CubeMapCoordinate::PositiveX, Matrix4::lookAt({}, { 1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f})},
+        {GL::CubeMapCoordinate::NegativeX, Matrix4::lookAt({}, {-1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f})},
+        {GL::CubeMapCoordinate::PositiveY, Matrix4::lookAt({}, { 0.0f,  1.0f,  0.0f}, {0.0f,  0.0f,  1.0f})},
+        {GL::CubeMapCoordinate::NegativeY, Matrix4::lookAt({}, { 0.0f, -1.0f,  0.0f}, {0.0f,  0.0f, -1.0f})},
+        {GL::CubeMapCoordinate::PositiveZ, Matrix4::lookAt({}, { 0.0f,  0.0f,  1.0f}, {0.0f, -1.0f,  0.0f})},
+        {GL::CubeMapCoordinate::NegativeZ, Matrix4::lookAt({}, { 0.0f,  0.0f, -1.0f}, {0.0f, -1.0f,  0.0f})},
+    }};
 }
 
 LightMap::LightMap()
@@ -120,13 +147,6 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
     std::string baseDir = Directory::path(path);
 
-    auto environmentGroup = config.group("Enviroment"); // sic!
-    if(!environmentGroup)
-    {
-        Error{} << path << "does not contain an Enviroment (sic!) group";
-        return false;
-    }
-
     auto reflectionGroup = config.group("Reflection");
     if(!reflectionGroup)
     {
@@ -134,22 +154,16 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         return false;
     }
 
-    auto envSpec = IBLSpec::load(*environmentGroup, "EV");
     auto refSpec = IBLSpec::load(*reflectionGroup, "REF");
 
-    if(!envSpec || !refSpec)
+    if(!refSpec)
         return false;
 
+    // Load the texture!
+    Magnum::GL::Texture2D hdrEquirectangular{NoCreate};
     {
         auto importer = ctx->instantiateImporter("StbImageImporter");
         if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
-
-        auto envTex = loadTexture(*envSpec, *importer, baseDir);
-        if(!envTex)
-        {
-            Error{} << "Could not load env texture";
-            return false;
-        }
 
         auto refTex = loadTexture(*refSpec, *importer, baseDir);
         if(!refTex)
@@ -158,8 +172,53 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             return false;
         }
 
-        m_diffuseTexture = std::move(*envTex);
-        m_specularTexture = std::move(*refTex);
+        hdrEquirectangular = std::move(*refTex);
+    }
+
+    // Setup a framebuffer for the remapping / convolution operations
+    GL::Renderer::enable(GL::Renderer::Feature::SeamlessCubeMapTexture);
+
+    auto viewport = Magnum::Vector2i{{512, 512}};
+
+    GL::Framebuffer framebuffer{Range2Di::fromSize({}, viewport)};
+    GL::Renderbuffer depthBuffer;
+
+    depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
+    framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
+
+    auto cube = MeshTools::compile(Primitives::cubeSolid());
+
+    // Equirectangular -> Cubemap
+    GL::CubeMapTexture hdrCubeMap;
+    {
+        hdrCubeMap
+            .setStorage(Math::log2(viewport.x())+1, GL::TextureFormat::RGB32F, viewport)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setMagnificationFilter(GL::SamplerFilter::Linear);
+
+        Matrix4 perspective = Matrix4::perspectiveProjection(Deg{90.0}, 1.0f, 0.1f, 10.0f);
+
+        CubeMapShader shader;
+        shader.setProjection(perspective);
+
+        for(const auto& side : CUBE_MAP_SIDES)
+        {
+            framebuffer.attachCubeMapTexture(
+                GL::Framebuffer::ColorAttachment{0}, hdrCubeMap,
+                side.coordinate, 0
+            );
+            framebuffer.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
+            framebuffer.bind();
+
+            framebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+
+            shader.setView(side.view);
+
+            cube.draw(shader);
+        }
+
+        hdrCubeMap.generateMipmap();
     }
 
     m_path = path;
