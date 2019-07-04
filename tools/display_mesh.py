@@ -246,6 +246,9 @@ if __name__ == "__main__":
     print(rgb.size())
     rgb_np = rgb.cpu().numpy()
 
+    print('Projection matrix:')
+    print(scene.projection_matrix())
+
     img = Image.fromarray(rgb_np, mode='RGB')
 
     if args.out:

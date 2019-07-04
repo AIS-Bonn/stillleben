@@ -103,8 +103,19 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
 
+    if constexpr(false)
+    {
+        GL::Renderer::enable(GL::Renderer::Feature::DebugOutput);
+        GL::Renderer::enable(GL::Renderer::Feature::DebugOutputSynchronous);
+        GL::DebugOutput::setDefaultCallback();
+    }
+
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
     GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+
+    // Not really, but we skip the usual right-handed -> left-handed
+    // coordinate system change (see scene.cpp), which messes everything up.
+    GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
 
     // Setup the framebuffer
     auto viewport = scene.viewport();
@@ -284,6 +295,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     // For this purpose, we render a quad with a custom shader.
 
     GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
 
     m_resolvedBuffer
         .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_result->rgb)

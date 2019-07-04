@@ -103,11 +103,17 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
     const float B = (H-cy) * n / fy;
 
     // Caution, this is column-major
+    // We perform an ugly hack here: We keep X and Y directions, but flip Z
+    // with respect to the usual OpenGL conventions (in line with usual
+    // computer vision practice). While we in fact keep a right-handed
+    // coordinate system all the way, OpenGL expects a left-handed NDC
+    // coordinate system. That affects triangle winding order
+    // (see render_pass.cpp)
     Matrix4 P{
-        {2.0f*n/(R-L), 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f*n/(B-T), 0.0f, 0.0f},
-        {(R+L)/(L-R), (T+B)/(T-B), (f+n)/(f-n), 1.0f},
-        {0.0f, 0.0f, (2.0f * f * n) / (n-f), 0.0f}
+        {2.0f*n/(R-L),         0.0f,                   0.0f, 0.0f},
+        {        0.0f, 2.0f*n/(B-T),                   0.0f, 0.0f},
+        { (R+L)/(L-R),  (T+B)/(T-B),            (f+n)/(f-n), 1.0f},
+        {        0.0f,         0.0f, (2.0f * f * n) / (n-f), 0.0f}
     };
 
     m_camera->setProjectionMatrix(P);

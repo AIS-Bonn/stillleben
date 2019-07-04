@@ -216,10 +216,11 @@ void main()
     // Start with ambient color
     color = finalAmbientColor;
 
+    if(!gl_FrontFacing)
+        N = -N;
+
     if(useLightMap)
     {
-        if(gl_FrontFacing)
-            N = -N;
 
         float gamma = 1.8;
 
@@ -262,10 +263,6 @@ void main()
     }
     else
     {
-        // NOTE: from here on, normalizedTransformedNormal points *into* the mesh
-        if(gl_FrontFacing)
-            N = -N;
-
         highp vec3 normalizedLightDirection = normalize(lightDirection);
 
         /* Add diffuse color */
