@@ -96,9 +96,7 @@ TEST_CASE("basic")
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});
     {
-        PluginManager::Manager<Trade::AbstractImageConverter> manager;
-        std::unique_ptr<Trade::AbstractImageConverter> converter =
-            manager.loadAndInstantiate("PngImageConverter");
+        auto converter = context->instantiateImageConverter("PngImageConverter");
         if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
         CHECK(converter->exportToFile(image, "/tmp/stillleben.png"));
@@ -180,9 +178,7 @@ TEST_CASE("render")
     REQUIRE(buffer);
     CHECK(buffer->imageSize() == Magnum::Vector2i(640, 480));
 
-    PluginManager::Manager<Trade::AbstractImageConverter> manager;
-    std::unique_ptr<Trade::AbstractImageConverter> converter =
-        manager.loadAndInstantiate("PngImageConverter");
+    auto converter = context->instantiateImageConverter("PngImageConverter");
     if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});
