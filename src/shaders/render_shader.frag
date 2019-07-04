@@ -221,14 +221,16 @@ void main()
 
     if(useLightMap)
     {
-
         float gamma = 1.8;
 
         vec3 V = normalize(cameraDirection); // cameraDirection: camera - object
         vec3 R = reflect(-V, N);
 
         color = toLinear(color, gamma);
-        vec3 albedo = toLinear(finalDiffuseColor.rgb, gamma);
+
+        // HACK: the diffuse textures we load are not designed for PBR
+        // and usually result in very dark results.
+        vec3 albedo = 3.0 * toLinear(finalDiffuseColor.rgb, gamma);
 
         // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
         // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
@@ -255,11 +257,10 @@ void main()
 
         color += vec4(ambient, 1.0);
 
-        // HDR tonemapping
+        // HDR tonemapping (Reinhard operator)
         color = color / (color + vec4(1.0));
 
         color = toGamma(color, gamma);
-//         color = vec4(cubemapCoord(R), 1.0);
     }
     else
     {
