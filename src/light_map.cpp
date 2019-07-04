@@ -22,8 +22,10 @@
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/Math/Color.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Primitives/Cube.h>
@@ -127,6 +129,78 @@ namespace
         {GL::CubeMapCoordinate::PositiveZ, Matrix4::lookAt({}, { 0.0f,  0.0f,  1.0f}, {0.0f, -1.0f,  0.0f})},
         {GL::CubeMapCoordinate::NegativeZ, Matrix4::lookAt({}, { 0.0f,  0.0f, -1.0f}, {0.0f, -1.0f,  0.0f})},
     }};
+
+    Trade::MeshData3D cubeFromInside()
+    {
+        return Trade::MeshData3D{MeshPrimitive::Triangles, {
+             0,  2,  1,  0,  3,  2, /* +Z */
+             4,  6,  5,  4,  7,  6, /* +X */
+             8, 10,  9,  8, 11, 10, /* +Y */
+            12, 14, 13, 12, 15, 14, /* -Z */
+            16, 18, 17, 16, 19, 18, /* -Y */
+            20, 22, 21, 20, 23, 22  /* -X */
+        }, {{
+            {-1.0f, -1.0f,  1.0f},
+            { 1.0f, -1.0f,  1.0f},
+            { 1.0f,  1.0f,  1.0f}, /* +Z */
+            {-1.0f,  1.0f,  1.0f},
+
+            { 1.0f, -1.0f,  1.0f},
+            { 1.0f, -1.0f, -1.0f},
+            { 1.0f,  1.0f, -1.0f}, /* +X */
+            { 1.0f,  1.0f,  1.0f},
+
+            {-1.0f,  1.0f,  1.0f},
+            { 1.0f,  1.0f,  1.0f},
+            { 1.0f,  1.0f, -1.0f}, /* +Y */
+            {-1.0f,  1.0f, -1.0f},
+
+            { 1.0f, -1.0f, -1.0f},
+            {-1.0f, -1.0f, -1.0f},
+            {-1.0f,  1.0f, -1.0f}, /* -Z */
+            { 1.0f,  1.0f, -1.0f},
+
+            {-1.0f, -1.0f, -1.0f},
+            { 1.0f, -1.0f, -1.0f},
+            { 1.0f, -1.0f,  1.0f}, /* -Y */
+            {-1.0f, -1.0f,  1.0f},
+
+            {-1.0f, -1.0f, -1.0f},
+            {-1.0f, -1.0f,  1.0f},
+            {-1.0f,  1.0f,  1.0f}, /* -X */
+            {-1.0f,  1.0f, -1.0f}
+        }}, {{
+            { 0.0f,  0.0f, -1.0f},
+            { 0.0f,  0.0f, -1.0f},
+            { 0.0f,  0.0f, -1.0f}, /* +Z */
+            { 0.0f,  0.0f, -1.0f},
+
+            {-1.0f,  0.0f,  0.0f},
+            {-1.0f,  0.0f,  0.0f},
+            {-1.0f,  0.0f,  0.0f}, /* +X */
+            {-1.0f,  0.0f,  0.0f},
+
+            { 0.0f, -1.0f,  0.0f},
+            { 0.0f, -1.0f,  0.0f},
+            { 0.0f, -1.0f,  0.0f}, /* +Y */
+            { 0.0f, -1.0f,  0.0f},
+
+            { 0.0f,  0.0f,  1.0f},
+            { 0.0f,  0.0f,  1.0f},
+            { 0.0f,  0.0f,  1.0f}, /* -Z */
+            { 0.0f,  0.0f,  1.0f},
+
+            { 0.0f,  1.0f,  0.0f},
+            { 0.0f,  1.0f,  0.0f},
+            { 0.0f,  1.0f,  0.0f}, /* -Y */
+            { 0.0f,  1.0f,  0.0f},
+
+            { 1.0f,  0.0f,  0.0f},
+            { 1.0f,  0.0f,  0.0f},
+            { 1.0f,  0.0f,  0.0f}, /* -X */
+            { 1.0f,  0.0f,  0.0f}
+        }}, {}, {}, nullptr};
+    }
 }
 
 LightMap::LightMap()
@@ -195,7 +269,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
     // Setup the mesh primitive
     // NOTE: Primitives::cubeSolid() has normals facing outwards
-    auto cube = MeshTools::compile(Primitives::cubeSolid());
+    auto cube = MeshTools::compile(cubeFromInside());
     Matrix4 perspective = Matrix4::perspectiveProjection(Deg{90.0}, 1.0f, 0.1f, 10.0f);
 
     // Equirectangular -> Cubemap
@@ -238,7 +312,22 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         if constexpr(DEBUG_OUTPUT)
         {
             Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap.png");
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xp.png");
+
+            image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xn.png");
+
+            image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yp.png");
+
+            image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yn.png");
+
+            image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zp.png");
+
+            image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zn.png");
         }
     }
 
@@ -280,8 +369,25 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         if constexpr(DEBUG_OUTPUT)
         {
             Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance.png");
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xp.png");
+
+            image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xn.png");
+
+            image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yp.png");
+
+            image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yn.png");
+
+            image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zp.png");
+
+            image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zn.png");
         }
+
+        hdrIrradiance.generateMipmap();
     }
 
     // Create pre-filter cubemap
@@ -370,6 +476,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         brdfLUT.generateMipmap();
     }
 
+    m_cubeMap = std::move(hdrCubeMap);
     m_irradiance = std::move(hdrIrradiance);
     m_prefilter = std::move(hdrPrefilter);
     m_brdfLUT = std::move(brdfLUT);

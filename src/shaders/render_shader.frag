@@ -172,6 +172,11 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec3 cubemapCoord(vec3 camSpaceCoord)
+{
+    return vec3(camSpaceCoord.z, -camSpaceCoord.x, -camSpaceCoord.y);
+}
+
 void main()
 {
     objectCoordinatesOut = objectCoordinates;
@@ -213,12 +218,12 @@ void main()
 
     if(useLightMap)
     {
-        if(!gl_FrontFacing)
+        if(gl_FrontFacing)
             N = -N;
 
-        float gamma = 2.2;
+        float gamma = 1.8;
 
-        vec3 V = normalize(-cameraDirection); // cameraDirection: camera - object
+        vec3 V = normalize(cameraDirection); // cameraDirection: camera - object
         vec3 R = reflect(-V, N);
 
         color = toLinear(color, gamma);
@@ -229,8 +234,6 @@ void main()
         vec3 F0 = vec3(0.04);
         F0 = mix(F0, albedo, metallic);
 
-        finalDiffuseColor = toLinear(finalDiffuseColor, gamma);
-
         // ambient lighting (we now use IBL as the ambient term)
         vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
@@ -238,23 +241,24 @@ void main()
         vec3 kD = 1.0 - kS;
         kD *= 1.0 - metallic;
 
-        vec3 irradiance = texture(lightMapIrradiance, N).rgb;
+        vec3 irradiance = texture(lightMapIrradiance, cubemapCoord(N)).rgb;
         vec3 diffuse      = irradiance * albedo;
 
         // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
         const float MAX_REFLECTION_LOD = 4.0;
-        vec3 prefilteredColor = textureLod(lightMapPrefilter, R, roughness * MAX_REFLECTION_LOD).rgb;
+        vec3 prefilteredColor = textureLod(lightMapPrefilter, cubemapCoord(R), roughness * MAX_REFLECTION_LOD).rgb;
         vec2 brdf  = texture(lightMapBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
         vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
         vec3 ambient = (kD * diffuse + specular); // FIXME: * ao
 
-        color += vec4(ambient, 1.0) /*+ specular*finalSpecularColor*/;
+        color += vec4(ambient, 1.0);
 
         // HDR tonemapping
         color = color / (color + vec4(1.0));
 
         color = toGamma(color, gamma);
+//         color = vec4(cubemapCoord(R), 1.0);
     }
     else
     {

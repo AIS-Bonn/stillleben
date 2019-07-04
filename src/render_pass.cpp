@@ -104,7 +104,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
     // Setup the framebuffer
     auto viewport = scene.viewport();

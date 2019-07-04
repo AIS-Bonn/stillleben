@@ -35,9 +35,13 @@ public:
     inline Magnum::GL::Texture2D& brdfLUT()
     { return m_brdfLUT; }
 
+    inline Magnum::GL::CubeMapTexture& cubeMap()
+    { return m_cubeMap; }
+
 private:
     std::string m_path;
 
+    Magnum::GL::CubeMapTexture m_cubeMap;
     Magnum::GL::CubeMapTexture m_irradiance;
     Magnum::GL::CubeMapTexture m_prefilter;
     Magnum::GL::Texture2D m_brdfLUT;
