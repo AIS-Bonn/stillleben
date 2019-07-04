@@ -15,6 +15,7 @@
 #include <Corrade/Utility/Directory.h>
 
 #include <Magnum/GL/CubeMapTexture.h>
+#include <Magnum/GL/DebugOutput.h>
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Renderer.h>
@@ -42,7 +43,7 @@ namespace sl
 
 namespace
 {
-    constexpr bool DEBUG_OUTPUT = false;
+    constexpr bool DEBUG_OUTPUT = true;
 
     struct IBLSpec
     {
@@ -201,7 +202,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
     GL::CubeMapTexture hdrCubeMap;
     {
         hdrCubeMap
-            .setStorage(Math::log2(viewport.x())+1, GL::TextureFormat::RGB32F, viewport)
+            .setStorage(Math::log2(viewport.x())+1, GL::TextureFormat::RGBA32F, viewport)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear);
@@ -218,6 +219,12 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             );
             framebuffer.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
             framebuffer.bind();
+
+            if(framebuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
+            {
+                Error{} << "Invalid framebuffer status:" << framebuffer.checkStatus(GL::FramebufferTarget::Draw);
+                std::abort();
+            }
 
             framebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
@@ -241,7 +248,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         const Vector2i irradianceSize(32, 32);
 
         hdrIrradiance
-            .setStorage(Math::log2(irradianceSize.x())+1, GL::TextureFormat::RGB32F, irradianceSize)
+            .setStorage(Math::log2(irradianceSize.x())+1, GL::TextureFormat::RGBA32F, irradianceSize)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear);
@@ -285,7 +292,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         const unsigned int MAX_MIP_LEVELS = 5;
 
         hdrPrefilter
-            .setStorage(MAX_MIP_LEVELS, GL::TextureFormat::RGB32F, prefilterSize)
+            .setStorage(MAX_MIP_LEVELS, GL::TextureFormat::RGBA32F, prefilterSize)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear)
@@ -339,7 +346,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         const Vector2i lutSize(512, 512);
 
         brdfLUT
-            .setStorage(Math::log2(lutSize.x())+1, GL::TextureFormat::RGB32F, lutSize)
+            .setStorage(Math::log2(lutSize.x())+1, GL::TextureFormat::RGBA32F, lutSize)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear);

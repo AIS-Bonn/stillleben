@@ -1,10 +1,16 @@
 /* Source: Joey De Vries' http://learnopengl.com
  * (licensed under CC BY-NC 4.0) */
 
+layout(location = 0)
 out vec4 FragColor;
+
+layout(location = 0)
 in vec3 WorldPos;
 
+layout(binding = 0)
 uniform samplerCube environmentMap;
+
+layout(location = 2)
 uniform float roughness;
 
 const float PI = 3.14159265359;
