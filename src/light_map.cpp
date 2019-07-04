@@ -42,6 +42,8 @@ namespace sl
 
 namespace
 {
+    constexpr bool DEBUG_OUTPUT = false;
+
     struct IBLSpec
     {
         std::string file;
@@ -226,8 +228,11 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
         hdrCubeMap.generateMipmap();
 
-        Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap.png");
+        if constexpr(DEBUG_OUTPUT)
+        {
+            Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap.png");
+        }
     }
 
     // Create irradiance cubemap
@@ -265,8 +270,11 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             cube.draw(shader);
         }
 
-        Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance.png");
+        if constexpr(DEBUG_OUTPUT)
+        {
+            Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance.png");
+        }
     }
 
     // Create pre-filter cubemap
@@ -318,8 +326,11 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             }
         }
 
-        Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+        if constexpr(DEBUG_OUTPUT)
+        {
+            Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+        }
     }
 
     // Generate 2D LUT for the BRDF equations
