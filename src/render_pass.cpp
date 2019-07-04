@@ -199,11 +199,13 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     // Do we have a background texture?
     if(scene.backgroundImage())
     {
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
         m_backgroundShader->bindRGB(*scene.backgroundImage());
         m_quadMesh.draw(*m_backgroundShader);
 
         // Draw on top
         m_framebuffer.clear(GL::FramebufferClear::Depth);
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
     }
     else
     {
