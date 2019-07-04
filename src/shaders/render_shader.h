@@ -366,6 +366,17 @@ public:
     RenderShader& bindLightMap(LightMap& lightMap);
     void disableLightMap();
 
+    RenderShader& setMetalness(Float metalness)
+    {
+        setUniform(_metallicUniform, metalness);
+        return *this;
+    }
+
+    RenderShader& setRoughness(Float roughness)
+    {
+        setUniform(_roughnessUniform, roughness);
+        return *this;
+    }
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},
@@ -381,7 +392,9 @@ private:
         _alphaMaskUniform{10},
         _classIndexUniform{11},
         _instanceIndexUniform{12},
-        _useLightMapUniform{13};
+        _useLightMapUniform{13},
+        _metallicUniform{14},
+        _roughnessUniform{15};
 };
 
 }

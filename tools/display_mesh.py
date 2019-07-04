@@ -132,6 +132,10 @@ if __name__ == "__main__":
 
     parser.add_argument('--shininess', type=float,
         help='Phong shininess parameter', default=80.0)
+    parser.add_argument('--roughness', type=float,
+        help='Roughness parameter')
+    parser.add_argument('--metalness', type=float,
+        help='Metalness parameter')
     parser.add_argument('--specular-color', type=str,
         help='Specular color (R,G,B)')
 
@@ -179,6 +183,11 @@ if __name__ == "__main__":
     for mesh in meshes:
         object = sl.Object(mesh, options=opts)
         object.shininess = args.shininess
+
+        if args.metalness:
+            object.metalness = args.metalness
+        if args.roughness:
+            object.roughness = args.roughness
 
         if args.specular_color:
             object.specular_color = torch.tensor([ float(a) for a in args.specular_color.split(',') ])

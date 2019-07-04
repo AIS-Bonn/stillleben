@@ -1,3 +1,5 @@
+/* Source: Joey De Vries' http://learnopengl.com
+ * (licensed under CC BY-NC 4.0) */
 
 layout(location = 0)
 out vec4 FragColor;

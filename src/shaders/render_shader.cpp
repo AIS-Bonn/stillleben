@@ -27,8 +27,9 @@ namespace
         AmbientTextureLayer = 0,
         DiffuseTextureLayer = 1,
         SpecularTextureLayer = 2,
-        LightMapDiffuseLayer = 3,
-        LightMapSpecularLayer = 4
+        LightMapIrradianceLayer = 3,
+        LightMapPrefilterLayer = 4,
+        LightMapBRDFLUT = 5
     };
 }
 
@@ -119,6 +120,8 @@ RenderShader::RenderShader(const Flags flags)
         _classIndexUniform = uniformLocation("classIndex");
         _instanceIndexUniform = uniformLocation("instanceIndex");
         _useLightMapUniform = uniformLocation("useLightMap");
+        _metallicUniform = uniformLocation("metallic");
+        _roughnessUniform = uniformLocation("roughness");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 
@@ -129,8 +132,9 @@ RenderShader::RenderShader(const Flags flags)
         if(flags & Flag::AmbientTexture) setUniform(uniformLocation("ambientTexture"), AmbientTextureLayer);
         if(flags & Flag::DiffuseTexture) setUniform(uniformLocation("diffuseTexture"), DiffuseTextureLayer);
         if(flags & Flag::SpecularTexture) setUniform(uniformLocation("specularTexture"), SpecularTextureLayer);
-        setUniform(uniformLocation("lightMapDiffuse"), LightMapDiffuseLayer);
-        setUniform(uniformLocation("lightMapSpecular"), LightMapSpecularLayer);
+        setUniform(uniformLocation("lightMapIrradiance"), LightMapIrradianceLayer);
+        setUniform(uniformLocation("lightMapPrefilter"), LightMapPrefilterLayer);
+        setUniform(uniformLocation("lightMapBRDFLUT"), LightMapBRDFLUT);
     }
 }
 
@@ -177,8 +181,9 @@ RenderShader& RenderShader::setAlphaMask(Float mask)
 sl::RenderShader& RenderShader::bindLightMap(sl::LightMap& lightMap)
 {
     setUniform(_useLightMapUniform, true);
-    lightMap.diffuseTexture().bind(LightMapDiffuseLayer);
-    lightMap.specularTexture().bind(LightMapSpecularLayer);
+    lightMap.irradianceMap().bind(LightMapIrradianceLayer);
+    lightMap.prefilterMap().bind(LightMapPrefilterLayer);
+    lightMap.brdfLUT().bind(LightMapBRDFLUT);
     return *this;
 }
 

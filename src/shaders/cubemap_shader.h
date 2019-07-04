@@ -16,7 +16,14 @@ namespace sl
 class CubeMapShader : public Magnum::GL::AbstractShaderProgram
 {
 public:
-    CubeMapShader();
+    enum class Phase
+    {
+        EquirectangularConversion,
+        IrradianceConvolution,
+        Prefilter
+    };
+
+    explicit CubeMapShader(Phase phase);
 
     explicit CubeMapShader(Magnum::NoCreateT) noexcept
      : Magnum::GL::AbstractShaderProgram{Magnum::NoCreate}
@@ -37,11 +44,18 @@ public:
     /** @brief Bind input equirectangular texture */
     CubeMapShader& bindInputTexture(Magnum::GL::Texture2D& texture);
 
+    /** @brief Bind input cubemap texture */
+    CubeMapShader& bindInputTexture(Magnum::GL::CubeMapTexture& texture);
+
     void setProjection(const Magnum::Matrix4& projection);
     void setView(const Magnum::Matrix4& view);
+    void setRoughness(const Magnum::Float roughness);
 private:
+    Phase m_phase;
+
     Magnum::Int m_projectionUniform{0};
     Magnum::Int m_viewUniform{1};
+    Magnum::Int m_roughnessUniform{2};
 };
 
 }

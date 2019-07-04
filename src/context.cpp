@@ -14,6 +14,7 @@
 #include <Magnum/Platform/GLContext.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/ImageData.h>
 
 #include <Magnum/DebugTools/ResourceManager.h>
@@ -45,6 +46,7 @@ namespace sl
 {
 
 using ImporterManager = PluginManager::Manager<Trade::AbstractImporter>;
+using ImageConverterManager = PluginManager::Manager<Trade::AbstractImageConverter>;
 
 class Context::Private
 {
@@ -59,13 +61,20 @@ public:
         gl_context.reset(new Platform::GLContext{NoCreate, argc, argv.data()});
 
         if(!installPrefix.empty())
+        {
 #ifndef NDEBUG
             importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum-d/importers");
+            imageConverterManager = std::make_unique<ImageConverterManager>(installPrefix + "/lib/magnum-d/imageconverters");
 #else
             importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum/importers");
+            imageConverterManager = std::make_unique<ImageConverterManager>(installPrefix + "/lib/magnum/imageconverters");
 #endif
+        }
         else
+        {
             importerManager = std::make_unique<ImporterManager>();
+            imageConverterManager = std::make_unique<ImageConverterManager>();
+        }
 
         auto loadState = importerManager->load("AssimpImporter");
         if(loadState != Corrade::PluginManager::LoadState::Loaded)
@@ -118,6 +127,7 @@ public:
     std::unique_ptr<Platform::GLContext> gl_context;
 
     std::unique_ptr<ImporterManager> importerManager;
+    std::unique_ptr<ImageConverterManager> imageConverterManager;
     std::mutex importerManagerMutex;
 
     DebugTools::ResourceManager resourceManager;
@@ -443,6 +453,12 @@ Corrade::Containers::Pointer<Context::Importer> Context::instantiateImporter(con
 {
     std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
     return m_d->importerManager->loadAndInstantiate(name);
+}
+
+Corrade::Containers::Pointer<Context::ImageConverter> Context::instantiateImageConverter(const std::string& name)
+{
+    std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
+    return m_d->imageConverterManager->loadAndInstantiate(name);
 }
 
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)

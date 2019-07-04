@@ -296,6 +296,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("instanceIndex", m_instanceIndex);
     group.setValue("specularColor", m_specularColor);
     group.setValue("shininess", m_shininess);
+    group.setValue("roughness", m_roughness);
+    group.setValue("metalness", m_metalness);
 }
 
 void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
@@ -320,6 +322,12 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
 
     if(group.hasValue("shininess"))
         setShininess(group.value<float>("shininess"));
+
+    if(group.hasValue("roughness"))
+        setRoughness(group.value<float>("roughness"));
+
+    if(group.hasValue("metalness"))
+        setMetalness(group.value<float>("metalness"));
 }
 
 void Object::setSpecularColor(const Magnum::Color4& color)
@@ -330,6 +338,16 @@ void Object::setSpecularColor(const Magnum::Color4& color)
 void Object::setShininess(float shininess)
 {
     m_shininess = shininess;
+}
+
+void Object::setRoughness(float roughness)
+{
+    m_roughness = roughness;
+}
+
+void Object::setMetalness(float metalness)
+{
+    m_metalness = metalness;
 }
 
 }

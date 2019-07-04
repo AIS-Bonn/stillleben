@@ -146,6 +146,14 @@ public:
     constexpr float shininess() const
     { return m_shininess; }
 
+    void setRoughness(float roughness);
+    constexpr float roughness() const
+    { return m_roughness; }
+
+    void setMetalness(float metalness);
+    constexpr float metalness() const
+    { return m_metalness; }
+
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
 
@@ -193,6 +201,9 @@ private:
 
     // With sharp specular highlights
     float m_shininess = 80.0f;
+
+    float m_roughness = 0.5f;
+    float m_metalness = 0.04f;
 };
 
 }

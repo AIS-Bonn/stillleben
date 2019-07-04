@@ -14,6 +14,7 @@ namespace Magnum
     namespace Trade
     {
         class AbstractImporter;
+        class AbstractImageConverter;
     }
     namespace GL
     {
@@ -47,6 +48,9 @@ public:
 
     using Importer = Magnum::Trade::AbstractImporter;
     Corrade::Containers::Pointer<Importer> instantiateImporter(const std::string& name = "AssimpImporter");
+
+    using ImageConverter = Magnum::Trade::AbstractImageConverter;
+    Corrade::Containers::Pointer<ImageConverter> instantiateImageConverter(const std::string& name);
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
 

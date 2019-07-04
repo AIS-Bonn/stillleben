@@ -228,6 +228,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setAmbientColor(scene.ambientLight())
                 .setSpecularColor(object->specularColor())
                 .setShininess(object->shininess())
+                .setMetalness(object->metalness())
+                .setRoughness(object->roughness())
             ;
 
             if(scene.lightMap())

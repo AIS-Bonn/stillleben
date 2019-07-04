@@ -100,6 +100,7 @@ setuptools.setup(
         'stillleben': [
             'lib/*.so*',
             'lib/magnum/importers/*',
+            'lib/magnum/imageconverters/*',
         ]
     },
     ext_modules=[

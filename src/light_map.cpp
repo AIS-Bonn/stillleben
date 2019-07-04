@@ -5,6 +5,7 @@
 #include <stillleben/context.h>
 
 #include "shaders/cubemap_shader.h"
+#include "shaders/brdf_shader.h"
 
 #include <Corrade/Containers/Optional.h>
 
@@ -23,8 +24,11 @@
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/PixelFormat.h>
 #include <Magnum/Primitives/Cube.h>
+#include <Magnum/Primitives/Plane.h>
 #include <Magnum/Trade/AbstractImporter.h>
+#include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/ImageData.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <Magnum/Image.h>
@@ -200,8 +204,9 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear);
 
-        CubeMapShader shader;
+        CubeMapShader shader{CubeMapShader::Phase::EquirectangularConversion};
         shader.setProjection(perspective);
+        shader.bindInputTexture(hdrEquirectangular);
 
         for(const auto& side : CUBE_MAP_SIDES)
         {
@@ -220,12 +225,16 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         }
 
         hdrCubeMap.generateMipmap();
+
+        Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap.png");
     }
 
     // Create irradiance cubemap
     GL::CubeMapTexture hdrIrradiance;
-    const Vector2i irradianceSize(32, 32);
     {
+        const Vector2i irradianceSize(32, 32);
+
         hdrIrradiance
             .setStorage(Math::log2(irradianceSize.x())+1, GL::TextureFormat::RGB32F, irradianceSize)
             .setWrapping(GL::SamplerWrapping::ClampToEdge)
@@ -236,9 +245,9 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
         depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, irradianceSize);
         framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
 
-        // FIXME
-        CubeMapShader shader;
+        CubeMapShader shader{CubeMapShader::Phase::IrradianceConvolution};
         shader.setProjection(perspective);
+        shader.bindInputTexture(hdrCubeMap);
 
         for(const auto& side : CUBE_MAP_SIDES)
         {
@@ -255,7 +264,97 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
             cube.draw(shader);
         }
+
+        Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance.png");
     }
+
+    // Create pre-filter cubemap
+    GL::CubeMapTexture hdrPrefilter;
+    {
+        const Vector2i prefilterSize(128, 128);
+
+        const unsigned int MAX_MIP_LEVELS = 5;
+
+        hdrPrefilter
+            .setStorage(MAX_MIP_LEVELS, GL::TextureFormat::RGB32F, prefilterSize)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setMagnificationFilter(GL::SamplerFilter::Linear)
+            .generateMipmap();
+
+        CubeMapShader shader{CubeMapShader::Phase::Prefilter};
+        shader.setProjection(perspective);
+        shader.bindInputTexture(hdrCubeMap);
+
+        for(unsigned int mip = 0; mip < MAX_MIP_LEVELS; ++mip)
+        {
+            const Vector2i mipSize(
+                prefilterSize.x() * Math::pow(0.5f, static_cast<float>(mip)),
+                prefilterSize.y() * Math::pow(0.5f, static_cast<float>(mip))
+            );
+
+            framebuffer.setViewport(Range2Di::fromSize({}, mipSize));
+            depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, mipSize);
+            framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
+
+            const float roughness = static_cast<float>(mip) / (MAX_MIP_LEVELS - 1);
+            shader.setRoughness(roughness);
+
+            for(const auto& side : CUBE_MAP_SIDES)
+            {
+                framebuffer.attachCubeMapTexture(
+                    GL::Framebuffer::ColorAttachment{0}, hdrPrefilter,
+                    side.coordinate, mip
+                );
+                framebuffer.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
+                framebuffer.bind();
+
+                framebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+
+                shader.setView(side.view);
+
+                cube.draw(shader);
+            }
+        }
+
+        Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
+        ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+    }
+
+    // Generate 2D LUT for the BRDF equations
+    GL::Texture2D brdfLUT;
+    {
+        const Vector2i lutSize(512, 512);
+
+        brdfLUT
+            .setStorage(Math::log2(lutSize.x())+1, GL::TextureFormat::RGB32F, lutSize)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setMagnificationFilter(GL::SamplerFilter::Linear);
+
+        framebuffer.setViewport(Range2Di::fromSize({}, lutSize));
+        depthBuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, lutSize);
+        framebuffer.attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, depthBuffer);
+
+        framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, brdfLUT, 0);
+
+        framebuffer.mapForDraw({{0, GL::Framebuffer::ColorAttachment{0}}});
+        framebuffer.bind();
+
+        framebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
+
+        BRDFShader shader;
+
+        auto quad = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
+        quad.draw(shader);
+
+        brdfLUT.generateMipmap();
+    }
+
+    m_irradiance = std::move(hdrIrradiance);
+    m_prefilter = std::move(hdrPrefilter);
+    m_brdfLUT = std::move(brdfLUT);
 
     m_path = path;
     return true;

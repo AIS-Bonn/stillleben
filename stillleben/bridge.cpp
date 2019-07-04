@@ -767,6 +767,14 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             spread out specular highlights, high values in very small, sharp
             highlights. Default value is 80 (pretty sharp).
         )EOS")
+
+        .def_property("metalness", &sl::Object::metalness, &sl::Object::setMetalness, R"EOS(
+            Metalness parameter for PBR shading (0-1).
+        )EOS")
+
+        .def_property("roughness", &sl::Object::roughness, &sl::Object::setRoughness, R"EOS(
+            Roughness parameter for PBR shading (0-1).
+        )EOS")
     ;
 
     py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
