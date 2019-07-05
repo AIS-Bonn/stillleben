@@ -230,7 +230,7 @@ void main()
 
         // HACK: the diffuse textures we load are not designed for PBR
         // and usually result in very dark results.
-        vec3 albedo = 3.0 * toLinear(finalDiffuseColor.rgb, gamma);
+        vec3 albedo = 5.0 * toLinear(finalDiffuseColor.rgb, gamma);
 
         // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
         // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
