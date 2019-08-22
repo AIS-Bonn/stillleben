@@ -53,7 +53,7 @@ namespace
         if(!env)
             return false;
 
-        return strcmp(name, "1") == 0;
+        return strcmp(env, "1") == 0;
     }
 }
 
