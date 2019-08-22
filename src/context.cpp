@@ -45,6 +45,18 @@ using namespace Magnum;
 namespace sl
 {
 
+namespace
+{
+    bool envFlag(const char* name)
+    {
+        const char* env = getenv(name);
+        if(!env)
+            return false;
+
+        return strcmp(name, "1") == 0;
+    }
+}
+
 using ImporterManager = PluginManager::Manager<Trade::AbstractImporter>;
 using ImageConverterManager = PluginManager::Manager<Trade::AbstractImageConverter>;
 
@@ -53,6 +65,8 @@ class Context::Private
 public:
     Private(const std::string& installPrefix = {})
     {
+        cudaDebug = envFlag("STILLLEBEN_CUDA_DEBUG");
+
         int argc = 3;
         std::vector<const char*> argv{
             "dummy",
@@ -138,6 +152,8 @@ public:
     PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPhysics> pxPhysics;
     PhysXHolder<physx::PxCooking> pxCooking;
+
+    bool cudaDebug = false;
 };
 
 Context::Context(const std::string& installPrefix)
@@ -311,6 +327,9 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
 #if HAVE_EGL
     std::shared_ptr<Context> context(new Context(installPrefix));
 
+    if(context->m_d->cudaDebug)
+        Debug{} << "stillleben CUDA initialization";
+
     // Load required extensions
     auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
     if(!eglQueryDevicesEXT)
@@ -350,6 +369,19 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
     }
 
     devices.resize(num_devices);
+
+    if(context->m_d->cudaDebug)
+    {
+        Debug{} << "Found EGL devices:";
+        for(auto& dev : devices)
+        {
+            EGLAttrib devCudaIndex;
+            if(!eglQueryDeviceAttribEXT(dev, EGL_CUDA_DEVICE_NV, &devCudaIndex))
+                Debug{} << " - non-CUDA device";
+            else
+                Debug{} << " - CUDA device" << devCudaIndex;
+        }
+    }
 
     auto it = std::find_if(devices.begin(), devices.end(), [&](EGLDeviceEXT& dev){
         EGLAttrib devCudaIndex;
