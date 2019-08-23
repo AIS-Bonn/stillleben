@@ -135,7 +135,7 @@ def noise(rgb, a, b):
 
     return (poisson_part + gaussian_part).clamp_(0.0, 1.0)
 
-def color_jitter(tensor_img):
+def color_jitter(tensor_img, hue_shift):
     """
     Args:
       tensor_img: 3xHxW RGB float tensor [0,1]
@@ -172,10 +172,7 @@ def color_jitter(tensor_img):
     HSV[2] = M
 
     # Apply jitter
-    hue_jitter = 0.05
-    hue_factor = random.uniform(-hue_jitter, hue_jitter)
-
-    HSV[0] = HSV[0] + hue_factor * 360.0
+    HSV[0] = HSV[0] + hue_shift * 360.0
     HSV[0][HSV[0] < 0] += 360.0
     HSV[0][HSV[0] > 360.0] -= 360.0
 
@@ -196,27 +193,57 @@ def color_jitter(tensor_img):
 
     return RGB
 
+def process_deterministic(rgb,
+                          chromatic_translation, chromatic_scaling,
+                          blur_sigma,
+                          exposure_deltaS,
+                          do_noise, noise_a, noise_b,
+                          hue_shift):
+
+    assert rgb.dim() == 3
+    assert rgb.size(0) == 3
+
+    rgb = chromatic_aberration(rgb,
+        translations=chromatic_translation,
+        scaling=chromatic_scaling
+    )
+
+    if blur_sigma > 0.0:
+        rgb = blur(rgb, sigma=blur_sigma)
+
+    rgb = exposure(rgb, deltaS=exposure_deltaS)
+
+    if do_noise:
+        rgb = noise(rgb, a=noise_a, b=noise_b)
+
+    rgb.clamp_(0.0, 1.0)
+
+    rgb = color_jitter(rgb, hue_shift)
+
+    return rgb
+
+
 @profiling.Timer('camera_model.process_image')
 def process_image(rgb):
 
     assert rgb.dim() == 3
     assert rgb.size(0) == 3
 
-    rgb = chromatic_aberration(rgb,
-        translations=torch.empty(3,2).uniform_(-0.002, 0.002),
-        scaling=torch.empty(3).uniform_(0.998, 1.002)
+    hue_jitter = 0.05
+
+    return process_deterministic(
+        rgb,
+
+        chromatic_translation=torch.empty(3,2).uniform_(-0.002, 0.002),
+        chromatic_scaling=torch.empty(3).uniform_(0.998, 1.002),
+
+        blur_sigma=random.uniform(0.0, 3.0) if random.random() > 0.3 else 0.0,
+
+        exposure_deltaS=random.uniform(-2, 1.2),
+
+        do_noise=random.random() > 0.3,
+        noise_a=0.001,
+        noise_b=0.03,
+
+        hue_shift=random.uniform(-hue_jitter, hue_jitter),
     )
-
-    if random.random() > 0.3:
-        rgb = blur(rgb, sigma=random.uniform(0.0, 3.0))
-
-    rgb = exposure(rgb, deltaS=random.uniform(-2, 1.2))
-
-    if random.random() > 0.3:
-        rgb = noise(rgb, a=0.001, b=0.03)
-
-    rgb.clamp_(0.0, 1.0)
-
-    rgb = color_jitter(rgb)
-
-    return rgb
