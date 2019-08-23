@@ -32,6 +32,12 @@ std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Vector<size, 
     Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
     return stream;
 }
+template<std::size_t size, class T>
+std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Matrix<size, T>& value)
+{
+    Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
+    return stream;
+}
 template<class T>
 std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Range3D<T>& value)
 {
@@ -67,6 +73,17 @@ TEST_CASE("basic")
 
         mesh->scaleToBBoxDiagonal(0.5);
         CHECK(mesh->bbox().size().length() == Approx(0.5f));
+
+        auto pretransform = mesh->pretransform();
+        mesh->setPretransform(pretransform);
+        auto newPretransform = mesh->pretransform();
+
+        CAPTURE(pretransform);
+        CAPTURE(newPretransform);
+
+        for(int i = 0; i < 4; ++i)
+            for(int j = 0; j < 4; ++j)
+                CHECK(newPretransform[i][j] == Approx(pretransform[i][j]));
     }
 
     // Create a scene

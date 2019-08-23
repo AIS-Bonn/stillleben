@@ -93,7 +93,7 @@ public:
      *
      * This is your one-catch-all method: Loads visual & collision meshes.
      **/
-    void load(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
+    void load(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles, bool visual = true, bool physics = true);
 
     /**
      * @brief Open input file & preprocess
@@ -134,6 +134,15 @@ public:
 
     const Magnum::Matrix4& pretransform() const
     { return m_pretransform; }
+
+    /**
+     * @brief Set pretransform from matrix
+     *
+     * Since internally the pretransform is represented as a rigid
+     * transformation plus scaling, the 4x4 matrix is decomposed into these
+     * components.
+     **/
+    void setPretransform(const Magnum::Matrix4& m);
 
     Magnum::Trade::AbstractImporter& importer()
     { return *m_importer; }

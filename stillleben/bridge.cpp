@@ -422,13 +422,14 @@ static void setInstallPrefix(const std::string& path)
 
 static std::shared_ptr<sl::Mesh> Mesh_factory(
     const std::string& filename,
-    std::size_t maxPhysicsTriangles)
+    std::size_t maxPhysicsTriangles,
+    bool visual, bool physics)
 {
     if(!g_context)
         throw std::logic_error("You need to call init() first!");
 
     auto mesh = std::make_shared<sl::Mesh>(filename, g_context);
-    mesh->load(maxPhysicsTriangles);
+    mesh->load(maxPhysicsTriangles, visual, physics);
 
     return mesh;
 }
@@ -631,22 +632,24 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
             Args:
                 filename (str): Mesh filename
-                 max_physics_triangles (int): Maximum number of triangles for
+                max_physics_triangles (int): Maximum number of triangles for
                      collision shape. If the mesh is more complex than this,
                      it is simplified using quadric edge decimation.
                      You can view the collision mesh using
                      :func:`render_physics_debug_image`.
+                visual (bool): Should we load visual components?
+                physics (bool): Should we load collision meshes?
 
             Examples:
                 >>> m = Mesh("path/to/my/mesh.gltf")
-        )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
+        )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("visual")=true, py::arg("physics")=true)
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
 
             Args:
                 filenames (list): List of file names to load
-                visual (bool): Should we load visual componencts?
+                visual (bool): Should we load visual components?
                 physics (bool): Should we load collision meshes?
                 max_physics_triangles (int): Maximum number of triangles for
                     collision shape (see :func:`Mesh`).
@@ -676,7 +679,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
                     the scale of arbitrary mesh files.
         )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
-        .def_property_readonly("pretransform", wrapShared(&sl::Mesh::pretransform), R"EOS(
+        .def_property("pretransform", wrapShared(&sl::Mesh::pretransform), wrapShared(&sl::Mesh::setPretransform), R"EOS(
             The current pretransform matrix. Initialized to identity and
             modified by :func:`center_bbox` and :func:`scale_to_bbox_diagonal`.
         )EOS")

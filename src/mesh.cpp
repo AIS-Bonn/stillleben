@@ -97,11 +97,15 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::load(std::size_t maxPhysicsTriangles)
+void Mesh::load(std::size_t maxPhysicsTriangles, bool visual, bool physics)
 {
     openFile();
-    loadPhysics(maxPhysicsTriangles);
-    loadVisual();
+
+    if(physics)
+        loadPhysics(maxPhysicsTriangles);
+
+    if(visual)
+        loadVisual();
 }
 
 void Mesh::openFile()
@@ -403,27 +407,7 @@ void Mesh::loadPretransform(const std::string& filename)
         }
     }
 
-    // We need to separate the transformation matrix into a homogenous scaling
-    // and a rotation+translation.
-
-    Matrix3x3 u{Math::NoInit};
-    Vector3 w{Math::NoInit};
-    Matrix3x3 v{Math::NoInit};
-    std::tie(u, w, v) = Math::Algorithms::svd(pretransform.rotationScaling());
-
-    float minScale = w.min();
-    float maxScale = w.max();
-
-    if(maxScale - minScale > 1e-5f)
-    {
-        Error{} << "Scaling is not uniform:" << w;
-        return;
-    }
-
-    m_scale = (maxScale + minScale) / 2.0f;
-    m_pretransformRigid = Matrix4::from(u*v.transposed(), (1.0f / m_scale) * pretransform.translation());
-
-    updatePretransform();
+    setPretransform(pretransform);
 }
 
 namespace
@@ -543,6 +527,31 @@ void Mesh::scaleToBBoxDiagonal(float targetDiagonal, Scale mode)
 void Mesh::updatePretransform()
 {
     m_pretransform = Matrix4::scaling(Vector3(m_scale)) * m_pretransformRigid;
+}
+
+void Mesh::setPretransform(const Magnum::Matrix4& m)
+{
+    // We need to separate the transformation matrix into a homogenous scaling
+    // and a rotation+translation.
+
+    Matrix3x3 u{Math::NoInit};
+    Vector3 w{Math::NoInit};
+    Matrix3x3 v{Math::NoInit};
+    std::tie(u, w, v) = Math::Algorithms::svd(m.rotationScaling());
+
+    float minScale = w.min();
+    float maxScale = w.max();
+
+    if(maxScale - minScale > 1e-5f)
+    {
+        Error{} << "Scaling is not uniform:" << w;
+        throw std::invalid_argument("Scaling is not uniform");
+    }
+
+    m_scale = (maxScale + minScale) / 2.0f;
+    m_pretransformRigid = Matrix4::from(u*v.transposed(), (1.0f / m_scale) * m.translation());
+
+    updatePretransform();
 }
 
 Magnum::Range3D Mesh::bbox() const
