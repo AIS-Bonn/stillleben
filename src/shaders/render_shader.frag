@@ -65,6 +65,10 @@ uniform float metallic = 0.04;
 layout(location = 15)
 uniform float roughness = 0.5;
 
+// Sticker simulator
+layout(location = 18)
+uniform vec4 stickerColor = vec4(0.0);
+
 layout(binding = 3)
 uniform highp samplerCube lightMapIrradiance;
 layout(binding = 4)
@@ -85,6 +89,8 @@ in mediump vec4 interpolatedVertexColors;
 #endif
 
 centroid in highp vec4 objectCoordinates;
+
+in lowp float inSticker;
 
 layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec4 objectCoordinatesOut;
@@ -204,6 +210,12 @@ void main()
         texture(specularTexture, interpolatedTextureCoords)*
         #endif
         specularColor;
+
+    if(inSticker > 0.5)
+    {
+        finalAmbientColor = stickerColor;
+        finalDiffuseColor = stickerColor;
+    }
 
     mediump vec3 N = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */

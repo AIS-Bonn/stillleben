@@ -22,6 +22,15 @@ uniform mediump mat3 normalMatrix = mat3(1.0);
 layout(location = 4)
 uniform highp vec3 lightPosition; /* defaults to zero */
 
+
+// Sticker simulator
+layout(location = 16)
+uniform mat4 stickerProjection = mat4(1.0);
+
+layout(location = 17)
+uniform vec4 stickerRange = vec4(0.0);
+
+
 layout(location = POSITION_ATTRIBUTE_LOCATION)
 in highp vec4 position;
 
@@ -51,6 +60,8 @@ out highp vec3 lightDirection;
 out highp vec3 cameraDirection;
 
 centroid out highp vec4 objectCoordinates;
+
+out lowp float inSticker;
 
 void main()
 {
@@ -85,4 +96,13 @@ void main()
     #ifdef VERTEX_COLORS
     interpolatedVertexColors = vertexColors;
     #endif
+
+    /* Project into sticker frame */
+    highp vec4 stickerPos = stickerProjection * objectCoordinates4;
+    stickerPos = stickerPos / stickerPos.w;
+
+    if(stickerPos.x > stickerRange.x && stickerPos.y > stickerRange.y && stickerPos.x < stickerRange.z && stickerPos.y < stickerRange.w)
+        inSticker = 1.0;
+    else
+        inSticker = 0.0;
 }
