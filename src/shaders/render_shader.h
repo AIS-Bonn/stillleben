@@ -9,6 +9,7 @@
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Range.h>
 
 namespace sl
 {
@@ -377,6 +378,33 @@ public:
         setUniform(_roughnessUniform, roughness);
         return *this;
     }
+
+    //@{
+    RenderShader& setStickerProjection(const Magnum::Matrix4 proj)
+    {
+        setUniform(_stickerProjection, proj);
+        return *this;
+    }
+
+    RenderShader& setStickerRange(const Magnum::Range2D& range)
+    {
+        Magnum::Vector4 v{
+            range.min().x(),
+            range.min().y(),
+            range.max().x(),
+            range.max().y()
+        };
+
+        setUniform(_stickerRange, v);
+        return *this;
+    }
+
+    RenderShader& setStickerColor(const Magnum::Color4& color)
+    {
+        setUniform(_stickerColor, color);
+        return *this;
+    }
+    //@}
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},
@@ -394,7 +422,10 @@ private:
         _instanceIndexUniform{12},
         _useLightMapUniform{13},
         _metallicUniform{14},
-        _roughnessUniform{15};
+        _roughnessUniform{15},
+        _stickerProjection{16},
+        _stickerRange{17},
+        _stickerColor{18};
 };
 
 }

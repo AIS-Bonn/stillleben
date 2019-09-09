@@ -122,6 +122,9 @@ RenderShader::RenderShader(const Flags flags)
         _useLightMapUniform = uniformLocation("useLightMap");
         _metallicUniform = uniformLocation("metallic");
         _roughnessUniform = uniformLocation("roughness");
+        _stickerProjection = uniformLocation("stickerProjection");
+        _stickerRange = uniformLocation("stickerRange");
+        _stickerColor = uniformLocation("stickerColor");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 

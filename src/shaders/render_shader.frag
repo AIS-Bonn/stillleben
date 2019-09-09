@@ -189,7 +189,7 @@ void main()
     classIndexOut = classIndex;
     instanceIndexOut = instanceIndex;
 
-    lowp const vec4 finalAmbientColor =
+    lowp vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE
         texture(ambientTexture, interpolatedTextureCoords)*
         #elif defined(DIFFUSE_TEXTURE)
@@ -211,11 +211,9 @@ void main()
         #endif
         specularColor;
 
-    if(inSticker > 0.5)
-    {
-        finalAmbientColor = stickerColor;
-        finalDiffuseColor = stickerColor;
-    }
+    /* Are we inside the simulated sticker? */
+    finalAmbientColor = mix(finalAmbientColor, stickerColor, inSticker);
+    finalDiffuseColor = mix(finalDiffuseColor, stickerColor, inSticker);
 
     mediump vec3 N = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */

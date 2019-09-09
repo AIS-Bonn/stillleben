@@ -350,4 +350,39 @@ void Object::setMetalness(float metalness)
     m_metalness = metalness;
 }
 
+void Object::setStickerColor(const Magnum::Color4& color)
+{
+    m_stickerColor = color;
+}
+
+void Object::setStickerRange(const Magnum::Range2D& range)
+{
+    m_stickerRange = range;
+}
+
+void Object::setStickerRotation(const Magnum::Quaternion& q)
+{
+    m_stickerRotation = q;
+}
+
+Magnum::Matrix4 Object::stickerViewProjection() const
+{
+    const float diagonal = m_mesh->bbox().size().length();
+
+    // NOTE: This is a crude approximation, it does not guarantee that the
+    // object fits inside the projection frustum.
+    const Magnum::Matrix4 proj{
+        {2.0f / diagonal,            0.0f, 0.0f, 0.0f},
+        {           0.0f, 2.0f / diagonal, 0.0f, 0.0f},
+        {           0.0f,            0.0f, 1.0f, 0.0f},
+        {           0.0f,            0.0f, 1.0f, 1.0f},
+    };
+
+    constexpr Magnum::Matrix4 trans = Magnum::Matrix4::translation(
+        {0.0f, 0.0f, 1.0f}
+    );
+
+    return proj * trans * Magnum::Matrix4{m_stickerRotation.toMatrix()};
+}
+
 }

@@ -11,6 +11,7 @@
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
+#include <Magnum/Math/Quaternion.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/GL/Mesh.h>
@@ -165,6 +166,20 @@ public:
 
     void updateFromPhysics();
 
+    void setStickerColor(const Magnum::Color4& color);
+    constexpr Magnum::Color4 stickerColor() const
+    { return m_stickerColor; }
+
+    void setStickerRange(const Magnum::Range2D& range);
+    constexpr Magnum::Range2D stickerRange() const
+    { return m_stickerRange; }
+
+    void setStickerRotation(const Magnum::Quaternion& q);
+    constexpr Magnum::Quaternion stickerRotation() const
+    { return m_stickerRotation; }
+
+    Magnum::Matrix4 stickerViewProjection() const;
+
 private:
     void populateParts();
     void addPart(Object3D& parent, Magnum::UnsignedInt i);
@@ -204,6 +219,11 @@ private:
 
     float m_roughness = 0.5f;
     float m_metalness = 0.04f;
+
+    // Sticker simulation
+    Magnum::Color4 m_stickerColor{};
+    Magnum::Range2D m_stickerRange{};
+    Magnum::Quaternion m_stickerRotation{};
 };
 
 }

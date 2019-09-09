@@ -243,6 +243,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setShininess(object->shininess())
                 .setMetalness(object->metalness())
                 .setRoughness(object->roughness())
+
+                .setStickerProjection(object->stickerViewProjection())
+                .setStickerRange(object->stickerRange())
+                .setStickerColor(object->stickerColor())
             ;
 
             if(scene.lightMap())
