@@ -182,6 +182,16 @@ namespace
         }
     };
 
+    template<>
+    struct toTorch<Magnum::Quaternion>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Quaternion& q)
+        {
+            return toTorch<Magnum::Vector4>::convert({q.vector(), q.scalar()});
+        }
+    };
+
     // Torch -> Magnum
     template<class T>
     struct fromTorch
@@ -295,6 +305,17 @@ namespace
         {
             auto vec = fromTorch<Magnum::Vector4>::convert(tensor);
             return Magnum::Range2D{vec.xy(), Magnum::Vector2{vec.z(), vec.w()}};
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Quaternion>
+    {
+        using Type = at::Tensor;
+        static Magnum::Quaternion convert(const at::Tensor& tensor)
+        {
+            auto vec = fromTorch<Magnum::Vector4>::convert(tensor);
+            return Magnum::Quaternion{vec.xyz(), vec.w()};
         }
     };
 
