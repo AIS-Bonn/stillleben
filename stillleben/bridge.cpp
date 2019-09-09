@@ -169,6 +169,19 @@ namespace
         }
     };
 
+    template<>
+    struct toTorch<Magnum::Range2D>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Range2D& range)
+        {
+            return toTorch<Magnum::Vector4>::convert({
+                range.min().x(), range.min().y(),
+                range.max().x(), range.max().y()
+            });
+        }
+    };
+
     // Torch -> Magnum
     template<class T>
     struct fromTorch
@@ -271,6 +284,17 @@ namespace
         static Magnum::Color3 convert(const at::Tensor& tensor)
         {
             return fromTorch<Magnum::Vector3>::convert(tensor);
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Range2D>
+    {
+        using Type = at::Tensor;
+        static Magnum::Range2D convert(const at::Tensor& tensor)
+        {
+            auto vec = fromTorch<Magnum::Vector4>::convert(tensor);
+            return Magnum::Range2D{vec.xy(), Magnum::Vector2{vec.z(), vec.w()}};
         }
     };
 
@@ -777,6 +801,19 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
 
         .def_property("roughness", &sl::Object::roughness, &sl::Object::setRoughness, R"EOS(
             Roughness parameter for PBR shading (0-1).
+        )EOS")
+
+
+        .def_property("sticker_rotation", wrapShared(&sl::Object::stickerRotation), wrapShared(&sl::Object::setStickerRotation), R"EOS(
+            Sticker rotation quaternion.
+        )EOS")
+
+        .def_property("sticker_range", wrapShared(&sl::Object::stickerRange), wrapShared(&sl::Object::setStickerRange), R"EOS(
+            Sticker range.
+        )EOS")
+
+        .def_property("sticker_color", wrapShared(&sl::Object::stickerColor), wrapShared(&sl::Object::setStickerColor), R"EOS(
+            Sticker color.
         )EOS")
     ;
 

@@ -142,6 +142,11 @@ if __name__ == "__main__":
     parser.add_argument('--light-map', type=str, metavar='FILE.ibl',
         help='Use image-based lighting')
 
+    parser.add_argument('--sticker-range', type=str, default='0,0,0,0',
+        help='Sticker range')
+    parser.add_argument('--sticker-color', type=str, default='0,0,0,1',
+        help='Sticker color')
+
     args = parser.parse_args()
 
     sl.init()
@@ -191,6 +196,9 @@ if __name__ == "__main__":
 
         if args.specular_color:
             object.specular_color = torch.tensor([ float(a) for a in args.specular_color.split(',') ])
+
+        object.sticker_range = torch.tensor([ float(a) for a in args.sticker_range.split(',')])
+        object.sticker_color = torch.tensor([ float(a) for a in args.sticker_color.split(',')])
 
         scene.add_object(object)
 
