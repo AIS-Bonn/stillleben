@@ -298,6 +298,9 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("shininess", m_shininess);
     group.setValue("roughness", m_roughness);
     group.setValue("metalness", m_metalness);
+    group.setValue("stickerColor", m_stickerColor);
+    group.setValue("stickerRange", m_stickerRange);
+    group.setValue("stickerRotation", m_stickerRotation);
 }
 
 void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
@@ -328,6 +331,13 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
 
     if(group.hasValue("metalness"))
         setMetalness(group.value<float>("metalness"));
+
+    if(group.hasValue("stickerColor"))
+        setStickerColor(group.value<Magnum::Color4>("stickerColor"));
+    if(group.hasValue("stickerRange"))
+        setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
+    if(group.hasValue("stickerRotation"))
+        setStickerRotation(group.value<Magnum::Quaternion>("stickerRotation"));
 }
 
 void Object::setSpecularColor(const Magnum::Color4& color)
