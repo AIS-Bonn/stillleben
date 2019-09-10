@@ -7,6 +7,7 @@
 #include <functional>
 #include <random>
 #include <chrono>
+#include <sstream>
 
 #include <experimental/filesystem>
 
@@ -113,8 +114,19 @@ void ImageLoader::thread()
         m_outputCond.notify_all();
     };
 
+    // Swallow any warnings / errors
+    // NOTE: This is thread-local as of corrade
+    // 2244c61d2c1dbb9e5fceb28daca00b24f4219f3f
+
+    std::stringstream null;
+    Corrade::Utility::Error errorRedirect{&null};
+    Corrade::Utility::Warning warningRedirect{&null};
+
     while(1)
     {
+        // Prevent errors / warnings from piling up
+        null.clear();
+
         Request request;
         {
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -160,8 +172,16 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 {
     using namespace Magnum;
 
+    unsigned int errorCounter = 0;
+
     while(1)
     {
+        if(errorCounter >= 10)
+        {
+            Warning{} << "ImageLoader: 10 errors in a row, probably something is wrong with your images";
+            errorCounter = 0;
+        }
+
         enqueue();
 
         Corrade::Containers::Optional<Result> result;
@@ -177,7 +197,10 @@ Magnum::GL::RectangleTexture ImageLoader::next()
         // If some error occured in the worker thread, enqueue a new image
         // and try again.
         if(!result || !result->first)
+        {
+            errorCounter++;
             continue;
+        }
 
         GL::TextureFormat format;
         if(result->second.format() == PixelFormat::RGB8Unorm)
@@ -186,9 +209,12 @@ Magnum::GL::RectangleTexture ImageLoader::next()
             format = GL::TextureFormat::RGBA8;
         else
         {
-            Warning{} << "Unsupported texture format:" << result->second.format();
+//             Warning{} << "Unsupported texture format:" << result->second.format();
+            errorCounter++;
             continue; // just try the next one
         }
+
+        errorCounter = 0;
 
         GL::RectangleTexture texture;
         texture.setStorage(format, result->second.size());
