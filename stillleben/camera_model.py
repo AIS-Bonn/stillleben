@@ -220,8 +220,13 @@ def process_deterministic(rgb,
 
     rgb = color_jitter(rgb, hue_shift)
 
+    # The sensor noise we see has effect on more than one pixel
+    # => apply a post-blur
+    rgb = blur(rgb, sigma=0.4)
+
     return rgb
 
+NEW_NOISE_MODEL_PRINTED = False
 
 @profiling.Timer('camera_model.process_image')
 def process_image(rgb):
@@ -230,6 +235,12 @@ def process_image(rgb):
     assert rgb.size(0) == 3
 
     hue_jitter = 0.05
+
+    if not NEW_NOISE_MODEL_PRINTED:
+        print('=============================================================')
+        print('WARNING: NEW NOISE MODEL!')
+        print('=============================================================')
+        NEW_NOISE_MODEL_PRINTED = True
 
     return process_deterministic(
         rgb,
@@ -242,8 +253,8 @@ def process_image(rgb):
         exposure_deltaS=random.uniform(-2, 1.2),
 
         do_noise=random.random() > 0.3,
-        noise_a=0.001,
-        noise_b=0.03,
+        noise_a=random.random() * 0.04,
+        noise_b=random.random() * 0.02,
 
         hue_shift=random.uniform(-hue_jitter, hue_jitter),
     )
