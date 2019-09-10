@@ -27,6 +27,22 @@
 namespace sl
 {
 
+ImageLoader::Result::Result()
+{
+}
+
+ImageLoader::Result::~Result()
+{
+}
+
+ImageLoader::Result::Result(ImageLoader::ImporterPtr&& imp)
+ : importer{std::move(imp)}
+{}
+
+ImageLoader::Result::Result(ImageLoader::ImporterPtr&& imp, Corrade::Containers::Optional<Magnum::Trade::ImageData2D>&& img)
+ : importer{std::move(imp)}, image{std::move(img)}
+{}
+
 ImageLoader::ImageLoader(
     const std::string& path,
     const std::shared_ptr<sl::Context>& context,
@@ -108,9 +124,13 @@ void ImageLoader::enqueue()
 
 void ImageLoader::thread()
 {
-    auto sendEmptyResult = [this](){
+    // We need to be careful here not to destroy the importer instance, as
+    // the Corrade plugin system is not thread-safe. Instead, destruction
+    // should be done in the main thread.
+
+    auto sendEmptyResult = [this](ImporterPtr&& importer){
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_outputQueue.emplace();
+        m_outputQueue.emplace(std::move(importer));
         m_outputCond.notify_all();
     };
 
@@ -148,7 +168,7 @@ void ImageLoader::thread()
             if(!importer->openFile(request.second))
             {
                 Corrade::Utility::Warning{} << "Could not open file" << request.second;
-                sendEmptyResult();
+                sendEmptyResult(std::move(importer));
                 continue;
             }
         }
@@ -156,13 +176,13 @@ void ImageLoader::thread()
         auto imageData = importer->image2D(0);
         if(!imageData)
         {
-            sendEmptyResult();
+            sendEmptyResult(std::move(importer));
             continue;
         }
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_outputQueue.emplace(Result{std::move(importer), std::move(*imageData)});
+            m_outputQueue.emplace(std::move(importer), std::move(imageData));
             m_outputCond.notify_all();
         }
     }
@@ -184,7 +204,7 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 
         enqueue();
 
-        Corrade::Containers::Optional<Result> result;
+        Result result;
         {
             std::unique_lock lock(m_mutex);
             while(m_outputQueue.empty())
@@ -196,16 +216,16 @@ Magnum::GL::RectangleTexture ImageLoader::next()
 
         // If some error occured in the worker thread, enqueue a new image
         // and try again.
-        if(!result || !result->first)
+        if(!result.image)
         {
             errorCounter++;
             continue;
         }
 
         GL::TextureFormat format;
-        if(result->second.format() == PixelFormat::RGB8Unorm)
+        if(result.image->format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
-        else if(result->second.format() == PixelFormat::RGBA8Unorm)
+        else if(result.image->format() == PixelFormat::RGBA8Unorm)
             format = GL::TextureFormat::RGBA8;
         else
         {
@@ -217,8 +237,8 @@ Magnum::GL::RectangleTexture ImageLoader::next()
         errorCounter = 0;
 
         GL::RectangleTexture texture;
-        texture.setStorage(format, result->second.size());
-        texture.setSubImage({}, result->second);
+        texture.setStorage(format, result.image->size());
+        texture.setSubImage({}, *result.image);
 
         // Needed for sticker textures - this is ugly.
         texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
