@@ -236,6 +236,7 @@ def process_image(rgb):
 
     hue_jitter = 0.05
 
+    global NEW_NOISE_MODEL_PRINTED
     if not NEW_NOISE_MODEL_PRINTED:
         print('=============================================================')
         print('WARNING: NEW NOISE MODEL!')
