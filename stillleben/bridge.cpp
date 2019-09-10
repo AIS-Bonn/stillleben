@@ -20,6 +20,7 @@
 #include <Corrade/Utility/Debug.h>
 
 #include <Magnum/Image.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/GL/TextureFormat.h>
 

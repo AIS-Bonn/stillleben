@@ -15,6 +15,7 @@
 
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Image.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/Vector.h>
 #include <Magnum/Math/Range.h>
 #include <Magnum/PixelFormat.h>

@@ -8,11 +8,14 @@
 #include <stillleben/physx.h>
 
 #include <Corrade/Utility/Configuration.h>
+#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
+#include <Corrade/Utility/FormatStl.h>
 
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Algorithms/Svd.h>

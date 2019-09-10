@@ -11,6 +11,7 @@
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Platform/GLContext.h>
 #include <Magnum/PixelFormat.h>

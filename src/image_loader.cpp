@@ -12,6 +12,7 @@
 
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Trade/AbstractImporter.h>
@@ -20,6 +21,7 @@
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Utility/String.h>
+#include <Corrade/Utility/DebugStl.h>
 
 namespace sl
 {

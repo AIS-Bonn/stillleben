@@ -7,6 +7,8 @@
 
 #include <Magnum/Math/Quaternion.h>
 
+#include <stdexcept>
+
 using namespace Magnum;
 
 namespace sl

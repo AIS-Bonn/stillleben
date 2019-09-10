@@ -13,6 +13,8 @@
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/Resource.h>
 
+#include <stdexcept>
+
 using namespace Magnum;
 
 namespace sl

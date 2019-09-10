@@ -12,6 +12,7 @@
 #include <Corrade/PluginManager/PluginManager.h>
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
 
 #include <Magnum/GL/CubeMapTexture.h>
@@ -22,6 +23,7 @@
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/ImageView.h>
 #include <Magnum/Math/Color.h>
 #include <Magnum/Math/Functions.h>
 #include <Magnum/Math/Matrix4.h>
