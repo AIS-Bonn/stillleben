@@ -15,6 +15,7 @@
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/GL/Mesh.h>
+#include <Magnum/GL/RectangleTexture.h>
 
 #include <memory>
 
@@ -166,9 +167,9 @@ public:
 
     void updateFromPhysics();
 
-    void setStickerColor(const Magnum::Color4& color);
-    constexpr Magnum::Color4 stickerColor() const
-    { return m_stickerColor; }
+    void setStickerTexture(const std::shared_ptr<Magnum::GL::RectangleTexture>& color);
+    std::shared_ptr<Magnum::GL::RectangleTexture> stickerTexture() const
+    { return m_stickerTexture; }
 
     void setStickerRange(const Magnum::Range2D& range);
     constexpr Magnum::Range2D stickerRange() const
@@ -221,7 +222,7 @@ private:
     float m_metalness = 0.04f;
 
     // Sticker simulation
-    Magnum::Color4 m_stickerColor{};
+    std::shared_ptr<Magnum::GL::RectangleTexture> m_stickerTexture{};
     Magnum::Range2D m_stickerRange{};
     Magnum::Quaternion m_stickerRotation{};
 };

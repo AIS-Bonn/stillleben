@@ -833,8 +833,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Sticker range.
         )EOS")
 
-        .def_property("sticker_color", wrapShared(&sl::Object::stickerColor), wrapShared(&sl::Object::setStickerColor), R"EOS(
-            Sticker color.
+        .def_property("sticker_texture", &sl::Object::stickerTexture, &sl::Object::setStickerTexture, R"EOS(
+            Sticker texture.
         )EOS")
     ;
 

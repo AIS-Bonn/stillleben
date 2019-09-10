@@ -246,8 +246,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
                 .setStickerProjection(object->stickerViewProjection())
                 .setStickerRange(object->stickerRange())
-                .setStickerColor(object->stickerColor())
             ;
+
+            if(object->stickerTexture())
+                shader.get()->bindStickerTexture(*object->stickerTexture());
 
             if(scene.lightMap())
                 shader.get()->bindLightMap(*scene.lightMap());

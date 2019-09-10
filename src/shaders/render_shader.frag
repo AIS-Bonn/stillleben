@@ -65,16 +65,16 @@ uniform float metallic = 0.04;
 layout(location = 15)
 uniform float roughness = 0.5;
 
-// Sticker simulator
-layout(location = 18)
-uniform vec4 stickerColor = vec4(0.0);
-
 layout(binding = 3)
 uniform highp samplerCube lightMapIrradiance;
 layout(binding = 4)
 uniform highp samplerCube lightMapPrefilter;
 layout(binding = 5)
 uniform highp sampler2D lightMapBRDFLUT;
+
+// Sticker simulator
+layout(binding = 6)
+uniform highp sampler2DRect stickerTexture;
 
 in mediump vec3 transformedNormal;
 in highp vec3 lightDirection;
@@ -90,7 +90,7 @@ in mediump vec4 interpolatedVertexColors;
 
 centroid in highp vec4 objectCoordinates;
 
-in lowp float inSticker;
+in mediump vec2 stickerCoordinates;
 
 layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec4 objectCoordinatesOut;
@@ -212,8 +212,9 @@ void main()
         specularColor;
 
     /* Are we inside the simulated sticker? */
-    finalAmbientColor = mix(finalAmbientColor, stickerColor, inSticker);
-    finalDiffuseColor = mix(finalDiffuseColor, stickerColor, inSticker);
+    lowp vec4 stickerColor = texture(stickerTexture, stickerCoordinates * textureSize(stickerTexture));
+    finalAmbientColor = mix(finalAmbientColor, stickerColor, stickerColor.a);
+    finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
 
     mediump vec3 N = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */

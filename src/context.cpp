@@ -11,6 +11,7 @@
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/TextureFormat.h>
+#include <Magnum/Math/Color.h>
 #include <Magnum/Platform/GLContext.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Trade/AbstractImporter.h>
@@ -523,6 +524,10 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
     GL::RectangleTexture texture;
     texture.setStorage(format, image->size());
     texture.setSubImage({}, *image);
+
+    // Needed for sticker textures - this is ugly.
+    texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
+    texture.setBorderColor(Magnum::Color4{0.0, 0.0, 0.0, 0.0});
 
     std::string messages = ss.str();
     if(!messages.empty())

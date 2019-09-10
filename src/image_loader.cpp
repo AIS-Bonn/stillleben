@@ -12,6 +12,7 @@
 
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
+#include <Magnum/Math/Color.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
@@ -190,6 +191,10 @@ Magnum::GL::RectangleTexture ImageLoader::next()
         GL::RectangleTexture texture;
         texture.setStorage(format, result->second.size());
         texture.setSubImage({}, result->second);
+
+        // Needed for sticker textures - this is ugly.
+        texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
+        texture.setBorderColor(Magnum::Color4{0.0, 0.0, 0.0, 0.0});
 
         return texture;
     }

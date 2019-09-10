@@ -298,7 +298,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("shininess", m_shininess);
     group.setValue("roughness", m_roughness);
     group.setValue("metalness", m_metalness);
-    group.setValue("stickerColor", m_stickerColor);
+
+    // FIXME: What about stickerTexture?
     group.setValue("stickerRange", m_stickerRange);
     group.setValue("stickerRotation", m_stickerRotation);
 }
@@ -332,8 +333,6 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
     if(group.hasValue("metalness"))
         setMetalness(group.value<float>("metalness"));
 
-    if(group.hasValue("stickerColor"))
-        setStickerColor(group.value<Magnum::Color4>("stickerColor"));
     if(group.hasValue("stickerRange"))
         setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
     if(group.hasValue("stickerRotation"))
@@ -360,9 +359,9 @@ void Object::setMetalness(float metalness)
     m_metalness = metalness;
 }
 
-void Object::setStickerColor(const Magnum::Color4& color)
+void Object::setStickerTexture(const std::shared_ptr<Magnum::GL::RectangleTexture>& texture)
 {
-    m_stickerColor = color;
+    m_stickerTexture = texture;
 }
 
 void Object::setStickerRange(const Magnum::Range2D& range)
@@ -381,6 +380,7 @@ Magnum::Matrix4 Object::stickerViewProjection() const
 
     // NOTE: This is a crude approximation, it does not guarantee that the
     // object fits inside the projection frustum.
+    // (or at least I haven't thought about it further)
     const Magnum::Matrix4 proj{
         {2.0f / diagonal,            0.0f, 0.0f, 0.0f},
         {           0.0f, 2.0f / diagonal, 0.0f, 0.0f},

@@ -11,6 +11,7 @@
 #include <Magnum/GL/Extensions.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Extensions.h>
 
 #include <stillleben/light_map.h>
@@ -29,7 +30,8 @@ namespace
         SpecularTextureLayer = 2,
         LightMapIrradianceLayer = 3,
         LightMapPrefilterLayer = 4,
-        LightMapBRDFLUT = 5
+        LightMapBRDFLUT = 5,
+        StickerLayer = 6,
     };
 }
 
@@ -124,7 +126,6 @@ RenderShader::RenderShader(const Flags flags)
         _roughnessUniform = uniformLocation("roughness");
         _stickerProjection = uniformLocation("stickerProjection");
         _stickerRange = uniformLocation("stickerRange");
-        _stickerColor = uniformLocation("stickerColor");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 
@@ -138,6 +139,7 @@ RenderShader::RenderShader(const Flags flags)
         setUniform(uniformLocation("lightMapIrradiance"), LightMapIrradianceLayer);
         setUniform(uniformLocation("lightMapPrefilter"), LightMapPrefilterLayer);
         setUniform(uniformLocation("lightMapBRDFLUT"), LightMapBRDFLUT);
+        setUniform(uniformLocation("stickerTexture"), StickerLayer);
     }
 }
 
@@ -193,6 +195,12 @@ sl::RenderShader& RenderShader::bindLightMap(sl::LightMap& lightMap)
 void RenderShader::disableLightMap()
 {
     setUniform(_useLightMapUniform, false);
+}
+
+RenderShader& RenderShader::bindStickerTexture(Magnum::GL::RectangleTexture& texture)
+{
+    texture.bind(StickerLayer);
+    return *this;
 }
 
 }

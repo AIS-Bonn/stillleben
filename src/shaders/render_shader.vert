@@ -61,7 +61,7 @@ out highp vec3 cameraDirection;
 
 centroid out highp vec4 objectCoordinates;
 
-out lowp float inSticker;
+out mediump vec2 stickerCoordinates;
 
 void main()
 {
@@ -101,8 +101,5 @@ void main()
     highp vec4 stickerPos = stickerProjection * objectCoordinates4;
     stickerPos = stickerPos / stickerPos.w;
 
-    if(stickerPos.x > stickerRange.x && stickerPos.y > stickerRange.y && stickerPos.x < stickerRange.z && stickerPos.y < stickerRange.w)
-        inSticker = 1.0;
-    else
-        inSticker = 0.0;
+    stickerCoordinates = (stickerPos.xy - stickerRange.xy) / stickerRange.zw;
 }

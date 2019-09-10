@@ -391,19 +391,15 @@ public:
         Magnum::Vector4 v{
             range.min().x(),
             range.min().y(),
-            range.max().x(),
-            range.max().y()
+            std::max(1e-6f, range.size().x()),
+            std::max(1e-6f, range.size().y())
         };
 
         setUniform(_stickerRange, v);
         return *this;
     }
 
-    RenderShader& setStickerColor(const Magnum::Color4& color)
-    {
-        setUniform(_stickerColor, color);
-        return *this;
-    }
+    RenderShader& bindStickerTexture(Magnum::GL::RectangleTexture& texture);
     //@}
 private:
     Flags _flags;
@@ -424,8 +420,7 @@ private:
         _metallicUniform{14},
         _roughnessUniform{15},
         _stickerProjection{16},
-        _stickerRange{17},
-        _stickerColor{18};
+        _stickerRange{17};
 };
 
 }

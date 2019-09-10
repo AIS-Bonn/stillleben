@@ -144,8 +144,8 @@ if __name__ == "__main__":
 
     parser.add_argument('--sticker-range', type=str, default='0,0,0,0',
         help='Sticker range')
-    parser.add_argument('--sticker-color', type=str, default='0,0,0,1',
-        help='Sticker color')
+    parser.add_argument('--sticker-texture', type=str,
+        help='Sticker texture file')
 
     args = parser.parse_args()
 
@@ -198,7 +198,9 @@ if __name__ == "__main__":
             object.specular_color = torch.tensor([ float(a) for a in args.specular_color.split(',') ])
 
         object.sticker_range = torch.tensor([ float(a) for a in args.sticker_range.split(',')])
-        object.sticker_color = torch.tensor([ float(a) for a in args.sticker_color.split(',')])
+
+        if args.sticker_texture:
+            object.sticker_texture = sl.Texture(args.sticker_texture)
 
         scene.add_object(object)
 
