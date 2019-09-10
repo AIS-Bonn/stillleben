@@ -212,9 +212,12 @@ void main()
         specularColor;
 
     /* Are we inside the simulated sticker? */
-    lowp vec4 stickerColor = texture(stickerTexture, stickerCoordinates * textureSize(stickerTexture));
-    finalAmbientColor = mix(finalAmbientColor, stickerColor, stickerColor.a);
-    finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
+    if(stickerCoordinates.x >= 0 && stickerCoordinates.y >= 0 && stickerCoordinates.x < 1 && stickerCoordinates.y < 1)
+    {
+        lowp vec4 stickerColor = texture(stickerTexture, stickerCoordinates * textureSize(stickerTexture));
+//         finalAmbientColor = mix(finalAmbientColor, stickerColor, stickerColor.a);
+        finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
+    }
 
     mediump vec3 N = normalize(transformedNormal);
     /* Output the normal and dot product with camera ray */
