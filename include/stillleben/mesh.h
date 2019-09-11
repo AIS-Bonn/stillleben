@@ -25,8 +25,6 @@
 
 #include <Magnum/GL/Texture.h>
 
-class btCollisionShape;
-
 namespace physx
 {
     class PxConvexMesh;
@@ -53,7 +51,6 @@ public:
     using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using MeshFlagArray = Corrade::Containers::Array<MeshFlags>;
     using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
-    using CollisionArray = Corrade::Containers::Array<std::shared_ptr<btCollisionShape>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
     using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
@@ -156,9 +153,6 @@ public:
     PointArray& meshPoints()
     { return m_meshPoints; }
 
-    CollisionArray& collisionShapes()
-    { return m_collisionShapes; }
-
     PhysXMeshArray& physXMeshes()
     { return m_physXMeshes; }
 
@@ -193,7 +187,6 @@ private:
     MeshArray m_meshes;
     MeshFlagArray m_meshFlags;
     PointArray m_meshPoints;
-    CollisionArray m_collisionShapes;
     TextureArray m_textures;
     MaterialArray m_materials;
     SimplifiedMeshArray m_simplifiedMeshes;

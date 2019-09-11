@@ -197,7 +197,6 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
     // Simplify meshes if possible
     m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
-    m_collisionShapes = CollisionArray{m_importer->mesh3DCount()};
     m_physXBuffers = CookedPhysXMeshArray{m_importer->mesh3DCount()};
     m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
