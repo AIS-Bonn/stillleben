@@ -22,6 +22,6 @@ TEST_CASE("load image", "[image_loader]")
 
     sl::ImageLoader loader{BUNNY_TEXTURES, context};
 
-    Magnum::GL::RectangleTexture texture = loader.next();
+    Magnum::GL::RectangleTexture texture = loader.nextRectangleTexture();
     CHECK(texture.imageSize().dot() > 0);
 }

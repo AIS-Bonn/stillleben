@@ -17,6 +17,7 @@
 #include <Corrade/Containers/Optional.h>
 
 #include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/Texture.h>
 #include <Magnum/Image.h>
 
 #include <Magnum/Trade/ImageData.h>
@@ -46,7 +47,12 @@ public:
     ImageLoader(const ImageLoader&) = delete;
     ImageLoader& operator=(const ImageLoader&) = delete;
 
-    Magnum::GL::RectangleTexture next();
+    Magnum::GL::Texture2D nextTexture2D();
+    Magnum::GL::RectangleTexture nextRectangleTexture();
+
+    [[deprecated("Use nextRectangleTexture() instead")]]
+    Magnum::GL::RectangleTexture next()
+    { return nextRectangleTexture(); }
 private:
     using Importer = Magnum::Trade::AbstractImporter;
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
@@ -56,6 +62,7 @@ private:
     {
         Result();
         Result(const Result&) = delete;
+        Result(Result&&) = default;
         Result(ImporterPtr&& imp);
         Result(ImporterPtr&& imp, Corrade::Containers::Optional<Magnum::Trade::ImageData2D>&& img);
 
@@ -70,6 +77,8 @@ private:
 
     void thread();
     void enqueue();
+
+    Result nextResult();
 
     std::string m_path;
     std::vector<std::string> m_paths;

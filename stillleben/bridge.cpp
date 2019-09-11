@@ -666,6 +666,49 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         )EOS", py::arg("tensor"))
     ;
 
+    py::class_<Magnum::GL::Texture2D, std::shared_ptr<Magnum::GL::Texture2D>>(
+        m, "Texture2D", R"EOS(
+            An RGBA texture.
+        )EOS")
+
+        .def(py::init([](const std::string& path){
+            if(!g_context)
+                throw std::logic_error("Create a context object before");
+
+            return std::make_shared<Magnum::GL::Texture2D>(
+                g_context->loadTexture2D(path)
+            );
+        }), R"EOS(
+            Load the texture from the specified path.
+        )EOS", py::arg("path"))
+
+        .def(py::init([](torch::Tensor tensor){
+            if(!g_context)
+                throw std::logic_error("Create a context object before");
+
+            if(tensor.dim() != 3 || tensor.size(2) != 3 || tensor.scalar_type() != torch::kByte || tensor.device().type() != torch::kCPU)
+                throw std::invalid_argument("Input tensor should be a HxWx3 CPU byte tensor");
+
+            tensor = tensor.contiguous();
+
+            Magnum::ImageView2D image{
+                Magnum::PixelStorage{}.setAlignment(1),
+                Magnum::PixelFormat::RGB8Unorm,
+                {static_cast<int>(tensor.size(1)), static_cast<int>(tensor.size(0))},
+                Corrade::Containers::ArrayView<uint8_t>(tensor.data<uint8_t>(), tensor.numel())
+            };
+
+            Magnum::GL::Texture2D texture;
+            texture.setStorage(Magnum::Math::log2(image.size().max())+1, Magnum::GL::TextureFormat::RGB8, image.size());
+            texture.setSubImage(0, {}, image);
+            texture.generateMipmap();
+
+            return texture;
+        }), R"EOS(
+            Load an RGB texture from the specified HxWx3 CPU byte tensor.
+        )EOS", py::arg("tensor"))
+    ;
+
     // sl::Mesh
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
             Represents a loaded mesh file. A Mesh can be seen as an object template.
@@ -1311,8 +1354,16 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             )EOS", py::arg("path")
         )
 
-        .def("next", &sl::ImageLoader::next, R"EOS(
-            Return next image (randomly sampled)
+        .def("next", &sl::ImageLoader::nextRectangleTexture, R"EOS(
+            Return next image (randomly sampled). This is the same as nextRectangleTexture().
+        )EOS")
+
+        .def("next_texture2d", &sl::ImageLoader::nextTexture2D, R"EOS(
+            Return next image (randomly sampled) as 2D texture
+        )EOS")
+
+        .def("next_rectangle_texture", &sl::ImageLoader::nextRectangleTexture, R"EOS(
+            Return next image (randomly sampled) as rectangle texture
         )EOS")
     ;
 

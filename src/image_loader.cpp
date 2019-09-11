@@ -188,17 +188,15 @@ void ImageLoader::thread()
     }
 }
 
-Magnum::GL::RectangleTexture ImageLoader::next()
+ImageLoader::Result ImageLoader::nextResult()
 {
-    using namespace Magnum;
-
     unsigned int errorCounter = 0;
 
     while(1)
     {
         if(errorCounter >= 10)
         {
-            Warning{} << "ImageLoader: 10 errors in a row, probably something is wrong with your images";
+            Magnum::Warning{} << "ImageLoader: 10 errors in a row, probably something is wrong with your images";
             errorCounter = 0;
         }
 
@@ -222,19 +220,25 @@ Magnum::GL::RectangleTexture ImageLoader::next()
             continue;
         }
 
+        return result;
+    }
+}
+
+Magnum::GL::RectangleTexture ImageLoader::nextRectangleTexture()
+{
+    using namespace Magnum;
+
+    while(1)
+    {
+        Result result = nextResult();
+
         GL::TextureFormat format;
         if(result.image->format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
         else if(result.image->format() == PixelFormat::RGBA8Unorm)
             format = GL::TextureFormat::RGBA8;
         else
-        {
-//             Warning{} << "Unsupported texture format:" << result->second.format();
-            errorCounter++;
             continue; // just try the next one
-        }
-
-        errorCounter = 0;
 
         GL::RectangleTexture texture;
         texture.setStorage(format, result.image->size());
@@ -243,6 +247,38 @@ Magnum::GL::RectangleTexture ImageLoader::next()
         // Needed for sticker textures - this is ugly.
         texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
         texture.setBorderColor(Magnum::Color4{0.0, 0.0, 0.0, 0.0});
+
+        return texture;
+    }
+}
+
+Magnum::GL::Texture2D ImageLoader::nextTexture2D()
+{
+    using namespace Magnum;
+
+    while(1)
+    {
+        Result result = nextResult();
+
+        GL::TextureFormat format;
+        if(result.image->format() == PixelFormat::RGB8Unorm)
+            format = GL::TextureFormat::RGB8;
+        else if(result.image->format() == PixelFormat::RGBA8Unorm)
+            format = GL::TextureFormat::RGBA8;
+        else
+            continue; // just try the next one
+
+        GL::Texture2D texture;
+
+        // Needed for sticker textures - this is ugly.
+        texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
+        texture.setBorderColor(Magnum::Color4{0.0, 0.0, 0.0, 0.0});
+
+        texture.setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy());
+
+        texture.setStorage(Math::log2(result.image->size().max()), format, result.image->size());
+        texture.setSubImage(0, {}, *result.image);
+        texture.generateMipmap();
 
         return texture;
     }
