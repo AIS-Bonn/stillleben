@@ -102,6 +102,8 @@ public:
     { return *m_camera; }
     //@}
 
+    //! @name Background scene
+    //@{
     void setBackgroundImage(std::shared_ptr<Magnum::GL::RectangleTexture>& texture);
     const std::shared_ptr<Magnum::GL::RectangleTexture>& backgroundImage() const
     { return m_backgroundImage; }
@@ -109,6 +111,7 @@ public:
     void setBackgroundColor(const Magnum::Color4& color);
     Magnum::Color4 backgroundColor() const
     { return m_backgroundColor; }
+    //@}
 
     //! @name Object placement
     //@{
