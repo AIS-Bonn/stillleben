@@ -224,6 +224,8 @@ def process_deterministic(rgb,
     # => apply a post-blur
     rgb = blur(rgb, sigma=0.4)
 
+    rgb.clamp_(0.0, 1.0)
+
     return rgb
 
 NEW_NOISE_MODEL_PRINTED = False
