@@ -82,6 +82,7 @@ private:
     std::unique_ptr<BackgroundShader> m_backgroundShader;
 
     Magnum::GL::Mesh m_quadMesh;
+    Magnum::GL::Mesh m_backgroundPlaneMesh;
 
     std::shared_ptr<Result> m_result;
 };

@@ -111,6 +111,18 @@ public:
     void setBackgroundColor(const Magnum::Color4& color);
     Magnum::Color4 backgroundColor() const
     { return m_backgroundColor; }
+
+    void setBackgroundPlanePose(const Magnum::Matrix4& pose);
+    Magnum::Matrix4 backgroundPlanePose() const
+    { return m_backgroundPlanePose; }
+
+    void setBackgroundPlaneSize(const Magnum::Vector2& size);
+    Magnum::Vector2 backgroundPlaneSize() const
+    { return m_backgroundPlaneSize; }
+
+    void setBackgroundPlaneTexture(const std::shared_ptr<Magnum::GL::Texture2D>& texture);
+    std::shared_ptr<Magnum::GL::Texture2D> backgroundPlaneTexture() const
+    { return m_backgroundPlaneTexture; }
     //@}
 
     //! @name Object placement
@@ -191,6 +203,10 @@ private:
     Magnum::Color3 m_ambientLight;
 
     std::shared_ptr<LightMap> m_lightMap;
+
+    Magnum::Matrix4 m_backgroundPlanePose{Magnum::Math::IdentityInit};
+    Magnum::Vector2 m_backgroundPlaneSize{};
+    std::shared_ptr<Magnum::GL::Texture2D> m_backgroundPlaneTexture;
 };
 
 // IMPLEMENTATION

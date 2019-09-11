@@ -131,6 +131,16 @@ namespace
     };
 
     template<>
+    struct toTorch<Magnum::Vector2>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const Magnum::Vector2& vec)
+        {
+            return torch::from_blob(const_cast<float*>(vec.data()), {2}, at::kFloat).clone();
+        }
+    };
+
+    template<>
     struct toTorch<Magnum::Vector3>
     {
         using Result = at::Tensor;
@@ -239,6 +249,24 @@ namespace
             memcpy(mat.data(), data, 9*sizeof(float));
 
             return mat;
+        }
+    };
+
+    template<>
+    struct fromTorch<Magnum::Vector2>
+    {
+        using Type = at::Tensor;
+        static Magnum::Vector2 convert(const at::Tensor& tensor)
+        {
+            auto cpuTensor = tensor.to(at::kFloat).cpu().contiguous();
+            if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 2)
+                throw std::invalid_argument("A 2D vector tensor must have size 2");
+
+            const float* data = cpuTensor.data<float>();
+            Magnum::Vector2 vec{Magnum::Math::NoInit};
+            memcpy(vec.data(), data, 2*sizeof(float));
+
+            return vec;
         }
     };
 
@@ -1153,6 +1181,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
         .def_property("light_map", &sl::Scene::lightMap, &sl::Scene::setLightMap, R"EOS(
                 Light map used for image-based lighting.
             )EOS")
+
+        .def_property("background_plane_pose", wrapShared(&sl::Scene::backgroundPlanePose), wrapShared(&sl::Scene::setBackgroundPlanePose),
+            "Pose of the background plane (plane normal is in +Z direction)")
+        .def_property("background_plane_size", wrapShared(&sl::Scene::backgroundPlaneSize), wrapShared(&sl::Scene::setBackgroundPlaneSize),
+            "Size of the background plane in local X/Y directions")
+        .def_property("background_plane_texture", &sl::Scene::backgroundPlaneTexture, &sl::Scene::setBackgroundPlaneTexture,
+            "Texture of the background plane")
     ;
 
     py::class_<sl::RenderPass::Result, ContextSharedPtr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(

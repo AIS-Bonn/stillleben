@@ -380,11 +380,23 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     auto& physics = m_ctx->physxPhysics();
 
-    physx::PxBoxGeometry boxGeom{30.0, 30.0, 0.04};
+    constexpr Magnum::Vector3 BOX_SIZE{30.0, 30.0, 0.04};
+
+    physx::PxBoxGeometry boxGeom{BOX_SIZE.x(), BOX_SIZE.y(), BOX_SIZE.z()};
     PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
     PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
     PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
     actor->attachShape(*shape);
+
+    // Call setBackgroundPlanePose() with the correct pose so that the visual
+    // matches up with the physics simulation
+    {
+        std::uniform_real_distribution<float> planeRotDist(-M_PI, M_PI);
+        Magnum::Rad planeRot{planeRotDist(m_randomGenerator)};
+
+        Matrix4 topSidePlanePose = T * Matrix4::rotationZ(planeRot) * Matrix4::translation({0.0, 0.0, BOX_SIZE.z()/2});
+        setBackgroundPlanePose(topSidePlanePose);
+    }
 
     m_physicsScene->addActor(*actor);
     auto remover = finally([&](){ m_physicsScene->removeActor(*actor); });
@@ -473,6 +485,9 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
     {
         group.setValue("lightMap", m_lightMap->path());
     }
+
+    group.setValue("backgroundPlanePose", m_backgroundPlanePose);
+    group.setValue("backgroundPlaneSize", m_backgroundPlaneSize);
 }
 
 void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
@@ -491,6 +506,11 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
 
     if(group.hasValue("lightMap"))
         m_lightMap = std::make_shared<LightMap>(group.value("lightMap"), m_ctx);
+
+    if(group.hasValue("backgroundPlanePose"))
+        m_backgroundPlanePose = group.value<Magnum::Matrix4>("backgroundPlanePose");
+    if(group.hasValue("backgroundPlaneSize"))
+        m_backgroundPlaneSize = group.value<Magnum::Vector2>("backgroundPlaneSize");
 
     std::unique_ptr<MeshCache> localCache;
     if(!cache)
@@ -526,6 +546,21 @@ void Scene::loadPhysics()
 void Scene::setLightMap(const std::shared_ptr<LightMap>& lightMap)
 {
     m_lightMap = lightMap;
+}
+
+void Scene::setBackgroundPlanePose(const Matrix4& pose)
+{
+    m_backgroundPlanePose = pose;
+}
+
+void Scene::setBackgroundPlaneSize(const Vector2& size)
+{
+    m_backgroundPlaneSize = size;
+}
+
+void Scene::setBackgroundPlaneTexture(const std::shared_ptr<Magnum::GL::Texture2D>& texture)
+{
+    m_backgroundPlaneTexture = texture;
 }
 
 }

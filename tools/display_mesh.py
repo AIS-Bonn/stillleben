@@ -147,6 +147,11 @@ if __name__ == "__main__":
     parser.add_argument('--sticker-texture', type=str,
         help='Sticker texture file')
 
+    parser.add_argument('--background-plane-size', type=str, default='0,0',
+        help='Background plane size')
+    parser.add_argument('--background-plane-texture', type=str,
+        help='Background plane texture')
+
     args = parser.parse_args()
 
     sl.init()
@@ -184,6 +189,10 @@ if __name__ == "__main__":
 
     if args.light_map:
         scene.light_map = sl.LightMap(args.light_map)
+
+    scene.background_plane_size = torch.tensor([ float(a) for a in args.background_plane_size.split(',') ])
+    if args.background_plane_texture:
+        scene.background_plane_texture = sl.Texture2D(args.background_plane_texture)
 
     for mesh in meshes:
         object = sl.Object(mesh, options=opts)

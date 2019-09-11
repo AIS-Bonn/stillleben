@@ -18,6 +18,7 @@
 
 #include <Magnum/MeshTools/Compile.h>
 
+#include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/Square.h>
 
 #include <Magnum/PixelFormat.h>
@@ -91,6 +92,7 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
+    m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
 }
 
 RenderPass::~RenderPass()
@@ -224,6 +226,68 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             shader.get()->bindLightMap(*scene.lightMap());
         else
             shader.get()->disableLightMap();
+    }
+
+    // Do we have a background plane?
+    if(scene.backgroundPlaneSize().dot() > 0)
+    {
+        Debug{} << "Rendering background plane with size" << scene.backgroundPlaneSize();
+
+        auto poseInCam = scene.camera().object().absoluteTransformationMatrix().inverted() * scene.backgroundPlanePose();
+
+        // Scale the unit plane s.t. it has the desired dimensions
+        Matrix4 scaledPoseInCam = poseInCam * Matrix4::scaling({
+            scene.backgroundPlaneSize().x() / 2.0f,
+            scene.backgroundPlaneSize().y() / 2.0f,
+            1.0f
+        });
+
+        Debug{} << "scaledPoseInCam:";
+        Debug{} << scaledPoseInCam;
+
+        auto texture = scene.backgroundPlaneTexture();
+        if(texture)
+        {
+            (*m_shaderTextured)
+                .setObjectToCamMatrix(scaledPoseInCam)
+                .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
+                .setNormalMatrix(poseInCam.rotation())
+                .setProjectionMatrix(scene.camera().projectionMatrix())
+                .setClassIndex(0)
+                .setInstanceIndex(0)
+                .setAmbientColor(scene.ambientLight())
+                .setSpecularColor(Magnum::Color4{1.0f})
+                .setShininess(80.0f)
+                .setMetalness(0.04f)
+                .setRoughness(0.5f)
+                .setStickerRange({})
+                .setLightPosition(scene.lightPosition())
+                .bindDiffuseTexture(*texture)
+            ;
+
+            m_backgroundPlaneMesh.draw(*m_shaderTextured);
+        }
+        else
+        {
+            (*m_shaderUniform)
+                .setObjectToCamMatrix(scaledPoseInCam)
+                .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
+                .setNormalMatrix(poseInCam.rotation())
+                .setProjectionMatrix(scene.camera().projectionMatrix())
+                .setClassIndex(0)
+                .setInstanceIndex(0)
+                .setAmbientColor(scene.ambientLight())
+                .setSpecularColor(Magnum::Color4{1.0f})
+                .setShininess(80.0f)
+                .setMetalness(0.04f)
+                .setRoughness(0.5f)
+                .setStickerRange({})
+                .setLightPosition(scene.lightPosition())
+                .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
+            ;
+
+            m_backgroundPlaneMesh.draw(*m_shaderUniform);
+        }
     }
 
     // Let the fun begin!
