@@ -10,6 +10,7 @@
 
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/Texture.h>
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/ImageView.h>
 #include <Magnum/Math/Color.h>
@@ -525,6 +526,50 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
     GL::RectangleTexture texture;
     texture.setStorage(format, image->size());
     texture.setSubImage({}, *image);
+
+    // Needed for sticker textures - this is ugly.
+    texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
+    texture.setBorderColor(Magnum::Color4{0.0, 0.0, 0.0, 0.0});
+
+    std::string messages = ss.str();
+    if(!messages.empty())
+        std::cerr << messages << std::flush;
+
+    return texture;
+}
+
+Magnum::GL::Texture2D Context::loadTexture2D(const std::string& path)
+{
+    std::unique_ptr<Trade::AbstractImporter> importer{
+        m_d->importerManager->loadAndInstantiate("AnyImageImporter")
+    };
+
+    std::ostringstream ss;
+    Error redirectTo{&ss};
+
+    if(!importer)
+        throw std::logic_error("Could not load AnyImageImporter plugin");
+
+    if(!importer->openFile(path))
+        throw std::runtime_error("Could not open image file: " + ss.str());
+
+    auto image = importer->image2D(0);
+    if(!image)
+        throw std::runtime_error("Could not load image: " + ss.str());
+
+    GL::TextureFormat format;
+    if(image->format() == PixelFormat::RGB8Unorm)
+        format = GL::TextureFormat::RGB8;
+    else if(image->format() == PixelFormat::RGBA8Unorm)
+        format = GL::TextureFormat::RGBA8;
+    else
+        throw std::runtime_error("Unsupported texture format");
+
+    GL::Texture2D texture;
+    texture.setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy());
+    texture.setStorage(Math::log2(image->size().max())+1, format, image->size());
+    texture.setSubImage(0, {}, *image);
+    texture.generateMipmap();
 
     // Needed for sticker textures - this is ugly.
     texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);

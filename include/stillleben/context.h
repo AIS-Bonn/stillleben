@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+#include <Magnum/GL/Texture.h>
+
 #include <Corrade/Containers/Pointer.h>
 
 namespace Magnum
@@ -53,6 +55,7 @@ public:
     Corrade::Containers::Pointer<ImageConverter> instantiateImageConverter(const std::string& name);
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
+    Magnum::GL::Texture2D loadTexture2D(const std::string& path);
 
     physx::PxPhysics& physxPhysics();
     physx::PxCooking& physxCooking();
