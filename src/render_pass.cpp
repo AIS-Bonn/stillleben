@@ -231,8 +231,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
     {
-        Debug{} << "Rendering background plane with size" << scene.backgroundPlaneSize();
-
         auto poseInCam = scene.camera().object().absoluteTransformationMatrix().inverted() * scene.backgroundPlanePose();
 
         // Scale the unit plane s.t. it has the desired dimensions
@@ -241,9 +239,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             scene.backgroundPlaneSize().y() / 2.0f,
             1.0f
         });
-
-        Debug{} << "scaledPoseInCam:";
-        Debug{} << scaledPoseInCam;
 
         auto texture = scene.backgroundPlaneTexture();
         if(texture)
