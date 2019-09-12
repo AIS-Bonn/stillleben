@@ -20,6 +20,8 @@ namespace sl
 class BackgroundShader;
 class RenderShader;
 class Scene;
+class SSAOShader;
+class SSAOApplyShader;
 
 class RenderPass
 {
@@ -51,12 +53,18 @@ public:
         [[deprecated("valid mask is not used anymore")]]
         CUDATexture validMask;
 
+        CUDATexture camCoordinates;
+
     private:
         friend class RenderPass;
 
         void mapCUDA();
         void unmapCUDA();
     };
+
+    void setSSAOEnabled(bool enabled);
+    constexpr bool ssaoEnabled() const
+    { return m_ssaoEnabled; }
 
     std::shared_ptr<Result> render(Scene& scene);
 private:
@@ -66,16 +74,27 @@ private:
     Magnum::GL::Framebuffer m_framebuffer;
     Magnum::GL::Renderbuffer m_depthbuffer;
 
+    Magnum::GL::Framebuffer m_ssaoFramebuffer;
+    Magnum::GL::RectangleTexture m_ssaoTexture;
+
+    Magnum::GL::Framebuffer m_ssaoApplyFramebuffer;
+    Magnum::GL::RectangleTexture m_ssaoRGBInputTexture;
+
     std::unique_ptr<RenderShader> m_shaderTextured;
     std::unique_ptr<RenderShader> m_shaderVertexColors;
     std::unique_ptr<RenderShader> m_shaderUniform;
 
     std::unique_ptr<BackgroundShader> m_backgroundShader;
 
+    std::unique_ptr<SSAOShader> m_ssaoShader;
+    std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
+
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_backgroundPlaneMesh;
 
     std::shared_ptr<Result> m_result;
+
+    bool m_ssaoEnabled = true;
 };
 
 }

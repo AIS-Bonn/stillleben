@@ -54,7 +54,8 @@ public:
         ObjectCoordinatesOutput = 1,
         ClassIndexOutput = 2,
         InstanceIndexOutput = 3,
-        NormalOutput = 4
+        NormalOutput = 4,
+        CamCoordinatesOutput = 5
     };
 
     /**

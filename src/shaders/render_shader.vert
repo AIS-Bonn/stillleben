@@ -60,6 +60,7 @@ out highp vec3 lightDirection;
 out highp vec3 cameraDirection;
 
 centroid out highp vec4 objectCoordinates;
+centroid out highp vec3 camCoordinates;
 
 out mediump vec2 stickerCoordinates;
 
@@ -71,7 +72,7 @@ void main()
 
     /* Object coordinates to camera coordinates */
     highp vec4 camCoordinates4 = objectToCam * objectCoordinates4;
-    highp vec3 camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
+    camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
 
     /* Output depth in fourth channel of the coordinate output */
     objectCoordinates.w = camCoordinates.z;

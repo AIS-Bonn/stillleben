@@ -73,6 +73,9 @@ public:
     Scene(Scene&& other) = delete;
     ~Scene();
 
+    std::shared_ptr<Context> context() const
+    { return m_ctx; }
+
     //! @name Serialization & Deserialization
     //@{
 

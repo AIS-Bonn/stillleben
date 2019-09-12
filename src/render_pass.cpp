@@ -6,6 +6,7 @@
 #include <stillleben/object.h>
 #include <stillleben/mesh.h>
 #include <stillleben/cuda_interop.h>
+#include <stillleben/context.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -14,7 +15,9 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/DebugOutput.h>
+#include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Image.h>
+#include <Magnum/ImageView.h>
 
 #include <Magnum/MeshTools/Compile.h>
 
@@ -27,6 +30,8 @@
 
 #include "shaders/render_shader.h"
 #include "shaders/background_shader.h"
+#include "shaders/ssao_shader.h"
+#include "shaders/ssao_apply_shader.h"
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -59,6 +64,7 @@ RenderPass::Result::Result(bool cuda)
  , instanceIndex{m_mapper}
  , normals{m_mapper}
  , validMask{m_mapper}
+ , camCoordinates{m_mapper}
 {
 }
 
@@ -83,10 +89,14 @@ void RenderPass::Result::unmapCUDA()
 RenderPass::RenderPass(Type type, bool cuda)
  : m_cuda{cuda}
  , m_framebuffer{Magnum::NoCreate}
+ , m_ssaoFramebuffer{Magnum::NoCreate}
+ , m_ssaoApplyFramebuffer{Magnum::NoCreate}
  , m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
  , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
+ , m_ssaoShader{std::make_unique<SSAOShader>()}
+ , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
@@ -133,8 +143,22 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         m_result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
         m_result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
+        m_result->camCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
 
         m_depthbuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
+
+        // SSAO
+        m_ssaoFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
+        m_ssaoRGBInputTexture
+            .setStorage(GL::TextureFormat::RGBA32F, viewport)
+            .setMinificationFilter(SamplerFilter::Nearest)
+            .setMagnificationFilter(SamplerFilter::Nearest);
+        m_ssaoTexture
+            .setStorage(GL::TextureFormat::R32F, viewport)
+            .setMinificationFilter(SamplerFilter::Nearest)
+            .setMagnificationFilter(SamplerFilter::Nearest);
+
+        m_ssaoApplyFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
         m_initialized = true;
     }
@@ -147,7 +171,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            m_result->rgb
+            m_ssaoEnabled ? m_ssaoRGBInputTexture : m_result->rgb
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{1},
@@ -165,13 +189,18 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             GL::Framebuffer::ColorAttachment{4},
             m_result->normals
         )
+        .attachTexture(
+            GL::Framebuffer::ColorAttachment{5},
+            m_result->camCoordinates
+        )
         .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, m_depthbuffer)
         .mapForDraw({
             {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {RenderShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
             {RenderShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{2}},
             {RenderShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{3}},
-            {RenderShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}}
+            {RenderShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}},
+            {RenderShader::CamCoordinatesOutput, GL::Framebuffer::ColorAttachment{5}}
         })
     ;
 
@@ -205,6 +234,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_framebuffer.clearColor(2, Vector4ui{0});
     m_framebuffer.clearColor(3, Vector4ui{0});
     m_framebuffer.clearColor(4, 0x00000000_rgbaf);
+    m_framebuffer.clearColor(5, invalid);
 
     // Setup image-based lighting if required
     for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
@@ -343,6 +373,52 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 drawable->mesh().draw(*m_shaderUniform);
             }
         });
+    }
+
+    if(m_ssaoEnabled)
+    {
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
+
+        m_ssaoFramebuffer
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_ssaoTexture)
+            .mapForDraw({
+                {SSAOShader::AOOutput, GL::Framebuffer::ColorAttachment{0}}
+            });
+
+        m_ssaoFramebuffer.bind();
+        m_ssaoFramebuffer.clearColor(0, Color4{1.0f});
+
+        (*m_ssaoShader)
+            .setProjection(scene.camera().projectionMatrix())
+            .bindCoordinates(m_result->camCoordinates)
+            .bindNormals(m_result->normals)
+            .bindNoise();
+
+        m_quadMesh.draw(*m_ssaoShader);
+
+        m_ssaoApplyFramebuffer
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_result->rgb)
+            .mapForDraw({
+                {SSAOApplyShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+            });
+
+        m_ssaoApplyFramebuffer.bind();
+        m_ssaoApplyFramebuffer.clearColor(0, Color4{0.0f});
+
+        (*m_ssaoApplyShader)
+            .bindAO(m_ssaoTexture)
+            .bindColor(m_ssaoRGBInputTexture)
+            .bindCoordinates(m_result->camCoordinates);
+
+        m_quadMesh.draw(*m_ssaoApplyShader);
+
+//         Image2D image = m_ssaoTexture.image({PixelFormat::R8Unorm});
+//         {
+//             auto converter = scene.context()->instantiateImageConverter("PngImageConverter");
+//             if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
+//
+//             converter->exportToFile(image, "/tmp/stillleben_ao.png");
+//         }
     }
 
     // Map for CUDA access

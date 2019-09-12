@@ -89,6 +89,7 @@ in mediump vec4 interpolatedVertexColors;
 #endif
 
 centroid in highp vec4 objectCoordinates;
+centroid in highp vec3 camCoordinates;
 
 in mediump vec2 stickerCoordinates;
 
@@ -97,6 +98,7 @@ layout(location = 1) out highp vec4 objectCoordinatesOut;
 layout(location = 2) out uint classIndexOut;
 layout(location = 3) out uint instanceIndexOut;
 layout(location = 4) out highp vec4 normalOut;
+layout(location = 5) out highp vec3 camCoordinatesOut;
 
 vec2 dirToSpherical(vec3 dir)
 {
@@ -186,6 +188,7 @@ vec3 cubemapCoord(vec3 camSpaceCoord)
 void main()
 {
     objectCoordinatesOut = objectCoordinates;
+    camCoordinatesOut = camCoordinates;
     classIndexOut = classIndex;
     instanceIndexOut = instanceIndex;
 
