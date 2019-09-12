@@ -26,7 +26,6 @@
 #include <Magnum/Trade/MeshData2D.h>
 
 #include "shaders/render_shader.h"
-#include "shaders/resolve_shader.h"
 #include "shaders/background_shader.h"
 
 using namespace Magnum;
@@ -84,11 +83,9 @@ void RenderPass::Result::unmapCUDA()
 RenderPass::RenderPass(Type type, bool cuda)
  : m_cuda{cuda}
  , m_framebuffer{Magnum::NoCreate}
- , m_resolvedBuffer{Magnum::NoCreate}
  , m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
  , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
- , m_resolveShader{std::make_unique<ResolveShader>(m_msaa_factor)}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
@@ -127,18 +124,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         m_result.reset();
 
         m_framebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
-        m_resolvedBuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
-
-        m_msaa_rgb.setStorage(m_msaa_factor, GL::TextureFormat::RGBA8, viewport);
-        m_msaa_depth.setStorage(m_msaa_factor, GL::TextureFormat::DepthComponent24, viewport);
-        m_msaa_objectCoordinates.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
-
-        // Note: We use float format here because of a bug in Mesa
-        // https://bugs.freedesktop.org/show_bug.cgi?id=109057
-        m_msaa_classIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
-        m_msaa_instanceIndex.setStorage(m_msaa_factor, GL::TextureFormat::R32F, viewport);
-
-        m_msaa_normal.setStorage(m_msaa_factor, GL::TextureFormat::RGBA32F, viewport);
 
         m_result = std::make_shared<Result>(m_cuda);
 
@@ -148,6 +133,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         m_result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
         m_result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
+
+        m_depthbuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
 
         m_initialized = true;
     }
@@ -160,25 +147,25 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            m_msaa_rgb
+            m_result->rgb
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{1},
-            m_msaa_objectCoordinates
+            m_result->objectCoordinates
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{2},
-            m_msaa_classIndex
+            m_result->classIndex
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{3},
-            m_msaa_instanceIndex
+            m_result->instanceIndex
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{4},
-            m_msaa_normal
+            m_result->normals
         )
-        .attachTexture(GL::Framebuffer::BufferAttachment::Depth, m_msaa_depth)
+        .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, m_depthbuffer)
         .mapForDraw({
             {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
             {RenderShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
@@ -190,7 +177,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
     if(m_framebuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
     {
-        Error{} << "Invalid MSAA framebuffer status:" << m_framebuffer.checkStatus(GL::FramebufferTarget::Draw);
+        Error{} << "Invalid framebuffer status:" << m_framebuffer.checkStatus(GL::FramebufferTarget::Draw);
         std::abort();
     }
 
@@ -357,51 +344,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             }
         });
     }
-
-    // Resolve the MSAA render buffers
-    // For this purpose, we render a quad with a custom shader.
-
-    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
-
-    m_resolvedBuffer
-        .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_result->rgb)
-        .attachTexture(GL::Framebuffer::ColorAttachment{1}, m_result->objectCoordinates)
-        .attachTexture(GL::Framebuffer::ColorAttachment{2}, m_result->classIndex)
-        .attachTexture(GL::Framebuffer::ColorAttachment{3}, m_result->instanceIndex)
-        .attachTexture(GL::Framebuffer::ColorAttachment{4}, m_result->normals)
-        .attachTexture(GL::Framebuffer::ColorAttachment{5}, m_result->validMask)
-        .mapForDraw({
-            {ResolveShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
-            {ResolveShader::ObjectCoordinatesOutput, GL::Framebuffer::ColorAttachment{1}},
-            {ResolveShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{2}},
-            {ResolveShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{3}},
-            {ResolveShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}},
-            {ResolveShader::ValidMaskOutput, GL::Framebuffer::ColorAttachment{5}}
-        })
-        .bind()
-    ;
-
-    m_resolvedBuffer.clearColor(0, 0x00000000_rgbaf);
-    m_resolvedBuffer.clearColor(3, Vector4ui(1));
-    m_resolvedBuffer.clearColor(4, 0x00000000_rgbaf);
-    m_resolvedBuffer.clearColor(5, Vector4ui(6));
-
-    if(m_resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw) != GL::Framebuffer::Status::Complete)
-    {
-        Error{} << "Invalid output framebuffer status:" << m_resolvedBuffer.checkStatus(GL::FramebufferTarget::Draw);
-        std::abort();
-    }
-
-    (*m_resolveShader)
-        .bindRGB(m_msaa_rgb)
-        .bindCoordinates(m_msaa_objectCoordinates)
-        .bindClassIndex(m_msaa_classIndex)
-        .bindInstanceIndex(m_msaa_instanceIndex)
-        .bindNormals(m_msaa_normal)
-    ;
-
-    m_quadMesh.draw(*m_resolveShader);
 
     // Map for CUDA access
     m_result->mapCUDA();

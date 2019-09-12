@@ -221,30 +221,6 @@ TEST_CASE("render")
     Image2D coordImage = ret->objectCoordinates.image({PixelFormat::RGBA8Unorm});
     CHECK(converter->exportToFile(coordImage, "/tmp/stillleben_coords.png"));
 
-    Image2D validImage = ret->validMask.image({PixelFormat::R8UI});
-    {
-        unsigned int nonValid = 0;
-        REQUIRE(validImage.pixelSize() == 1);
-
-        const auto data = validImage.data();
-
-        std::stringstream ss;
-        ss << std::hex << std::setfill('0');
-        for(int i = 0; i < 100; ++i)
-            ss << std::setw(2) << static_cast<unsigned int>(data[i]) << ' ';
-
-        INFO("First pixels: " << ss.str());
-
-        for(int i = 0; i < image.size().product(); ++i)
-        {
-            if(((uint8_t)data[i]) != 255)
-                nonValid++;
-        }
-
-        CHECK(nonValid > 10);
-        CHECK(nonValid < 0.1 * image.size().product());
-    }
-
     Image2D classImage = ret->classIndex.image({PixelFormat::R16UI});
     {
         unsigned int classCount = 0;

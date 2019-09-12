@@ -19,7 +19,6 @@ namespace sl
 
 class BackgroundShader;
 class RenderShader;
-class ResolveShader;
 class Scene;
 
 class RenderPass
@@ -48,6 +47,8 @@ public:
         CUDATexture classIndex;
         CUDATexture instanceIndex;
         CUDATexture normals;
+
+        [[deprecated("valid mask is not used anymore")]]
         CUDATexture validMask;
 
     private:
@@ -63,21 +64,11 @@ private:
     bool m_cuda;
 
     Magnum::GL::Framebuffer m_framebuffer;
-    Magnum::GL::Framebuffer m_resolvedBuffer;
-
-    unsigned int m_msaa_factor = 4;
-    Magnum::GL::MultisampleTexture2D m_msaa_rgb;
-    Magnum::GL::MultisampleTexture2D m_msaa_depth;
-    Magnum::GL::MultisampleTexture2D m_msaa_objectCoordinates;
-    Magnum::GL::MultisampleTexture2D m_msaa_classIndex;
-    Magnum::GL::MultisampleTexture2D m_msaa_instanceIndex;
-    Magnum::GL::MultisampleTexture2D m_msaa_normal;
+    Magnum::GL::Renderbuffer m_depthbuffer;
 
     std::unique_ptr<RenderShader> m_shaderTextured;
     std::unique_ptr<RenderShader> m_shaderVertexColors;
     std::unique_ptr<RenderShader> m_shaderUniform;
-
-    std::unique_ptr<ResolveShader> m_resolveShader;
 
     std::unique_ptr<BackgroundShader> m_backgroundShader;
 

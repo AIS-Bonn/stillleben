@@ -73,7 +73,6 @@ add_library(stillleben SHARED
     src/shaders/brdf_shader.cpp
     src/shaders/cubemap_shader.cpp
     src/shaders/render_shader.cpp
-    src/shaders/resolve_shader.cpp
     ${stillleben_RESOURCES}
 )
 target_link_libraries(stillleben PUBLIC
