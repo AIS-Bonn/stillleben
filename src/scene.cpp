@@ -365,7 +365,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
-    std::uniform_real_distribution<float> dDist{1.0f*minDistVis, 3.0f*minDistVis};
+    std::uniform_real_distribution<float> dDist{0.8f*minDistVis, 2.0f*minDistVis};
 
     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
 
