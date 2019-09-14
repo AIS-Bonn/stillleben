@@ -427,4 +427,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     return m_result;
 }
 
+void RenderPass::setSSAOEnabled(bool enabled)
+{
+    m_ssaoEnabled = enabled;
+}
+
 }

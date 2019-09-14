@@ -1336,6 +1336,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             Returns:
                 RenderPassResult
         )EOS", py::arg("scene"))
+
+        .def_property("ssao_enabled", &sl::RenderPass::ssaoEnabled, &sl::RenderPass::setSSAOEnabled, "SSAO enable")
     ;
 
     py::class_<sl::Animator>(m, "Animator", R"EOS(
