@@ -375,10 +375,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         });
     }
 
+    GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
+
     if(m_ssaoEnabled)
     {
-        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
-
         m_ssaoFramebuffer
             .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_ssaoTexture)
             .mapForDraw({
