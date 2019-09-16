@@ -84,7 +84,6 @@ SSAOShader::SSAOShader()
             2.0f*randomFloat(random) - 1.0f,
             0.0f
         };
-        Debug{} << noiseData[i];
     }
 
     m_noiseTexture = GL::Texture2D{};
