@@ -3,14 +3,6 @@
 build/
 build_debug/
 build_only/
-tmp_install/
-cpp_build/
-stillleben/bin
-stillleben/include
-stillleben/lib
-stillleben/share
-stillleben.egg-info
 __pycache__
-dist/
 doc/_*
 
