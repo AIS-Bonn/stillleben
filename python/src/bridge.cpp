@@ -567,7 +567,7 @@ static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
     return tensor;
 }
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+PYBIND11_MODULE(libstillleben_python, m) {
     m.def("init", &init, "Init without CUDA support");
     m.def("init_cuda", &initCUDA, R"EOS(
         Init with CUDA support.

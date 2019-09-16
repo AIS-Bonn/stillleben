@@ -9,8 +9,8 @@ import sys
 import torch
 import glob
 
-BUILD_PATH = os.path.join(os.getcwd(), 'cpp_build')
-INSTALL_PATH = os.path.join(os.getcwd(), 'stillleben')
+BUILD_PATH = os.path.join(os.getcwd(), 'python', 'cpp_build')
+INSTALL_PATH = os.path.join(os.getcwd(), 'python', 'stillleben')
 
 def build_stillleben():
     os.makedirs(BUILD_PATH, exist_ok=True)
@@ -19,11 +19,25 @@ def build_stillleben():
         'cmake',
         '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
         '-DCMAKE_INSTALL_PREFIX=' + INSTALL_PATH,
+        '-DUSE_RELATIVE_RPATH=ON',
         '-GNinja',
-        '..'
+        '../..'
     ]
 
-    if subprocess.call(cmd, cwd=BUILD_PATH) != 0:
+    env = os.environ.copy()
+    env['CLICOLOR_FORCE'] = '1'
+
+    # are we installing inside anaconda?
+    # if so, try to be helpful.
+    if 'CONDA_PREFIX' in env:
+        cmd.append(f'-DEXTRA_RPATH={env["CONDA_PREFIX"]}/lib')
+
+        if 'CMAKE_PREFIX_PATH' in env:
+            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX'] + ';' + env['CMAKE_PREFIX_PATH']
+        else:
+            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX']
+
+    if subprocess.call(cmd, cwd=BUILD_PATH, env=env) != 0:
         print('Failed to run "{}"'.format(' '.join(cmd)))
 
     make_cmd = [
@@ -31,14 +45,11 @@ def build_stillleben():
         'install',
     ]
 
-    if subprocess.call(make_cmd, cwd=BUILD_PATH) != 0:
+    if subprocess.call(make_cmd, cwd=BUILD_PATH, env=env) != 0:
         raise RuntimeError('Failed to call ninja')
 
-class PytorchCommand(setuptools.Command):
-    """
-    Base Pytorch command to avoid implementing initialize/finalize_options in
-    every subclass
-    """
+# Build all dependent libraries
+class build_deps(setuptools.Command):
     user_options = []
 
     def initialize_options(self):
@@ -47,10 +58,7 @@ class PytorchCommand(setuptools.Command):
     def finalize_options(self):
         pass
 
-# Build all dependent libraries
-class build_deps(PytorchCommand):
     def run(self):
-        print('setup.py::build_deps::run()')
         # Check if you remembered to check out submodules
 
         def check_file(f):
@@ -66,9 +74,7 @@ class build_deps(PytorchCommand):
         build_stillleben()
 
 class install(setuptools.command.install.install):
-
     def run(self):
-        print('setup.py::run()')
         if not self.skip_build:
             self.run_command('build_deps')
 
@@ -79,43 +85,21 @@ def make_relative_rpath(path):
 
 cmdclass = {
     'build_deps': build_deps,
-    'build_ext': BuildExtension,
     'install': install,
 }
-
-if torch.version.cuda is not None:
-    print('CUDA detected!')
-    ExtensionType = CUDAExtension
-    extra_defs = ['-DHAVE_CUDA=1']
-else:
-    print('No CUDA found, interop disabled...')
-    ExtensionType = CppExtension
-    extra_defs = []
 
 setuptools.setup(
     name='stillleben',
     cmdclass=cmdclass,
     packages=['stillleben'],
+    package_dir={'':'python'},
     package_data={
         'stillleben': [
+            '*.so',
             'lib/*.so*',
             'lib/magnum/importers/*',
             'lib/magnum/imageconverters/*',
         ]
     },
-    ext_modules=[
-        ExtensionType(
-            name='stillleben._C',
-            sources=['stillleben/bridge.cpp'],
-            extra_compile_args=[
-                '-I' + os.path.join(os.getcwd(), 'stillleben', 'include'),
-                '-std=c++17',
-            ] + extra_defs,
-            extra_link_args=[
-                os.path.join(os.getcwd(), 'stillleben', 'lib', 'libstillleben.so'),
-                make_relative_rpath('lib')
-            ],
-            depends=glob.glob(os.path.join(os.getcwd(), 'stillleben', 'include', '**'), recursive=True),
-        )
-    ],
+    ext_modules=[],
 )

@@ -7,8 +7,8 @@ import torch # important, otherwise we get undefined references during ._C impor
 import os
 from . import camera_model
 from . import diff
-from ._C import *
-from ._C import _set_install_prefix
+from .lib.libstillleben_python import *
+from .lib.libstillleben_python import _set_install_prefix
 
 __all__ = [
     'init',

@@ -27,14 +27,21 @@ include(${CMAKE_CURRENT_BINARY_DIR}/pytorch_paths.cmake)
 message(STATUS "Found PyTorch ${TORCH_VERSION}.")
 message(STATUS " - CUDA support: ${TORCH_USE_CUDA}")
 
-Python_add_library(stillleben_python MODULE
+add_library(stillleben_python MODULE
     src/bridge.cpp
 )
 target_include_directories(stillleben_python
-    PRIVATE ${TORCH_INCLUDE_DIRS}
+    PRIVATE ${TORCH_INCLUDE_DIRS} ${Python_INCLUDE_DIRS}
 )
 target_link_libraries(stillleben_python
     PUBLIC
-        Python::Python
         stillleben
+)
+
+if(TORCH_USE_CUDA)
+    target_compile_definitions(stillleben_python PRIVATE HAVE_CUDA=1)
+endif()
+
+install(TARGETS stillleben_python
+    LIBRARY DESTINATION lib
 )

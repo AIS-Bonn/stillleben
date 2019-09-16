@@ -18,6 +18,26 @@ else()
 endif()
 
 option(WITH_ALIGN_MESH "Build the align_mesh tool" OFF)
+option(USE_RELATIVE_RPATH "Set rpath for standalone python installation" OFF)
+
+if(USE_RELATIVE_RPATH)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+endif()
+
+set(EXTRA_RPATH "Extra RPATH" CACHE STRING "")
+if(EXTRA_RPATH)
+    list(APPEND CMAKE_INSTALL_RPATH "${EXTRA_RPATH}")
+endif()
+
+# ninja is cool, but suppresses color output
+# https://medium.com/@alasher/colored-c-compiler-output-with-ninja-clang-gcc-10bfe7f2b949
+if(${CMAKE_GENERATOR} STREQUAL "Ninja")
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+       add_compile_options(-fdiagnostics-color=always)
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+       add_compile_options(-fcolor-diagnostics)
+    endif()
+endif()
 
 # Build Corrade & Magnum
 add_subdirectory(contrib)
