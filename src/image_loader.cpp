@@ -142,6 +142,8 @@ void ImageLoader::thread()
     Corrade::Utility::Error errorRedirect{&null};
     Corrade::Utility::Warning warningRedirect{&null};
 
+    unsigned int errorCounter = 0;
+
     while(1)
     {
         // Prevent errors / warnings from piling up
@@ -176,6 +178,10 @@ void ImageLoader::thread()
         auto imageData = importer->image2D(0);
         if(!imageData)
         {
+            errorCounter++;
+            if(errorCounter > 10)
+                fprintf(stderr, "Image error: '%s'\n", null.str().c_str());
+
             sendEmptyResult(std::move(importer));
             continue;
         }
@@ -185,6 +191,8 @@ void ImageLoader::thread()
             m_outputQueue.emplace(std::move(importer), std::move(imageData));
             m_outputCond.notify_all();
         }
+
+        errorCounter = 0;
     }
 }
 
