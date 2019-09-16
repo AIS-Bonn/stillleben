@@ -102,4 +102,12 @@ setuptools.setup(
         ]
     },
     ext_modules=[],
+    options={
+        'build': {
+            'build_base': 'python/py_build'
+        },
+        'sdist': {
+            'dist_dir': 'python/dist'
+        },
+    },
 )

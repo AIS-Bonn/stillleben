@@ -1,5 +1,7 @@
 stillleben.egg-info
 cpp_build
+py_build
+dist
 stillleben/bin
 stillleben/lib
 stillleben/include
