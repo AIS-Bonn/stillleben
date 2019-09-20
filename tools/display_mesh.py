@@ -101,7 +101,7 @@ if __name__ == "__main__":
         help='Render physics debug image with collision wireframes')
     parser.add_argument('--normals', action='store_true',
         help='Display normals')
-    parser.add_argument('--placement', type=str, choices=['center', 'random', 'tabletop'],
+    parser.add_argument('--placement', type=str, choices=['center', 'random', 'tabletop', 'center_random'],
         default='center',
         help='Object placement')
     parser.add_argument('--tabletop', action='store_true',
@@ -216,13 +216,19 @@ if __name__ == "__main__":
 
         scene.add_object(object)
 
-        if args.placement == 'center':
+        if args.placement == 'center' or args.placement == 'center_random':
             pose = torch.eye(4)
 
             if args.rpy:
                 rpy = [ math.pi / 180.0 * float(a) for a in args.rpy.split(',') ]
                 pose[:3,:3] = rpy2r(rpy[0], rpy[1], rpy[2])
                 print(pose[:3,:3])
+
+            if args.placement == 'center_random':
+                q = torch.randn(4)
+                q /= q.norm()
+
+                pose[:3,:3] = sl.quat_to_matrix(q)
 
             pose[2,3] = scene.min_dist_for_object_diameter(mesh.bbox.diagonal)
             object.set_pose(pose)
