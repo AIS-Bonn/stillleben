@@ -33,7 +33,7 @@ def build_stillleben():
         cmd.append(f'-DEXTRA_RPATH={env["CONDA_PREFIX"]}/lib')
 
         if 'CMAKE_PREFIX_PATH' in env:
-            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX'] + ';' + env['CMAKE_PREFIX_PATH']
+            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX'] + ':' + env['CMAKE_PREFIX_PATH']
         else:
             env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX']
 
