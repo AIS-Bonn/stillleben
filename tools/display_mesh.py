@@ -152,6 +152,9 @@ if __name__ == "__main__":
     parser.add_argument('--background-plane-texture', type=str,
         help='Background plane texture')
 
+    parser.add_argument('--tabletop-video', type=str,
+        help='Write tabletop video to this location')
+
     args = parser.parse_args()
 
     sl.init()
@@ -234,19 +237,44 @@ if __name__ == "__main__":
     renderer = sl.RenderPass(shading=args.shading)
 
     if args.placement == 'tabletop':
-        def vis_cb(iteration):
-            result = renderer.render(scene)
-            rgb = result.rgb()
-            rgb = rgb[:,:,:3]
-            rgb_np = rgb.cpu().numpy()
 
-            img = Image.fromarray(rgb_np, mode='RGB')
-            img.save('/tmp/iter{:03}.png'.format(iteration))
+        if args.tabletop_video:
+            import subprocess
+
+            command = [ '/usr/bin/ffmpeg',
+                '-y', # (optional) overwrite output file if it exists
+                '-f', 'rawvideo',
+                '-vcodec','rawvideo',
+                '-s', '640x480', # size of one frame
+                '-pix_fmt', 'rgb24',
+                '-r', '25', # frames per second
+                '-i', '-', # The imput comes from a pipe
+                '-an', # Tells FFMPEG not to expect any audio
+                '-c:v', 'libx264',
+                '-vf', 'fps=25',
+                '-pix_fmt', 'yuv420p',
+                args.tabletop_video ]
+
+            process = subprocess.Popen(command, stdin=subprocess.PIPE)
+
+            def vis_cb(iteration):
+                result = renderer.render(scene)
+                rgb = result.rgb()
+                rgb = rgb[:,:,:3]
+                rgb_np = rgb.cpu().numpy()
+
+                process.stdin.write(rgb_np.tobytes())
+        else:
+            vis_cb = None
 
         s1 = time.time()
-        scene.simulate_tabletop_scene()
+        scene.simulate_tabletop_scene(vis_cb=vis_cb)
         s2 = time.time()
         print('Tabletop sim took {}s'.format(s2-s1))
+
+        if args.tabletop_video:
+            process.stdin.close()
+            process.wait()
 
     print('Resulting poses:')
     for obj in scene.objects:

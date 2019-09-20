@@ -365,7 +365,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
-    std::uniform_real_distribution<float> dDist{0.8f*minDistVis, 2.0f*minDistVis};
+    std::uniform_real_distribution<float> dDist{1.5f*minDistVis, 3.0f*minDistVis};
 
     Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
 
@@ -417,10 +417,16 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
         Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
         obj->setPose(pose);
+
+        obj->rigidBody().setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
     }
 
     // We simulate a strong fake gravity towards p
     const Vector3 gravityCenter = p + 0.1*normal;
+
+    constexpr unsigned int FPS = 25;
+    constexpr float TIME_PER_FRAME = 1.0f / FPS;
+    constexpr unsigned int SUBSTEPS = 4;
 
     const int maxIterations = 100;
     for(int i = 0; i < maxIterations; ++i)
@@ -430,12 +436,22 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
         for(auto& obj : m_objects)
         {
-            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
-            obj->rigidBody().addForce(physx::PxVec3{5.0f * dir});
+            Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
+
+            Magnum::Vector3 dir = diff.normalized();
+
+            float magnitude = 5.0f;
+            if(diff.dot() < 0.03f*0.03f)
+                magnitude = diff.length() / 0.03f;
+
+            obj->rigidBody().addForce(physx::PxVec3{magnitude * dir});
         }
 
-        m_physicsScene->simulate(0.05f);
-        m_physicsScene->fetchResults(true);
+        for(unsigned int i = 0; i < SUBSTEPS; ++i)
+        {
+            m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS);
+            m_physicsScene->fetchResults(true);
+        }
 
         for(auto& obj : m_objects)
         {
@@ -447,16 +463,20 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     for(int i = 0; i < maxIterations; ++i)
     {
         if(visCallback)
-            visCallback(i);
+            visCallback(maxIterations + i);
 
         for(auto& obj : m_objects)
         {
             Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
+            obj->rigidBody().clearForce();
             obj->rigidBody().addForce(physx::PxVec3{0.5f * dir});
         }
 
-        m_physicsScene->simulate(0.05f);
-        m_physicsScene->fetchResults(true);
+        for(unsigned int i = 0; i < SUBSTEPS; ++i)
+        {
+            m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS);
+            m_physicsScene->fetchResults(true);
+        }
 
         for(auto& obj : m_objects)
         {
