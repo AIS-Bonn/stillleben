@@ -13,7 +13,7 @@ build:
     - export LD_LIBRARY_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib:$LD_LIBRARY_PATH
     - python setup.py install
     - python setup.py bdist_wheel
-    - cpp_build/tests/tests
+    - python/cpp_build/tests/tests
     - python tests/test_python.py
   artifacts:
     expire_in: 1 week
