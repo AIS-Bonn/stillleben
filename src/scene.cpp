@@ -441,8 +441,8 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             Magnum::Vector3 dir = diff.normalized();
 
             float magnitude = 5.0f;
-            if(diff.dot() < 0.03f*0.03f)
-                magnitude = diff.length() / 0.03f;
+            if(diff.dot() < 0.05f*0.05f)
+                magnitude = 0.5f * diff.length() / 0.05f;
 
             obj->rigidBody().addForce(physx::PxVec3{magnitude * dir});
         }
@@ -458,6 +458,9 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             obj->updateFromPhysics();
         }
     }
+
+    for(auto& obj : m_objects)
+        obj->rigidBody().wakeUp();
 
     // Simulate further with only gravity
     for(int i = 0; i < maxIterations; ++i)
