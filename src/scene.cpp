@@ -350,24 +350,48 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
     loadPhysics();
 
-    // Choose a plane normal. We want it to lie between [0 -1 0] and [0 0 -1].
-    std::uniform_real_distribution<float> angleDist(30.0*M_PI/180.0, M_PI/2.0 - 30.0*M_PI/180.0);
-    Magnum::Rad angle{angleDist(m_randomGenerator)};
-
-    Magnum::Vector3 normal{0.0f, -Math::sin(angle), -Math::cos(angle)};
-
-    // The plane always goes through a point [0 0 d].
-    float minDistVis = 0.1f;
+    // What kind of objects do we have in the scene?
     float maxDiameter = 0.0f;
+    float minDistVis = 0.05f;
     for(auto& obj : m_objects)
     {
         float diameter = obj->mesh()->bbox().size().length();
         maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
-    std::uniform_real_distribution<float> dDist{1.5f*minDistVis, 3.0f*minDistVis};
 
-    Magnum::Vector3 p{0.0f, 0.0f, dDist(m_randomGenerator)};
+    // Choose a nice camera pose
+    {
+        // We want to look at the origin with a distance d.
+        std::uniform_real_distribution<float> dDist{1.5f*minDistVis, 3.0f*minDistVis};
+
+        float d = dDist(m_randomGenerator);
+
+        // Columns!
+        Magnum::Matrix3 camRot{
+            -Magnum::Vector3::yAxis(),
+            -Magnum::Vector3::zAxis(),
+            Magnum::Vector3::xAxis()
+        };
+
+        Magnum::Matrix4 basePose = Magnum::Matrix4::from(camRot, Magnum::Vector3(-d, 0.0f, 0.0f));
+
+        std::uniform_real_distribution<float> azimuthDist{-M_PI, M_PI};
+        constexpr Magnum::Rad ELEVATION_LIMIT{Magnum::Deg{30.0f}};
+        std::uniform_real_distribution<float> elevationDist{
+            static_cast<float>(ELEVATION_LIMIT), M_PI/2.0f - static_cast<float>(ELEVATION_LIMIT)
+        };
+
+        Magnum::Matrix4 pose =
+            Magnum::Matrix4::rotationZ(Magnum::Rad{azimuthDist(m_randomGenerator)}) *
+            Magnum::Matrix4::rotationY(Magnum::Rad{elevationDist(m_randomGenerator)}) *
+            basePose;
+
+        setCameraPose(pose);
+    }
+
+    // Define the plane. It always goes through the origin.
+    constexpr Magnum::Vector3 normal{0.0f, 0.0f, 1.0f};
 
     // Add it to the physics scene
     Vector3 xAxis = Vector3::xAxis();
@@ -376,7 +400,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     Matrix3 rot{xAxis, yAxis, zAxis};
 
-    Matrix4 T = Matrix4::from(rot, p);
+    Matrix4 T = Matrix4::from(rot, Vector3{});
 
     auto& physics = m_ctx->physxPhysics();
 
@@ -410,7 +434,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     for(auto& obj : m_objects)
     {
         z += maxDiameter;
-        Magnum::Vector3 pos = p + z*normal /*+ Magnum::Vector3{
+        Magnum::Vector3 pos = z*normal /*+ Magnum::Vector3{
             posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
         }*/;
         Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
@@ -421,8 +445,8 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         obj->rigidBody().setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
     }
 
-    // We simulate a strong fake gravity towards p
-    const Vector3 gravityCenter = p + 0.1*normal;
+    // We simulate a strong fake gravity towards the center
+    const Vector3 gravityCenter = 0.1*normal;
 
     constexpr unsigned int FPS = 25;
     constexpr float TIME_PER_FRAME = 1.0f / FPS;
