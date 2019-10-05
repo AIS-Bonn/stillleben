@@ -9,6 +9,7 @@
 
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/Directory.h>
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 
@@ -37,7 +38,6 @@
 
 #include <sstream>
 #include <fstream>
-#include <experimental/filesystem>
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -187,8 +187,6 @@ void Mesh::openFile()
 
 void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 {
-    namespace fs = std::experimental::filesystem;
-
     if(m_physicsLoaded)
         return;
 
@@ -211,12 +209,12 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
         Corrade::Containers::Optional<PhysXOutputBuffer> buf;
 
         // We want to cache the simplified & cooked PhysX mesh.
-        fs::path cacheFile(Corrade::Utility::formatString("{}.mesh{}", m_filename, i));
-        if(fs::exists(cacheFile))
+        std::string cacheFile = Corrade::Utility::formatString("{}.mesh{}", m_filename, i);
+        if(Corrade::Utility::Directory::exists(cacheFile))
         {
-            std::ifstream stream(cacheFile.string(), std::ios::binary);
+            std::ifstream stream(cacheFile, std::ios::binary);
             if(!stream)
-                throw std::runtime_error("Cannot read cache file: " + cacheFile.string());
+                throw std::runtime_error("Cannot read cache file: " + cacheFile);
 
             // copies all data into buffer
             std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(stream), {});
@@ -247,7 +245,7 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
             // In order to make this atomic, we create a temporary file, fill
             // it, and move it to the destination.
-            std::string TEMPLATE = cacheFile.string() + ".temp-XXXXXX";
+            std::string TEMPLATE = cacheFile + ".temp-XXXXXX";
             std::vector<char> filename{TEMPLATE.begin(), TEMPLATE.end()+1};
 
             int fd = mkstemp(filename.data());

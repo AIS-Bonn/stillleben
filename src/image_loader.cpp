@@ -9,8 +9,6 @@
 #include <chrono>
 #include <sstream>
 
-#include <experimental/filesystem>
-
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
@@ -23,6 +21,7 @@
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Utility/String.h>
 #include <Corrade/Utility/DebugStl.h>
+#include <Corrade/Utility/Directory.h>
 
 namespace sl
 {
@@ -51,14 +50,12 @@ ImageLoader::ImageLoader(
  , m_context{context}
  , m_generator{seed}
 {
+    namespace Dir = Corrade::Utility::Directory;
+
     // List files
-    namespace fs = std::experimental::filesystem;
-    fs::directory_iterator it{m_path};
-    fs::directory_iterator end;
-    for(; it != end; ++it)
-    {
-        m_paths.push_back(fs::absolute(it->path()).string());
-    }
+    auto files = Dir::list(m_path, Dir::Flag::SkipDirectories | Dir::Flag::SkipDotAndDotDot);
+    for(const auto& name : files)
+        m_paths.push_back(Dir::join(m_path, name));
 
     for(unsigned int i = 0; i < std::thread::hardware_concurrency(); ++i)
     {
