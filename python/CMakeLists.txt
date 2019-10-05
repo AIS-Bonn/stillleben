@@ -1,14 +1,14 @@
 
-find_package(Python COMPONENTS Interpreter Development)
+find_package(Python3 COMPONENTS Interpreter Development)
 
-if(NOT Python_FOUND)
-    message(WARNING "Could not find Python, not building python bindings")
+if(NOT Python3_FOUND)
+    message(WARNING "Could not find Python 3, not building python bindings")
     return()
 endif()
 
 # execute our helper that gets us the build flags
 execute_process(
-    COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/utils/find_torch.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/utils/find_torch.py
     RESULT_VARIABLE FIND_TORCH_RESULT
     OUTPUT_VARIABLE FIND_TORCH_OUTPUT
 )
@@ -31,7 +31,7 @@ add_library(stillleben_python MODULE
     src/bridge.cpp
 )
 target_include_directories(stillleben_python
-    PRIVATE ${TORCH_INCLUDE_DIRS} ${Python_INCLUDE_DIRS}
+    PRIVATE ${TORCH_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS}
 )
 target_link_libraries(stillleben_python
     PUBLIC
