@@ -1,8 +1,13 @@
 
-import torch
-import torch.utils.cpp_extension
-
+from contextlib import redirect_stdout
+import sys
 from textwrap import dedent
+
+import torch
+
+# Someone in torch.utils.cpp_extension thinks it's fun to print warnings to stdout.
+with redirect_stdout(sys.stderr):
+    import torch.utils.cpp_extension
 
 def generate_paths():
     use_cuda = torch.version.cuda is not None
