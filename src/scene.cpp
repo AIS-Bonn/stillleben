@@ -515,7 +515,11 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
 {
     group.setValue("projection", m_camera->projectionMatrix());
-    group.setValue("cameraPose", m_cameraObject.absoluteTransformationMatrix());
+
+    auto cameraPose = m_cameraObject.transformationMatrix();
+    group.setValue("cameraPosition", cameraPose.translation());
+    group.setValue("cameraRotation", Quaternion::fromMatrix(cameraPose.rotationScaling()));
+
     group.setValue("lightPosition", m_lightPosition);
     group.setValue("ambientLight", m_ambientLight);
     group.setValue("numObjects", m_objects.size());
@@ -542,8 +546,13 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
     if(group.hasValue("projection"))
         m_camera->setProjectionMatrix(group.value<Magnum::Matrix4>("projection"));
 
-    if(group.hasValue("cameraPose"))
-        m_cameraObject.setTransformation(group.value<Magnum::Matrix4>("cameraPose"));
+    if(group.hasValue("cameraPosition") && group.hasValue("cameraRotation"))
+    {
+        m_cameraObject.setTransformation(Matrix4::from(
+            group.value<Magnum::Quaternion>("cameraRotation").toMatrix(),
+            group.value<Magnum::Vector3>("cameraPosition")
+        ));
+    }
 
     if(group.hasValue("lightPosition"))
         m_lightPosition = group.value<Magnum::Vector3>("lightPosition");
