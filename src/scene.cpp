@@ -343,7 +343,7 @@ void Scene::chooseRandomLightPosition()
 
     Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
 
-    setLightPosition(m_camera->cameraMatrix().invertedOrthogonal().transformPoint(lightPositionInCam));
+    setLightPosition(m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam));
 }
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
