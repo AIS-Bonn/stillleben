@@ -245,6 +245,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             shader.get()->disableLightMap();
     }
 
+    Vector3 lightPositionInCam = scene.camera().cameraMatrix().transformPoint(scene.lightPosition());
+
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
     {
@@ -273,7 +275,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(scene.lightPosition())
+                .setLightPosition(lightPositionInCam)
                 .bindDiffuseTexture(*texture)
             ;
 
@@ -294,7 +296,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(scene.lightPosition())
+                .setLightPosition(lightPositionInCam)
                 .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
             ;
 
@@ -320,6 +322,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
                 .setMetalness(object->metalness())
                 .setRoughness(object->roughness())
 
+                .setLightPosition(lightPositionInCam)
+
                 .setStickerProjection(object->stickerViewProjection())
                 .setStickerRange(object->stickerRange())
             ;
@@ -339,7 +343,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             if(drawable->texture())
             {
                 (*m_shaderTextured)
-                    .setLightPosition(scene.lightPosition())
                     .setMeshToObjectMatrix(meshToObject)
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
@@ -351,7 +354,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             else if(drawable->hasVertexColors())
             {
                 (*m_shaderVertexColors)
-                    .setLightPosition(scene.lightPosition())
                     .setMeshToObjectMatrix(meshToObject)
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
@@ -363,7 +365,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             else
             {
                 (*m_shaderUniform)
-                    .setLightPosition(scene.lightPosition())
                     .setMeshToObjectMatrix(meshToObject)
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
