@@ -957,6 +957,14 @@ PYBIND11_MODULE(libstillleben_python, m) {
                 pose (tensor): 4x4 matrix transforming camera coordinates to
                     global coordinates.
         )EOS", py::arg("pose"))
+        .def("set_camera_look_at", wrapShared(&sl::Scene::setCameraLookAt), R"EOS(
+            Sets the camera pose within the scene using lookAt parameters.
+
+            Args:
+                position (tensor): 3D position vector
+                look_at (tensor): 3D lookAt vector
+                up (tensor): 3D up vector (defaults to Z axis)
+        )EOS", py::arg("position"), py::arg("look_at"), py::arg("up")=torch::tensor({0.0, 0.0, 1.0}))
 
         .def("set_camera_intrinsics", &sl::Scene::setCameraIntrinsics, R"EOS(
             Set the camera intrinsics assuming a pinhole camera with focal

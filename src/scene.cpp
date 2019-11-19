@@ -81,6 +81,18 @@ void Scene::setCameraPose(const Magnum::Matrix4& pose)
     m_cameraObject.setTransformation(pose);
 }
 
+void Scene::setCameraLookAt(const Magnum::Vector3& position, const Magnum::Vector3& lookAt, const Magnum::Vector3& up)
+{
+    // Magnum::Matrix4::lookAt assumes a -Z camera, so do things ourselves...
+    const auto zAxis = (lookAt - position).normalized();
+    const auto xAxis = Magnum::Math::cross(zAxis, up).normalized();
+    const auto yAxis = Magnum::Math::cross(zAxis, xAxis).normalized();
+
+    setCameraPose(
+        Magnum::Matrix4::from(Magnum::Matrix3{xAxis, yAxis, zAxis}, position)
+    );
+}
+
 Magnum::Matrix4 Scene::cameraPose() const
 {
     return m_cameraObject.absoluteTransformationMatrix();

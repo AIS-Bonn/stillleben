@@ -90,6 +90,7 @@ public:
     //! @name Camera and viewport settings
     //@{
     void setCameraPose(const Magnum::Matrix4& pose);
+    void setCameraLookAt(const Magnum::Vector3& position, const Magnum::Vector3& lookAt, const Magnum::Vector3& up = Magnum::Vector3::zAxis());
     Magnum::Matrix4 cameraPose() const;
 
     void setCameraIntrinsics(float fx, float fy, float cx, float cy);
