@@ -1307,6 +1307,19 @@ PYBIND11_MODULE(libstillleben_python, m) {
                     tensor: (H x W x 4) float tensor with normals.
             )EOS")
 
+        .def("cam_coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
+                return readXYZWTensor(result->camCoordinates);
+            }, R"EOS(
+                Read dense coordinate map. Each pixel contains the coordinates
+                of the 3D point in camera space as 4D homogenous coordinates.
+
+                If CUDA support is active, the tensor will reside on the GPU
+                which was used during rendering.
+
+                Returns:
+                    tensor: (H x W x 4) float tensor (x, y, z, 1)
+            )EOS")
+
     ;
 
     py::class_<sl::RenderPass, ContextSharedPtr<sl::RenderPass>>(m, "RenderPass", R"EOS(
