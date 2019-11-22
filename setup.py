@@ -12,12 +12,14 @@ import glob
 BUILD_PATH = os.path.join(os.getcwd(), 'python', 'cpp_build')
 INSTALL_PATH = os.path.join(os.getcwd(), 'python', 'stillleben')
 
+DEBUG = int(os.environ.get('DEBUG', '0')) == 1
+
 def build_stillleben():
     os.makedirs(BUILD_PATH, exist_ok=True)
 
     cmd = [
         'cmake',
-        '-DCMAKE_BUILD_TYPE=RelWithDebInfo',
+        '-DCMAKE_BUILD_TYPE={}'.format('Debug' if DEBUG else 'RelWithDebInfo'),
         '-DCMAKE_INSTALL_PREFIX=' + INSTALL_PATH,
         '-DUSE_RELATIVE_RPATH=ON',
         '-GNinja',
@@ -88,6 +90,8 @@ cmdclass = {
     'install': install,
 }
 
+MAGNUM_SUFFIX = '-d' if DEBUG else ''
+
 setuptools.setup(
     name='stillleben',
     cmdclass=cmdclass,
@@ -97,8 +101,8 @@ setuptools.setup(
         'stillleben': [
             '*.so',
             'lib/*.so*',
-            'lib/magnum/importers/*',
-            'lib/magnum/imageconverters/*',
+            'lib/magnum{}/importers/*'.format(MAGNUM_SUFFIX),
+            'lib/magnum{}/imageconverters/*'.format(MAGNUM_SUFFIX),
         ]
     },
     ext_modules=[],
