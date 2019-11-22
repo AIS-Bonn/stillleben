@@ -153,8 +153,8 @@ public:
     physx::PxDefaultAllocator pxAllocator;
     physx::PxDefaultErrorCallback pxErrorCallback;
     PhysXHolder<physx::PxFoundation> pxFoundation;
-    PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPvdTransport> pxPvdTransport;
+    PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPhysics> pxPhysics;
     PhysXHolder<physx::PxCooking> pxCooking;
 
