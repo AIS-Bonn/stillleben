@@ -88,6 +88,7 @@ add_library(stillleben SHARED
     src/shaders/render_shader.cpp
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
+    src/utils/os.cpp
     ${stillleben_RESOURCES}
 )
 target_include_directories(stillleben PUBLIC

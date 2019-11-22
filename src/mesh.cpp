@@ -12,6 +12,7 @@
 #include <Corrade/Utility/Directory.h>
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
+#include <Corrade/Utility/MurmurHash2.h>
 
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -43,49 +44,113 @@
 #include <sys/stat.h>
 
 #include "physx_impl.h"
+#include "utils/os.h"
 
 using namespace Magnum;
 
 namespace sl
 {
 
-/**
- * @brief Create PhysX collision shape from Trade::MeshData3D
- * */
-static Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Trade::MeshData3D& meshData)
+namespace
 {
-    if(meshData.primitive() != MeshPrimitive::Triangles)
+    /**
+     * @brief Create PhysX collision shape from Trade::MeshData3D
+     * */
+    Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Trade::MeshData3D& meshData)
     {
-        Error{} << "Cannot load collision mesh, skipping";
-        return {};
+        if(meshData.primitive() != MeshPrimitive::Triangles)
+        {
+            Error{} << "Cannot load collision mesh, skipping";
+            return {};
+        }
+
+        if(meshData.positionArrayCount() > 1)
+        {
+            Warning{} << "Mesh has more than one position array, this is unsupported";
+        }
+
+        Corrade::Containers::Optional<PhysXOutputBuffer> out;
+
+        out.emplace();
+
+        static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
+
+        physx::PxConvexMeshDesc meshDesc;
+        meshDesc.points.count = meshData.positions(0).size();
+        meshDesc.points.stride = sizeof(physx::PxVec3);
+        meshDesc.points.data = meshData.positions(0).data();
+        meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
+
+        physx::PxConvexMeshCookingResult::Enum result;
+        bool status = cooking.cookConvexMesh(meshDesc, *out, &result);
+        if(!status)
+        {
+            Error{} << "PhysX cooking failed, ignoring mesh";
+            return {};
+        }
+
+        return out;
     }
 
-    if(meshData.positionArrayCount() > 1)
+    using MeshHash = Corrade::Utility::MurmurHash2;
+
+    template<class T>
+    MeshHash::Digest hashVector(const std::vector<T>& vec)
     {
-        Warning{} << "Mesh has more than one position array, this is unsupported";
+        MeshHash hash{}; // use default seed
+        const auto& view = Corrade::Containers::arrayCast<const char>(
+            Corrade::Containers::arrayView(vec)
+        );
+        return hash(view.data(), view.size());
     }
 
-    Corrade::Containers::Optional<PhysXOutputBuffer> out;
-
-    out.emplace();
-
-    static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
-
-    physx::PxConvexMeshDesc meshDesc;
-    meshDesc.points.count = meshData.positions(0).size();
-    meshDesc.points.stride = sizeof(physx::PxVec3);
-    meshDesc.points.data = meshData.positions(0).data();
-    meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
-
-    physx::PxConvexMeshCookingResult::Enum result;
-    bool status = cooking.cookConvexMesh(meshDesc, *out, &result);
-    if(!status)
+    Corrade::Containers::Optional<std::vector<uint8_t>> readCacheFile(const std::string& cacheFile, const std::string& sourceFile, const Magnum::Trade::MeshData3D& meshData)
     {
-        Error{} << "PhysX cooking failed, ignoring mesh";
-        return {};
-    }
+        auto readHash = [](std::istream& stream) -> Corrade::Containers::Optional<MeshHash::Digest>{
+            std::array<char, MeshHash::DigestSize> hashBytes;
+            stream.read(hashBytes.data(), hashBytes.size());
+            if(stream.gcount() != hashBytes.size())
+                return {};
 
-    return out;
+            return MeshHash::Digest::fromByteArray(hashBytes.data());
+        };
+
+        if(!Corrade::Utility::Directory::exists(cacheFile))
+            return {};
+
+        if(os::modificationTime(cacheFile) <= os::modificationTime(sourceFile))
+        {
+            Debug{} << "Cache file is stale";
+            return {};
+        }
+
+        std::ifstream stream(cacheFile, std::ios::binary);
+        if(!stream)
+            return {};
+
+        auto cacheVertexHash = readHash(stream);
+        auto cacheIndicesHash = readHash(stream);
+
+        auto vertexHash = hashVector(meshData.positions(0));
+        if(vertexHash != cacheVertexHash)
+        {
+            Debug{} << "Vertex hash does not match: cached=" << cacheVertexHash << ", actual=" << vertexHash;
+            return {};
+        }
+
+        auto indicesHash = hashVector(meshData.indices());
+        if(indicesHash != cacheIndicesHash)
+        {
+            Debug{} << "Index hash does not match: cached=" << cacheIndicesHash << ", actual=" << indicesHash;
+            return {};
+        }
+
+        // copies all data into buffer
+        // TODO: Is this inefficient?
+        std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(stream), {});
+
+        return buffer;
+    }
 }
 
 Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx)
@@ -210,19 +275,17 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
         // We want to cache the simplified & cooked PhysX mesh.
         std::string cacheFile = Corrade::Utility::formatString("{}.mesh{}", m_filename, i);
-        if(Corrade::Utility::Directory::exists(cacheFile))
+
+        auto buffer = readCacheFile(cacheFile, m_filename, *meshData);
+
+        if(buffer)
         {
-            std::ifstream stream(cacheFile, std::ios::binary);
-            if(!stream)
-                throw std::runtime_error("Cannot read cache file: " + cacheFile);
-
-            // copies all data into buffer
-            std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(stream), {});
-
-            buf = PhysXOutputBuffer{std::move(buffer)};
+            Debug{} << "Using mesh cache file";
+            buf = PhysXOutputBuffer{std::move(*buffer)};
         }
         else
         {
+            Debug{} << "Simplifying mesh and writing cache file...";
             Trade::MeshData3D simplifiedMesh{
                 MeshPrimitive::Triangles,
                 meshData->indices(),
@@ -259,6 +322,26 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
             // Make it world-readable
             fchmod(fd, 0644);
+
+            // Write hashes
+            MeshHash::Digest vertexHash = hashVector(meshData->positions(0));
+            vertexHash.byteArray();
+            if(write(fd, vertexHash.byteArray(), MeshHash::DigestSize) != MeshHash::DigestSize)
+            {
+                throw std::runtime_error(Corrade::Utility::formatString(
+                    "Could not write to file {}: {}",
+                    filename.data(), strerror(errno)
+                ));
+            }
+
+            MeshHash::Digest indicesHash = hashVector(meshData->indices());
+            if(write(fd, indicesHash.byteArray(), MeshHash::DigestSize) != MeshHash::DigestSize)
+            {
+                throw std::runtime_error(Corrade::Utility::formatString(
+                    "Could not write to file {}: {}",
+                    filename.data(), strerror(errno)
+                ));
+            }
 
             if(write(fd, buf->data(), buf->size()) != static_cast<ssize_t>(buf->size()))
             {
