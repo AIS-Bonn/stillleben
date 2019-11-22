@@ -106,11 +106,12 @@ public:
         pxPvd.reset(
             PxCreatePvd(*pxFoundation)
         );
-        PhysXHolder<physx::PxPvdTransport> transport{
+        pxPvdTransport.reset(
+//             physx::PxDefaultPvdFileTransportCreate("/tmp/test.pvd")
             physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10)
-        };
+        );
         pxPvd->connect(
-            *transport,
+            *pxPvdTransport,
             physx::PxPvdInstrumentationFlag::eALL
         );
 
@@ -153,6 +154,7 @@ public:
     physx::PxDefaultErrorCallback pxErrorCallback;
     PhysXHolder<physx::PxFoundation> pxFoundation;
     PhysXHolder<physx::PxPvd> pxPvd;
+    PhysXHolder<physx::PxPvdTransport> pxPvdTransport;
     PhysXHolder<physx::PxPhysics> pxPhysics;
     PhysXHolder<physx::PxCooking> pxCooking;
 
