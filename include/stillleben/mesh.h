@@ -45,6 +45,7 @@ class PhysXHolder;
 class Mesh
 {
 public:
+    // Some imports from Corrade to keep the types shorter
     template<class T>
     using Array = Corrade::Containers::Array<T>;
 
@@ -53,6 +54,20 @@ public:
 
     template<class T>
     using Pointer = Corrade::Containers::Pointer<T>;
+
+    // Since Magnum::Trade does not support the metal/roughness flow, we do it
+    // ourselves...
+    class MetallicRoughnessMaterialData : public Magnum::Trade::AbstractMaterialData
+    {
+    public:
+        static constexpr Magnum::UnsignedByte MaterialType = 100;
+
+        MetallicRoughnessMaterialData(
+            Flags flags, Magnum::Trade::MaterialAlphaMode alphaMode,
+            Magnum::Float alphaMask, const void* importerState = nullptr
+        ) : AbstractMaterialData(static_cast<Magnum::Trade::MaterialType>(MaterialType), flags, alphaMode, alphaMask, importerState)
+        {}
+    };
 
     enum class MeshFlag
     {
