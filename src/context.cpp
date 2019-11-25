@@ -80,23 +80,12 @@ public:
         if(!installPrefix.empty())
         {
 #ifndef NDEBUG
-            importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum-d/importers");
-            imageConverterManager = std::make_unique<ImageConverterManager>(installPrefix + "/lib/magnum-d/imageconverters");
+            importerPath = installPrefix + "/lib/magnum-d/importers";
+            imageConverterPath = installPrefix + "/lib/magnum-d/imageconverters";
 #else
-            importerManager = std::make_unique<ImporterManager>(installPrefix + "/lib/magnum/importers");
-            imageConverterManager = std::make_unique<ImageConverterManager>(installPrefix + "/lib/magnum/imageconverters");
+            importerPath = installPrefix + "/lib/magnum/importers";
+            imageConverterPath = installPrefix + "/lib/magnum/imageconverters";
 #endif
-        }
-        else
-        {
-            importerManager = std::make_unique<ImporterManager>();
-            imageConverterManager = std::make_unique<ImageConverterManager>();
-        }
-
-        auto loadState = importerManager->load("AssimpImporter");
-        if(loadState != Corrade::PluginManager::LoadState::Loaded)
-        {
-            throw std::runtime_error("Could not load AssimpImporter plugin");
         }
 
         // Setup PhysX stuff
@@ -144,10 +133,6 @@ public:
 
     std::unique_ptr<Platform::GLContext> gl_context;
 
-    std::unique_ptr<ImporterManager> importerManager;
-    std::unique_ptr<ImageConverterManager> imageConverterManager;
-    std::mutex importerManagerMutex;
-
     DebugTools::ResourceManager resourceManager;
 
     physx::PxDefaultAllocator pxAllocator;
@@ -159,6 +144,9 @@ public:
     PhysXHolder<physx::PxCooking> pxCooking;
 
     bool cudaDebug = false;
+
+    std::string importerPath;
+    std::string imageConverterPath;
 };
 
 Context::Context(const std::string& installPrefix)
@@ -486,23 +474,10 @@ bool Context::makeCurrent()
 #endif
 }
 
-Corrade::Containers::Pointer<Context::Importer> Context::instantiateImporter(const std::string& name)
-{
-    std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
-    return m_d->importerManager->loadAndInstantiate(name);
-}
-
-Corrade::Containers::Pointer<Context::ImageConverter> Context::instantiateImageConverter(const std::string& name)
-{
-    std::unique_lock<std::mutex> lock(m_d->importerManagerMutex);
-    return m_d->imageConverterManager->loadAndInstantiate(name);
-}
-
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
 {
-    std::unique_ptr<Trade::AbstractImporter> importer{
-        m_d->importerManager->loadAndInstantiate("AnyImageImporter")
-    };
+    Corrade::PluginManager::Manager<Trade::AbstractImporter> manager(importerPluginPath());
+    auto importer = manager.loadAndInstantiate("AnyImageImporter");
 
     std::ostringstream ss;
     Error redirectTo{&ss};
@@ -542,9 +517,8 @@ Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
 
 Magnum::GL::Texture2D Context::loadTexture2D(const std::string& path)
 {
-    std::unique_ptr<Trade::AbstractImporter> importer{
-        m_d->importerManager->loadAndInstantiate("AnyImageImporter")
-    };
+    Corrade::PluginManager::Manager<Trade::AbstractImporter> manager(importerPluginPath());
+    auto importer = manager.loadAndInstantiate("AnyImageImporter");
 
     std::ostringstream ss;
     Error redirectTo{&ss};
@@ -593,5 +567,17 @@ physx::PxCooking& Context::physxCooking()
 {
     return *m_d->pxCooking;
 }
+
+std::string Context::importerPluginPath() const
+{
+    return m_d->importerPath;
+}
+
+std::string Context::imageConverterPluginPath() const
+{
+    return m_d->imageConverterPath;
+}
+
+
 
 }

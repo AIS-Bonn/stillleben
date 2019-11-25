@@ -15,12 +15,13 @@
 
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/PluginManager/PluginManager.h>
 
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Image.h>
-
 #include <Magnum/Trade/ImageData.h>
+#include <Magnum/Trade/AbstractImporter.h>
 
 namespace Magnum
 {
@@ -85,6 +86,8 @@ private:
 
     std::shared_ptr<sl::Context> m_context;
 
+    using ImporterManager = Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>;
+    Corrade::Containers::Pointer<ImporterManager> m_converterManager;
     std::vector<std::thread> m_threads;
 
     std::mt19937 m_generator;

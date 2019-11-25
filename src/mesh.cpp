@@ -13,6 +13,7 @@
 #include <Corrade/Utility/Format.h>
 #include <Corrade/Utility/FormatStl.h>
 #include <Corrade/Utility/MurmurHash2.h>
+#include <Corrade/Utility/String.h>
 
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/TextureFormat.h>
@@ -176,33 +177,44 @@ void Mesh::load(std::size_t maxPhysicsTriangles, bool visual, bool physics)
 
 void Mesh::openFile()
 {
-    if(m_importer)
+    if(m_opened)
         return;
 
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(m_ctx->importerPluginPath());
+    Pointer<Magnum::Trade::AbstractImporter> importer;
+
     // Load a scene importer plugin
-    m_importer = m_ctx->instantiateImporter();
-    if(!m_importer)
-        std::abort();
-
-    // Set up postprocess options if using AssimpImporter
-    auto group = m_importer->configuration().group("postprocess");
-
-    if(group)
+    if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
     {
-        group->setValue("JoinIdenticalVertices", true);
-        group->setValue("Triangulate", true);
-        group->setValue("GenSmoothNormals", true);
-        group->setValue("PreTransformVertices", true);
-        group->setValue("SortByPType", true);
-        group->setValue("GenUVCoords", true);
-        group->setValue("TransformUVCoords", true);
+        importer = manager.loadAndInstantiate("TinyGltfImporter");
+        if(!importer)
+            std::abort();
+    }
+    else
+    {
+        importer = manager.loadAndInstantiate("AssimpImporter");
+        if(!importer)
+            std::abort();
+
+        // Set up postprocess options if using AssimpImporter
+        auto group = importer->configuration().group("postprocess");
+        if(group)
+        {
+            group->setValue("JoinIdenticalVertices", true);
+            group->setValue("Triangulate", true);
+            group->setValue("GenSmoothNormals", true);
+            group->setValue("PreTransformVertices", true);
+            group->setValue("SortByPType", true);
+            group->setValue("GenUVCoords", true);
+            group->setValue("TransformUVCoords", true);
+        }
     }
 
     // Load file
     {
-        if(!m_importer->openFile(m_filename))
+        if(!importer->openFile(m_filename))
         {
-            m_importer.reset();
+            importer.reset();
             throw LoadException("Could not load file: " + m_filename);
         }
     }
@@ -210,16 +222,54 @@ void Mesh::openFile()
     // Load pretransform, if available
     loadPretransform(m_filename + ".pretransform");
 
-    // Compute bounding box
-    m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
-    m_meshNormals = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
-    m_meshFaces = Containers::Array<Containers::Optional<std::vector<UnsignedInt>>>{m_importer->mesh3DCount()};
-    m_meshColors = Containers::Array<Containers::Optional<std::vector<Color4>>>{m_importer->mesh3DCount()};
-
-
-    for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
+    // Load scene data
+    if(importer->defaultScene() != -1)
     {
-        Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
+        m_sceneData = importer->scene(importer->defaultScene());
+    }
+
+    // Load objects
+    m_objectData = ObjectDataArray{importer->object3DCount()};
+    for(UnsignedInt i = 0; i < importer->object3DCount(); ++i)
+        m_objectData[i] = importer->object3D(i);
+
+    // Load meshes
+    m_meshData = Array<Optional<Magnum::Trade::MeshData3D>>{importer->mesh3DCount()};
+    for(UnsignedInt i = 0; i < importer->mesh3DCount(); ++i)
+        m_meshData[i] = importer->mesh3D(i);
+
+    // Load textures
+    m_textureData = Array<Optional<Magnum::Trade::TextureData>>{importer->textureCount()};
+    for(UnsignedInt i = 0; i < importer->textureCount(); ++i)
+        m_textureData[i] = importer->texture(i);
+
+    // Load images
+    m_imageData = ImageDataArray{importer->image2DCount()};
+    for(UnsignedInt i = 0; i < importer->image2DCount(); ++i)
+        m_imageData[i] = importer->image2D(i);
+
+    // Load materials.
+    m_materials = Containers::Array<Containers::Optional<Trade::PhongMaterialData>>{importer->materialCount()};
+    for(UnsignedInt i = 0; i != importer->materialCount(); ++i)
+    {
+        std::unique_ptr<Trade::AbstractMaterialData> materialData = importer->material(i);
+        if(!materialData || materialData->type() != Trade::MaterialType::Phong)
+        {
+            Warning{} << "Cannot load material, skipping";
+            continue;
+        }
+
+        m_materials[i] = std::move(static_cast<Trade::PhongMaterialData&>(*materialData));
+    }
+
+    // Compute bounding box
+    m_meshPoints = PointArray{importer->mesh3DCount()};
+    m_meshNormals = NormalArray{importer->mesh3DCount()};
+    m_meshFaces = FaceArray{importer->mesh3DCount()};
+    m_meshColors = ColorArray{importer->mesh3DCount()};
+    for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
+    {
+        auto& meshData = m_meshData[i];
         if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
             continue; // we print a proper warning in loadVisual()
 
@@ -266,14 +316,10 @@ void Mesh::openFile()
     // Update the bounding box
     {
         // Inspect the scene if available
-        if(m_importer->defaultScene() != -1)
+        if(m_sceneData)
         {
-            auto sceneData = m_importer->scene(m_importer->defaultScene());
-            if(!sceneData)
-                throw Exception("Could not load scene data");
-
             // Recursively inspect all children
-            for(UnsignedInt objectId : sceneData->children3D())
+            for(UnsignedInt objectId : m_sceneData->children3D())
                 updateBoundingBox(Matrix4{}, objectId);
         }
         else if(!m_meshPoints.empty() && m_meshPoints[0])
@@ -282,6 +328,8 @@ void Mesh::openFile()
             updateBoundingBox(Matrix4{}, 0);
         }
     }
+
+    m_opened = true;
 }
 
 void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
@@ -289,16 +337,16 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
     if(m_physicsLoaded)
         return;
 
-    if(!m_importer)
-        throw std::logic_error("You need to call openFile() first");
+    if(m_meshData.empty())
+        throw std::runtime_error{"No mesh found"};
 
     // Simplify meshes if possible
-    m_simplifiedMeshes = SimplifiedMeshArray{m_importer->mesh3DCount()};
-    m_physXBuffers = CookedPhysXMeshArray{m_importer->mesh3DCount()};
-    m_physXMeshes = PhysXMeshArray{m_importer->mesh3DCount()};
-    for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
+    m_simplifiedMeshes = SimplifiedMeshArray{m_meshData.size()};
+    m_physXBuffers = CookedPhysXMeshArray{m_meshData.size()};
+    m_physXMeshes = PhysXMeshArray{m_meshData.size()};
+    for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
-        Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
+        auto& meshData = m_meshData[i];
         if(!meshData || meshData->primitive() != MeshPrimitive::Triangles)
         {
             Warning{} << "Cannot load the mesh, skipping";
@@ -372,21 +420,21 @@ void Mesh::loadVisual()
     if(m_visualLoaded)
         return;
 
-    if(!m_importer)
-        throw std::logic_error("You need to call openFile() first");
+    if(m_meshData.empty())
+        throw std::runtime_error{"No mesh found"};
 
     // Load all textures. Textures that fail to load will be NullOpt.
-    m_textures = Containers::Array<Containers::Optional<GL::Texture2D>>{m_importer->textureCount()};
-    for(UnsignedInt i = 0; i != m_importer->textureCount(); ++i)
+    m_textures = Containers::Array<Containers::Optional<GL::Texture2D>>{m_textureData.size()};
+    for(UnsignedInt i = 0; i != m_textureData.size(); ++i)
     {
-        Containers::Optional<Trade::TextureData> textureData = m_importer->texture(i);
+        const auto& textureData = m_textureData[i];
         if(!textureData || textureData->type() != Trade::TextureData::Type::Texture2D)
         {
             Warning{} << "Cannot load texture properties, skipping";
             continue;
         }
 
-        Containers::Optional<Trade::ImageData2D> imageData = m_importer->image2D(textureData->image());
+        const auto& imageData = m_imageData[textureData->image()];
         GL::TextureFormat format;
         if(imageData && imageData->format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
@@ -411,26 +459,12 @@ void Mesh::loadVisual()
         m_textures[i] = std::move(texture);
     }
 
-    // Load materials.
-    m_materials = Containers::Array<Containers::Optional<Trade::PhongMaterialData>>{m_importer->materialCount()};
-    for(UnsignedInt i = 0; i != m_importer->materialCount(); ++i)
-    {
-        std::unique_ptr<Trade::AbstractMaterialData> materialData = m_importer->material(i);
-        if(!materialData || materialData->type() != Trade::MaterialType::Phong)
-        {
-            Warning{} << "Cannot load material, skipping";
-            continue;
-        }
-
-        m_materials[i] = std::move(static_cast<Trade::PhongMaterialData&>(*materialData));
-    }
-
     // Load all meshes. Meshes that fail to load will be NullOpt.
-    m_meshes = Containers::Array<std::shared_ptr<GL::Mesh>>{m_importer->mesh3DCount()};
-    m_meshFlags = Containers::Array<MeshFlags>{m_importer->mesh3DCount()};
-    for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
+    m_meshes = MeshArray{m_meshData.size()};
+    m_meshFlags = Containers::Array<MeshFlags>{m_meshData.size()};
+    for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
-        Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
+        const auto& meshData = m_meshData[i];
         if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
         {
             Warning{} << "Cannot load the mesh, skipping";
@@ -460,12 +494,12 @@ void Mesh::loadVisual()
 
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
-
-        // Save the meshData for the first sub-mesh, since we will need it in
-        // updateVertex*()
-        if(i == 0)
-            m_meshData = std::move(meshData);
     }
+
+    // Nobody needs these anymore
+    m_meshData = {};
+    m_textureData = {};
+    m_imageData = {};
 
     m_visualLoaded = true;
 }
@@ -488,27 +522,29 @@ void Mesh::updateVertexColors(
 
 void Mesh::recomputeNormals()
 {
-    if(!m_meshData)
+    if(m_meshData.size() != 1)
         throw Exception{"Mesh::recomputeNormals() assumes a single sub-mesh"};
 
-    std::vector<std::vector<int>> vertexFacesMap(m_meshData->positions(0).size()); // Faces a vertex is associated with.
-    std::vector<float> facesArea(m_meshData->indices().size());
-    std::vector<Vector3> facesNormal(m_meshData->indices().size());
+    auto& meshData = m_meshData.front();
 
-    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
+    std::vector<std::vector<int>> vertexFacesMap(meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<float> facesArea(meshData->indices().size());
+    std::vector<Vector3> facesNormal(meshData->indices().size());
+
+    for(std::size_t i = 0; i < meshData->indices().size(); i+=3)
     {
         auto face = i / 3;
-        auto& vertexOne = m_meshData->indices()[i ];
-        auto& vertexTwo = m_meshData->indices()[i+1];
-        auto& vertexThree = m_meshData->indices()[i+2];
+        auto& vertexOne = meshData->indices()[i ];
+        auto& vertexTwo = meshData->indices()[i+1];
+        auto& vertexThree = meshData->indices()[i+2];
         vertexFacesMap[vertexOne].push_back(face);
         vertexFacesMap[vertexTwo ].push_back(face);
         vertexFacesMap[vertexThree].push_back(face);
 
         // area of the face
-        Vector3 v1 = m_meshData->positions(0)[vertexOne];
-        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
-        Vector3 v3 = m_meshData->positions(0)[vertexThree];
+        Vector3 v1 = meshData->positions(0)[vertexOne];
+        Vector3 v2 = meshData->positions(0)[vertexTwo];
+        Vector3 v3 = meshData->positions(0)[vertexThree];
 
         auto v1v2 = v1 - v2;
         auto v1v3 = v1 - v3;
@@ -533,17 +569,17 @@ void Mesh::recomputeNormals()
 
         normal = normal.normalized();
 
-        Vector3& oldNormal = m_meshData->normals(0)[i];
+        Vector3& oldNormal = meshData->normals(0)[i];
         oldNormal = normal;
     }
 }
 
 void Mesh::recompileMesh()
 {
-    if(!m_meshData)
+    if(m_meshData.size() != 1)
         throw Exception{"Mesh::recompileMesh() assumes a single sub-mesh"};
 
-    *m_meshes[0] = MeshTools::compile(*m_meshData);
+    *m_meshes[0] = MeshTools::compile(*m_meshData.front());
 
     // add an index to each vertex in the mesh
     {
@@ -560,15 +596,17 @@ void Mesh::updateVertexPositionsAndColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
 )
 {
-    if(m_meshPoints.size() != 1 || !m_meshData)
+    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
         throw Exception{"Mesh::updateVertexPositionsAndColors() assumes a single sub-mesh"};
+
+    auto& meshData = m_meshData.front();
 
     // update
     if(!positionsUpdate.empty())
     {
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
-            Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
+            Vector3& point = meshData->positions(0)[verticesIndex[vi] - 1];
             Vector3 update = positionsUpdate[vi];
             point = point + update;
         }
@@ -581,15 +619,15 @@ void Mesh::updateVertexPositionsAndColors(
     {
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
-            Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
+            Color4& color = meshData->colors(0)[verticesIndex[vi] - 1];
             Color4 cUpdate = colorsUpdate[vi];
             color = color + cUpdate;
         }
     }
 
-    m_meshColors[0] = m_meshData->colors(0);
-    m_meshPoints[0] = m_meshData->positions(0);
-    m_meshNormals[0] = m_meshData->normals(0);
+    m_meshColors[0] = meshData->colors(0);
+    m_meshPoints[0] = meshData->positions(0);
+    m_meshNormals[0] = meshData->normals(0);
 
     recompileMesh();
 }
@@ -598,18 +636,20 @@ void Mesh::setVertexPositions(
     const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
 )
 {
-    if(m_meshPoints.size() != 1 || !m_meshData)
+    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
         throw Exception{"Mesh::setVertexPositions() assumes a single sub-mesh"};
 
-    if(m_meshData->positions(0).size() != newVertices.size())
+    auto& meshData = m_meshData.front();
+
+    if(meshData->positions(0).size() != newVertices.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
 
-    std::copy(newVertices.begin(), newVertices.end(), m_meshData->positions(0).begin());
+    std::copy(newVertices.begin(), newVertices.end(), meshData->positions(0).begin());
 
     recomputeNormals();
 
-    m_meshPoints[0] = m_meshData->positions(0);
-    m_meshNormals[0] = m_meshData->normals(0);
+    m_meshPoints[0] = meshData->positions(0);
+    m_meshNormals[0] = meshData->normals(0);
 
     recompileMesh();
 }
@@ -618,21 +658,23 @@ void Mesh::setVertexColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
 )
 {
-    if(m_meshPoints.size() != 1 || !m_meshData)
+    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
         throw Exception{"Mesh::setVertexColors() assumes a single sub-mesh"};
 
-    if(m_meshData->colorArrayCount() == 0)
+    auto& meshData = m_meshData.front();
+
+    if(meshData->colorArrayCount() == 0)
     {
         throw Exception("MeshData does not contain colors attribute."
             "This could happend if the mesh file does not contain per vertex coloring.");
     }
 
-    if(m_meshData->positions(0).size() != newColors.size())
+    if(meshData->positions(0).size() != newColors.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
 
-    std::copy(newColors.begin(), newColors.end(), m_meshData->colors(0).begin());
+    std::copy(newColors.begin(), newColors.end(), meshData->colors(0).begin());
 
-    m_meshColors[0] = m_meshData->colors(0);
+    m_meshColors[0] = meshData->colors(0);
 
     recompileMesh();
 }
@@ -734,7 +776,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
 
 void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int meshObjectIdx)
 {
-    std::unique_ptr<Trade::ObjectData3D> objectData = m_importer->object3D(meshObjectIdx);
+    const auto& objectData = m_objectData[meshObjectIdx];
     if(!objectData)
         return;
 

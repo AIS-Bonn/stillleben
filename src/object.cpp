@@ -77,15 +77,9 @@ void Object::populateParts()
     m_meshObject.setTransformation(m_mesh->pretransform());
 
     // Load the scene
-    auto& importer = m_mesh->importer();
-    if(importer.defaultScene() != -1)
+    const auto& sceneData = m_mesh->sceneData();
+    if(sceneData)
     {
-        Containers::Optional<Trade::SceneData> sceneData = importer.scene(importer.defaultScene());
-        if(!sceneData)
-        {
-            throw Exception("Could not load scene data");
-        }
-
         // Recursively add all children
         for(UnsignedInt objectId : sceneData->children3D())
             addPart(m_meshObject, objectId);
@@ -108,12 +102,12 @@ void Object::loadVisual()
 
     for(auto part : m_parts)
     {
-        auto objectData = m_mesh->importer().object3D(part->index());
+        const auto& objectData = m_mesh->objects()[part->index()];
 
         // Add a drawable if the object has a mesh and the mesh is loaded
         if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_mesh->meshes()[objectData->instance()])
         {
-            auto meshObjectData = static_cast<Trade::MeshObjectData3D*>(objectData.get());
+            auto meshObjectData = static_cast<const Trade::MeshObjectData3D*>(objectData.get());
             auto mesh = m_mesh->meshes()[objectData->instance()];
             auto meshFlags = m_mesh->meshFlags()[objectData->instance()];
             const Int materialId = meshObjectData->material();
@@ -169,7 +163,7 @@ void Object::loadPhysics()
 
     for(auto part : m_parts)
     {
-        auto objectData = m_mesh->importer().object3D(part->index());
+        const auto& objectData = m_mesh->objects()[part->index()];
 
         if(!objectData || objectData->instanceType() != Trade::ObjectInstanceType3D::Mesh)
             continue;
@@ -223,7 +217,7 @@ void Object::loadPhysics()
 
 void Object::addPart(Object3D& parent, UnsignedInt i)
 {
-    std::unique_ptr<Trade::ObjectData3D> objectData = m_mesh->importer().object3D(i);
+    const auto& objectData = m_mesh->objects()[i];
     if(!objectData)
     {
         Error{} << "Cannot import object, skipping";

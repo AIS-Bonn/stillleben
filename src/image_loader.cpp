@@ -52,6 +52,8 @@ ImageLoader::ImageLoader(
 {
     namespace Dir = Corrade::Utility::Directory;
 
+    m_converterManager.emplace(context->imageConverterPluginPath());
+
     // List files
     auto files = Dir::list(m_path, Dir::Flag::SkipDirectories | Dir::Flag::SkipDotAndDotDot);
     for(const auto& name : files)
@@ -87,12 +89,12 @@ void ImageLoader::enqueue()
         ImporterPtr importer;
         bool openHere = false;
         if(String::endsWith(normalized, ".png"))
-            importer = m_context->instantiateImporter("PngImporter");
+            importer = m_converterManager->loadAndInstantiate("PngImporter");
         else if(String::endsWith(normalized, ".jpeg") || String::endsWith(normalized, ".jpg"))
-            importer = m_context->instantiateImporter("JpegImporter");
+            importer = m_converterManager->loadAndInstantiate("JpegImporter");
         else
         {
-            importer = m_context->instantiateImporter("AnyImageImporter");
+            importer = m_converterManager->loadAndInstantiate("AnyImageImporter");
             openHere = true;
         }
 

@@ -48,11 +48,8 @@ public:
 
     bool makeCurrent();
 
-    using Importer = Magnum::Trade::AbstractImporter;
-    Corrade::Containers::Pointer<Importer> instantiateImporter(const std::string& name = "AssimpImporter");
-
-    using ImageConverter = Magnum::Trade::AbstractImageConverter;
-    Corrade::Containers::Pointer<ImageConverter> instantiateImageConverter(const std::string& name);
+    std::string importerPluginPath() const;
+    std::string imageConverterPluginPath() const;
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
     Magnum::GL::Texture2D loadTexture2D(const std::string& path);

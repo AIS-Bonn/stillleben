@@ -12,7 +12,7 @@
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
-#include <Corrade/PluginManager/PluginManager.h>
+#include <Corrade/PluginManager/Manager.h>
 
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Vector3.h>
@@ -45,24 +45,37 @@ class PhysXHolder;
 class Mesh
 {
 public:
+    template<class T>
+    using Array = Corrade::Containers::Array<T>;
+
+    template<class T>
+    using Optional = Corrade::Containers::Optional<T>;
+
+    template<class T>
+    using Pointer = Corrade::Containers::Pointer<T>;
+
     enum class MeshFlag
     {
         HasVertexColors = (1 << 0),
     };
     using MeshFlags = Corrade::Containers::EnumSet<MeshFlag>;
 
-    using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
-    using MeshFlagArray = Corrade::Containers::Array<MeshFlags>;
-    using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
-    using NormalArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
-    using FaceArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::UnsignedInt>>>;
-    using ColorArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Color4>>>;
-    using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
-    using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
-    using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
+    using ObjectDataArray = Array<Pointer<Magnum::Trade::ObjectData3D>>;
+    using MeshDataArray = Array<Optional<Magnum::Trade::MeshData3D>>;
+    using MeshArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
+    using MeshFlagArray = Array<MeshFlags>;
+    using PointArray = Array<Optional<std::vector<Magnum::Vector3>>>;
+    using NormalArray = Array<Optional<std::vector<Magnum::Vector3>>>;
+    using FaceArray = Array<Optional<std::vector<Magnum::UnsignedInt>>>;
+    using ColorArray = Array<Optional<std::vector<Magnum::Color4>>>;
+    using ImageDataArray = Array<Optional<Magnum::Trade::ImageData2D>>;
+    using TextureDataArray = Array<Optional<Magnum::Trade::TextureData>>;
+    using TextureArray = Array<Optional<Magnum::GL::Texture2D>>;
+    using MaterialArray = Array<Optional<Magnum::Trade::PhongMaterialData>>;
+    using SimplifiedMeshArray = Array<Optional<Magnum::Trade::MeshData3D>>;
 
-    using CookedPhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXOutputBuffer>>;
-    using PhysXMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<PhysXHolder<physx::PxConvexMesh>>>;
+    using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
+    using PhysXMeshArray = Array<Optional<PhysXHolder<physx::PxConvexMesh>>>;
 
     static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
@@ -97,6 +110,13 @@ public:
      * This is your one-catch-all method: Loads visual & collision meshes.
      **/
     void load(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles, bool visual = true, bool physics = true);
+
+    static std::vector<std::shared_ptr<Mesh>> loadThreaded(
+        const std::shared_ptr<Context>& ctx,
+        const std::vector<std::string>& filenames,
+        bool visual = true, bool physics = true,
+        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles
+    );
 
     /**
      * @brief Open input file & preprocess
@@ -154,13 +174,6 @@ public:
         const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
     );
 
-    static std::vector<std::shared_ptr<Mesh>> loadThreaded(
-        const std::shared_ptr<Context>& ctx,
-        const std::vector<std::string>& filenames,
-        bool visual = true, bool physics = true,
-        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles
-    );
-
     //@}
 
     Magnum::Range3D bbox() const;
@@ -186,13 +199,10 @@ public:
      **/
     void setPretransform(const Magnum::Matrix4& m);
 
-    Magnum::Trade::AbstractImporter& importer()
-    { return *m_importer; }
-
-    MeshArray& meshes()
+    const MeshArray& meshes() const
     { return m_meshes; }
 
-    MeshFlagArray& meshFlags()
+    const MeshFlagArray& meshFlags() const
     { return m_meshFlags; }
 
     const std::vector<Magnum::Vector3>& meshPoints()
@@ -239,14 +249,21 @@ public:
         return *m_meshColors[0];
     }
 
-    PhysXMeshArray& physXMeshes()
+    const PhysXMeshArray& physXMeshes() const
     { return m_physXMeshes; }
 
+    // TextureArray can't be const because texture binding needs non-const reference.
     TextureArray& textures()
     { return m_textures; }
 
-    MaterialArray& materials()
+    const MaterialArray& materials() const
     { return m_materials; }
+
+    const ObjectDataArray& objects() const
+    { return m_objectData; }
+
+    const Optional<Magnum::Trade::SceneData>& sceneData() const
+    { return m_sceneData; }
 
     void setClassIndex(unsigned int index);
     unsigned int classIndex() const
@@ -269,17 +286,21 @@ private:
 
     std::string m_filename;
 
-    std::unique_ptr<Magnum::Trade::AbstractImporter> m_importer;
-
+    bool m_opened = false;
     bool m_visualLoaded = false;
     bool m_physicsLoaded = false;
 
+    Optional<Magnum::Trade::SceneData> m_sceneData;
+    ObjectDataArray m_objectData;
     MeshArray m_meshes;
+    MeshDataArray m_meshData;
     MeshFlagArray m_meshFlags;
     PointArray m_meshPoints;
     NormalArray m_meshNormals;
     FaceArray m_meshFaces;
     ColorArray m_meshColors;
+    ImageDataArray m_imageData;
+    TextureDataArray m_textureData;
     TextureArray m_textures;
     MaterialArray m_materials;
     SimplifiedMeshArray m_simplifiedMeshes;
@@ -299,8 +320,6 @@ private:
     unsigned int m_classIndex = 1;
 
     Magnum::GL::Buffer m_vertexIndexBuf{Magnum::NoCreate};
-
-    Magnum::Containers::Optional<Magnum::Trade::MeshData3D> m_meshData;
 
     Corrade::Containers::Array<Magnum::UnsignedInt> m_vertexIndices;
 };
