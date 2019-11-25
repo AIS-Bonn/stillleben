@@ -112,18 +112,26 @@ void Object::loadVisual()
             auto meshFlags = m_mesh->meshFlags()[objectData->instance()];
             const Int materialId = meshObjectData->material();
 
+
             auto drawable = new Drawable{*part, m_drawables, mesh, &m_cb};
+            drawable->setHasVertexColors(!m_options.forceColor && (meshFlags & Mesh::MeshFlag::HasVertexColors));
 
             if(m_options.forceColor || materialId == -1 || !m_mesh->materials()[materialId])
             {
                 // Material not available / not loaded, use a default material
                 drawable->setColor(m_options.color);
+                continue;
             }
-            else if(m_mesh->materials()[materialId]->flags() & Trade::PhongMaterialData::Flag::DiffuseTexture)
+
+            const auto& material = m_mesh->materials()[materialId];
+
+            drawable->setMetallicRoughness(material->metallic(), material->roughness());
+
+            if(material->flags() & PBRMaterialData::Flag::BaseColorTexture)
             {
                 // Textured material. If the texture failed to load, again just use a
                 // default colored material.
-                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[m_mesh->materials()[materialId]->diffuseTexture()];
+                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[material->baseColorTexture()];
                 if(texture)
                     drawable->setTexture(&*texture);
                 else
@@ -132,10 +140,8 @@ void Object::loadVisual()
             else
             {
                 // Color-only material
-                drawable->setColor(m_mesh->materials()[materialId]->diffuseColor());
+                drawable->setColor(m_mesh->materials()[materialId]->baseColor());
             }
-
-            drawable->setHasVertexColors(!m_options.forceColor && (meshFlags & Mesh::MeshFlag::HasVertexColors));
         }
     }
 

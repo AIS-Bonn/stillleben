@@ -35,12 +35,6 @@ class MeshCache;
 class Drawable;
 typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera, Drawable* drawable)> DrawCallback;
 
-class ObjectPart : public Object3D
-{
-public:
-
-};
-
 class Drawable : public Magnum::SceneGraph::Drawable3D
 {
 public:
@@ -64,6 +58,15 @@ public:
     Magnum::GL::Mesh& mesh()
     { return *m_mesh; }
 
+    Magnum::Float metallic() const
+    { return m_metallic; }
+
+    Magnum::Float roughness() const
+    { return m_roughness; }
+
+    void setMetallicRoughness(Magnum::Float metallic, Magnum::Float roughness)
+    { m_metallic = metallic; m_roughness = roughness; }
+
     void setHasVertexColors(bool hasVertexColors)
     { m_hasVertexColors = hasVertexColors; }
 
@@ -77,6 +80,8 @@ private:
     Magnum::Color4 m_color{};
     DrawCallback* m_cb = nullptr;
     bool m_hasVertexColors = false;
+    Magnum::Float m_metallic = 0.5f;
+    Magnum::Float m_roughness = 0.04f;
 };
 
 struct InstantiationOptions
@@ -218,8 +223,9 @@ private:
     // With sharp specular highlights
     float m_shininess = 80.0f;
 
-    float m_roughness = 0.5f;
-    float m_metalness = 0.04f;
+    // These are factors onto the individual drawables
+    float m_roughness = 1.0f;
+    float m_metalness = 1.0f;
 
     // Sticker simulation
     std::shared_ptr<Magnum::GL::RectangleTexture> m_stickerTexture{};

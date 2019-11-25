@@ -183,12 +183,16 @@ void Mesh::openFile()
     Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(m_ctx->importerPluginPath());
     Pointer<Magnum::Trade::AbstractImporter> importer;
 
+    bool haveTinyGltf = false;
+
     // Load a scene importer plugin
     if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
     {
         importer = manager.loadAndInstantiate("TinyGltfImporter");
         if(!importer)
             std::abort();
+
+        haveTinyGltf = true;
     }
     else
     {
@@ -251,17 +255,20 @@ void Mesh::openFile()
         m_imageData[i] = importer->image2D(i);
 
     // Load materials.
-    m_materials = Containers::Array<Containers::Optional<Trade::PhongMaterialData>>{importer->materialCount()};
+    m_materials = MaterialArray{importer->materialCount()};
     for(UnsignedInt i = 0; i != importer->materialCount(); ++i)
     {
-        std::unique_ptr<Trade::AbstractMaterialData> materialData = importer->material(i);
+        auto materialData = importer->material(i);
         if(!materialData || materialData->type() != Trade::MaterialType::Phong)
         {
             Warning{} << "Cannot load material, skipping";
             continue;
         }
 
-        m_materials[i] = std::move(static_cast<Trade::PhongMaterialData&>(*materialData));
+        m_materials[i] = PBRMaterialData::parse(
+            *static_cast<Trade::PhongMaterialData*>(materialData.get()),
+            haveTinyGltf
+        );
     }
 
     // Compute bounding box

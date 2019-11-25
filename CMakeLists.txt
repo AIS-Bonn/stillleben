@@ -90,11 +90,15 @@ add_library(stillleben SHARED
     src/shaders/render_shader.cpp
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
+    src/mesh_tools/pbr_material_data.cpp
     src/utils/os.cpp
     ${stillleben_RESOURCES}
 )
 target_include_directories(stillleben PUBLIC
     include
+)
+target_include_directories(stillleben PRIVATE
+    contrib/magnum-plugins/src
 )
 target_link_libraries(stillleben PUBLIC
     Magnum::GL
@@ -105,7 +109,6 @@ target_link_libraries(stillleben PUBLIC
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::DebugTools
-    MagnumIntegration::Bullet
     Magnum::${MAGNUM_GL_APP}
     PhysX
 )

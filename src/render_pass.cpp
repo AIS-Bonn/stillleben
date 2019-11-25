@@ -367,8 +367,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setAmbientColor(scene.ambientLight())
                 .setSpecularColor(object->specularColor())
                 .setShininess(object->shininess())
-                .setMetalness(object->metalness())
-                .setRoughness(object->roughness())
 
                 .setLightPosition(lightPositionInCam)
 
@@ -395,6 +393,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
                     .bindDiffuseTexture(*drawable->texture())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderTextured);
@@ -406,6 +406,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
                     .setDiffuseColor(drawable->color())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderVertexColors);
@@ -417,6 +419,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .setNormalMatrix(meshToCam.rotation())
                     .setProjectionMatrix(cam.projectionMatrix())
                     .setDiffuseColor(drawable->color())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderUniform);

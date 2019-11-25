@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <stillleben/exception.h>
+#include <stillleben/mesh_tools/pbr_material_data.h>
 
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
@@ -55,20 +56,6 @@ public:
     template<class T>
     using Pointer = Corrade::Containers::Pointer<T>;
 
-    // Since Magnum::Trade does not support the metal/roughness flow, we do it
-    // ourselves...
-    class MetallicRoughnessMaterialData : public Magnum::Trade::AbstractMaterialData
-    {
-    public:
-        static constexpr Magnum::UnsignedByte MaterialType = 100;
-
-        MetallicRoughnessMaterialData(
-            Flags flags, Magnum::Trade::MaterialAlphaMode alphaMode,
-            Magnum::Float alphaMask, const void* importerState = nullptr
-        ) : AbstractMaterialData(static_cast<Magnum::Trade::MaterialType>(MaterialType), flags, alphaMode, alphaMask, importerState)
-        {}
-    };
-
     enum class MeshFlag
     {
         HasVertexColors = (1 << 0),
@@ -86,7 +73,7 @@ public:
     using ImageDataArray = Array<Optional<Magnum::Trade::ImageData2D>>;
     using TextureDataArray = Array<Optional<Magnum::Trade::TextureData>>;
     using TextureArray = Array<Optional<Magnum::GL::Texture2D>>;
-    using MaterialArray = Array<Optional<Magnum::Trade::PhongMaterialData>>;
+    using MaterialArray = Array<Optional<PBRMaterialData>>;
     using SimplifiedMeshArray = Array<Optional<Magnum::Trade::MeshData3D>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
