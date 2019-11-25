@@ -40,9 +40,6 @@
 #include <sstream>
 #include <fstream>
 
-#include <unistd.h>
-#include <sys/stat.h>
-
 #include "physx_impl.h"
 #include "utils/os.h"
 
@@ -306,61 +303,17 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             m_simplifiedMeshes[i] = std::move(simplifiedMesh);
             buf = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
 
-            // In order to make this atomic, we create a temporary file, fill
-            // it, and move it to the destination.
-            std::string TEMPLATE = cacheFile + ".temp-XXXXXX";
-            std::vector<char> filename{TEMPLATE.begin(), TEMPLATE.end()+1};
-
-            int fd = mkstemp(filename.data());
-            if(fd < 0)
-            {
-                throw std::runtime_error(Corrade::Utility::formatString(
-                    "Could not create temporary cache file {}: {}",
-                    filename.data(), strerror(errno)
-                ));
-            }
-
-            // Make it world-readable
-            fchmod(fd, 0644);
+            os::AtomicFileStream ostream(cacheFile);
 
             // Write hashes
             MeshHash::Digest vertexHash = hashVector(meshData->positions(0));
             vertexHash.byteArray();
-            if(write(fd, vertexHash.byteArray(), MeshHash::DigestSize) != MeshHash::DigestSize)
-            {
-                throw std::runtime_error(Corrade::Utility::formatString(
-                    "Could not write to file {}: {}",
-                    filename.data(), strerror(errno)
-                ));
-            }
+            ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
 
             MeshHash::Digest indicesHash = hashVector(meshData->indices());
-            if(write(fd, indicesHash.byteArray(), MeshHash::DigestSize) != MeshHash::DigestSize)
-            {
-                throw std::runtime_error(Corrade::Utility::formatString(
-                    "Could not write to file {}: {}",
-                    filename.data(), strerror(errno)
-                ));
-            }
+            ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
 
-            if(write(fd, buf->data(), buf->size()) != static_cast<ssize_t>(buf->size()))
-            {
-                throw std::runtime_error(Corrade::Utility::formatString(
-                    "Could not write to file {}: {}",
-                    filename.data(), strerror(errno)
-                ));
-            }
-
-            close(fd);
-
-            // Now move it to the right location (this is atomic)
-            if(rename(filename.data(), cacheFile.c_str()) != 0)
-            {
-                if(unlink(filename.data()) != 0)
-                {
-                    Warning{} << "Could not delete temporary file " << filename.data();
-                }
-            }
+            ostream.write(reinterpret_cast<char*>(buf->data()), buf->size());
         }
 
         if(buf)
