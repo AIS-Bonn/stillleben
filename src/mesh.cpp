@@ -243,13 +243,11 @@ void Mesh::openFile()
         m_meshData[i] = importer->mesh3D(i);
 
     // Load textures
-    Debug{} << "Loading" << importer->textureCount() << "textures";
     m_textureData = Array<Optional<Magnum::Trade::TextureData>>{importer->textureCount()};
     for(UnsignedInt i = 0; i < importer->textureCount(); ++i)
         m_textureData[i] = importer->texture(i);
 
     // Load images
-    Debug{} << "Loading" << importer->image2DCount() << "images";
     m_imageData = ImageDataArray{importer->image2DCount()};
     for(UnsignedInt i = 0; i < importer->image2DCount(); ++i)
         m_imageData[i] = importer->image2D(i);
