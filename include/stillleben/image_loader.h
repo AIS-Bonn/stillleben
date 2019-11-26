@@ -57,24 +57,9 @@ public:
 private:
     using Importer = Magnum::Trade::AbstractImporter;
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
-    using Request = std::pair<ImporterPtr, std::string>;
+    using Request = std::string;
 
-    struct Result
-    {
-        Result();
-        Result(const Result&) = delete;
-        Result(Result&&) = default;
-        Result(ImporterPtr&& imp);
-        Result(ImporterPtr&& imp, Corrade::Containers::Optional<Magnum::Trade::ImageData2D>&& img);
-
-        ~Result();
-
-        Result& operator=(const Result&) = delete;
-        Result& operator=(Result&&) = default;
-
-        ImporterPtr importer;
-        Corrade::Containers::Optional<Magnum::Trade::ImageData2D> image;
-    };
+    using Result = Corrade::Containers::Optional<Magnum::Trade::ImageData2D>;
 
     void thread();
     void enqueue();
@@ -86,8 +71,6 @@ private:
 
     std::shared_ptr<sl::Context> m_context;
 
-    using ImporterManager = Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>;
-    Corrade::Containers::Pointer<ImporterManager> m_importerManager;
     std::vector<std::thread> m_threads;
 
     std::mt19937 m_generator;
@@ -99,6 +82,8 @@ private:
 
     std::queue<Request> m_inputQueue;
     std::queue<Result> m_outputQueue;
+
+    std::string m_pluginPath;
 };
 
 }

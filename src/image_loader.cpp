@@ -26,22 +26,6 @@
 namespace sl
 {
 
-ImageLoader::Result::Result()
-{
-}
-
-ImageLoader::Result::~Result()
-{
-}
-
-ImageLoader::Result::Result(ImageLoader::ImporterPtr&& imp)
- : importer{std::move(imp)}
-{}
-
-ImageLoader::Result::Result(ImageLoader::ImporterPtr&& imp, Corrade::Containers::Optional<Magnum::Trade::ImageData2D>&& img)
- : importer{std::move(imp)}, image{std::move(img)}
-{}
-
 ImageLoader::ImageLoader(
     const std::string& path,
     const std::shared_ptr<sl::Context>& context,
@@ -52,7 +36,7 @@ ImageLoader::ImageLoader(
 {
     namespace Dir = Corrade::Utility::Directory;
 
-    m_importerManager.emplace(context->importerPluginPath());
+    m_pluginPath = context->importerPluginPath();
 
     // List files
     auto files = Dir::list(m_path, Dir::Flag::SkipDirectories | Dir::Flag::SkipDotAndDotDot);
@@ -86,34 +70,9 @@ void ImageLoader::enqueue()
 
         std::string normalized = String::lowercase(path);
 
-        ImporterPtr importer;
-        bool openHere = false;
-        if(String::endsWith(normalized, ".png"))
-            importer = m_importerManager->loadAndInstantiate("PngImporter");
-        else if(String::endsWith(normalized, ".jpeg") || String::endsWith(normalized, ".jpg"))
-            importer = m_importerManager->loadAndInstantiate("JpegImporter");
-        else
-        {
-            importer = m_importerManager->loadAndInstantiate("AnyImageImporter");
-            openHere = true;
-        }
-
-        if(!importer)
-            throw std::logic_error("Could not load AnyImageImporter plugin");
-
-        if(openHere)
-        {
-            if(!importer->openFile(path))
-            {
-                Corrade::Utility::Warning{} << "Could not open file" << path;
-                continue;
-            }
-            path = {};
-        }
-
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_inputQueue.emplace(std::move(importer), path);
+            m_inputQueue.push(path);
             m_inputCond.notify_one();
         }
 
@@ -123,13 +82,11 @@ void ImageLoader::enqueue()
 
 void ImageLoader::thread()
 {
-    // We need to be careful here not to destroy the importer instance, as
-    // the Corrade plugin system is not thread-safe. Instead, destruction
-    // should be done in the main thread.
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager{m_pluginPath};
 
-    auto sendEmptyResult = [this](ImporterPtr&& importer){
+    auto sendEmptyResult = [this](){
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_outputQueue.emplace(std::move(importer));
+        m_outputQueue.emplace();
         m_outputCond.notify_all();
     };
 
@@ -162,16 +119,19 @@ void ImageLoader::thread()
             m_inputQueue.pop();
         }
 
-        ImporterPtr& importer = request.first;
-
-        if(!request.second.empty())
+        ImporterPtr importer = manager.loadAndInstantiate("AnyImageImporter");
+        if(!importer)
         {
-            if(!importer->openFile(request.second))
-            {
-                Corrade::Utility::Warning{} << "Could not open file" << request.second;
-                sendEmptyResult(std::move(importer));
-                continue;
-            }
+            Corrade::Utility::Error{} << "Could not instantiate AnyImageImporter";
+            sendEmptyResult();
+            continue;
+        }
+
+        if(!importer->openFile(request))
+        {
+            Corrade::Utility::Warning{} << "Could not open file" << request;
+            sendEmptyResult();
+            continue;
         }
 
         auto imageData = importer->image2D(0);
@@ -181,13 +141,13 @@ void ImageLoader::thread()
             if(errorCounter > 10)
                 fprintf(stderr, "Image error: '%s'\n", null.str().c_str());
 
-            sendEmptyResult(std::move(importer));
+            sendEmptyResult();
             continue;
         }
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_outputQueue.emplace(std::move(importer), std::move(imageData));
+            m_outputQueue.emplace(std::move(imageData));
             m_outputCond.notify_all();
         }
 
@@ -221,7 +181,7 @@ ImageLoader::Result ImageLoader::nextResult()
 
         // If some error occured in the worker thread, enqueue a new image
         // and try again.
-        if(!result.image)
+        if(!result)
         {
             errorCounter++;
             continue;
@@ -240,16 +200,16 @@ Magnum::GL::RectangleTexture ImageLoader::nextRectangleTexture()
         Result result = nextResult();
 
         GL::TextureFormat format;
-        if(result.image->format() == PixelFormat::RGB8Unorm)
+        if(result->format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
-        else if(result.image->format() == PixelFormat::RGBA8Unorm)
+        else if(result->format() == PixelFormat::RGBA8Unorm)
             format = GL::TextureFormat::RGBA8;
         else
             continue; // just try the next one
 
         GL::RectangleTexture texture;
-        texture.setStorage(format, result.image->size());
-        texture.setSubImage({}, *result.image);
+        texture.setStorage(format, result->size());
+        texture.setSubImage({}, *result);
 
         // Needed for sticker textures - this is ugly.
         texture.setWrapping(Magnum::SamplerWrapping::ClampToBorder);
@@ -268,9 +228,9 @@ Magnum::GL::Texture2D ImageLoader::nextTexture2D()
         Result result = nextResult();
 
         GL::TextureFormat format;
-        if(result.image->format() == PixelFormat::RGB8Unorm)
+        if(result->format() == PixelFormat::RGB8Unorm)
             format = GL::TextureFormat::RGB8;
-        else if(result.image->format() == PixelFormat::RGBA8Unorm)
+        else if(result->format() == PixelFormat::RGBA8Unorm)
             format = GL::TextureFormat::RGBA8;
         else
             continue; // just try the next one
@@ -283,8 +243,8 @@ Magnum::GL::Texture2D ImageLoader::nextTexture2D()
 
         texture.setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy());
 
-        texture.setStorage(Math::log2(result.image->size().max()), format, result.image->size());
-        texture.setSubImage(0, {}, *result.image);
+        texture.setStorage(Math::log2(result->size().max()), format, result->size());
+        texture.setSubImage(0, {}, *result);
         texture.generateMipmap();
 
         return texture;
