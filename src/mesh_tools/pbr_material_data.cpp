@@ -25,13 +25,13 @@ PBRMaterialData PBRMaterialData::parse(const Trade::PhongMaterialData& materialD
         AbstractMaterialData::Flags{}, materialData.alphaMode(), materialData.alphaMask(), materialData.importerState()
     };
 
-    ret.m_baseColor = materialData.diffuseColor();
-
     if(materialData.flags() & Trade::PhongMaterialData::Flag::DiffuseTexture)
     {
         ret.m_baseColorTexture = materialData.diffuseTexture();
         ret.m_flags |= PBRMaterialData::Flag::BaseColorTexture;
     }
+    else
+        ret.m_baseColor = materialData.diffuseColor();
 
     if(haveTinyGltf)
     {
