@@ -87,7 +87,7 @@ private:
     std::shared_ptr<sl::Context> m_context;
 
     using ImporterManager = Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter>;
-    Corrade::Containers::Pointer<ImporterManager> m_converterManager;
+    Corrade::Containers::Pointer<ImporterManager> m_importerManager;
     std::vector<std::thread> m_threads;
 
     std::mt19937 m_generator;
