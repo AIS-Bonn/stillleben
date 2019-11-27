@@ -37,6 +37,7 @@ public:
      * @ref Magnum::Vector3 "Vector3".
      */
     typedef Shaders::Generic3D::Normal Normal;
+    typedef Shaders::Generic3D::Tangent Tangent;
 
     /**
      * @brief 2D texture coordinates
@@ -63,7 +64,6 @@ public:
      * @ref shaders-generic "Generic attribute",
      * @ref Magnum::UnsignedInt
      */
-
     typedef GL::Attribute<4, UnsignedInt> VertexIndex;
 
     enum: UnsignedInt {
@@ -433,6 +433,8 @@ public:
 
     RenderShader& bindStickerTexture(Magnum::GL::RectangleTexture& texture);
     //@}
+
+    RenderShader& bindNormalMap(Magnum::GL::Texture2D& normalMap);
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},

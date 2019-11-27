@@ -5,6 +5,7 @@
 #include <stillleben/context.h>
 #include <stillleben/contrib/ctpl_stl.h>
 #include <stillleben/mesh_tools/simplify_mesh.h>
+#include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/physx.h>
 
 #include <Corrade/Utility/Configuration.h>
@@ -29,6 +30,7 @@
 #include <Magnum/SceneGraph/SceneGraph.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Object.h>
+#include <Magnum/Shaders/Generic.h>
 #include <Magnum/Trade/ImageData.h>
 
 #include <Magnum/Trade/MeshObjectData3D.h>
@@ -241,6 +243,19 @@ void Mesh::openFile()
     m_meshData = Array<Optional<Magnum::Trade::MeshData3D>>{importer->mesh3DCount()};
     for(UnsignedInt i = 0; i < importer->mesh3DCount(); ++i)
         m_meshData[i] = importer->mesh3D(i);
+
+    // If possible, load tangent vectors (only TinyGltfImporter)
+    m_tangentData = TangentDataArray{importer->mesh3DCount()};
+    if(haveTinyGltf)
+    {
+        for(UnsignedInt i = 0; i < importer->mesh3DCount(); ++i)
+        {
+            if(!m_meshData[i])
+                continue;
+
+            m_tangentData[i] = extractTangents(*importer, *m_meshData[i]);
+        }
+    }
 
     // Load textures
     m_textureData = Array<Optional<Magnum::Trade::TextureData>>{importer->textureCount()};
@@ -501,6 +516,13 @@ void Mesh::loadVisual()
 
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
+
+        if(m_tangentData[i])
+        {
+            GL::Buffer tangentBuffer;
+            tangentBuffer.setData(*m_tangentData[i]);
+            m_meshes[i]->addVertexBuffer(std::move(tangentBuffer), 0, Magnum::Shaders::Generic3D::Tangent{});
+        }
     }
 
     // Nobody needs these anymore

@@ -91,6 +91,7 @@ add_library(stillleben SHARED
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
     src/mesh_tools/pbr_material_data.cpp
+    src/mesh_tools/tangents.cpp
     src/utils/os.cpp
     ${stillleben_RESOURCES}
 )

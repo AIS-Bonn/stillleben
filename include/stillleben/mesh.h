@@ -64,6 +64,7 @@ public:
 
     using ObjectDataArray = Array<Pointer<Magnum::Trade::ObjectData3D>>;
     using MeshDataArray = Array<Optional<Magnum::Trade::MeshData3D>>;
+    using TangentDataArray = Array<Optional<std::vector<Magnum::Vector3>>>;
     using MeshArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using MeshFlagArray = Array<MeshFlags>;
     using PointArray = Array<Optional<std::vector<Magnum::Vector3>>>;
@@ -296,6 +297,7 @@ private:
     ObjectDataArray m_objectData;
     MeshArray m_meshes;
     MeshDataArray m_meshData;
+    TangentDataArray m_tangentData;
     MeshFlagArray m_meshFlags;
     PointArray m_meshPoints;
     NormalArray m_meshNormals;
