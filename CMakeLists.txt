@@ -24,10 +24,12 @@ if(USE_RELATIVE_RPATH)
     set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
 
-set(EXTRA_RPATH "Extra RPATH" CACHE STRING "")
+set(EXTRA_RPATH "" CACHE STRING "Extra RPATH")
 if(EXTRA_RPATH)
     list(APPEND CMAKE_INSTALL_RPATH "${EXTRA_RPATH}")
 endif()
+
+list(APPEND CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 # ninja is cool, but suppresses color output
 # https://medium.com/@alasher/colored-c-compiler-output-with-ninja-clang-gcc-10bfe7f2b949
