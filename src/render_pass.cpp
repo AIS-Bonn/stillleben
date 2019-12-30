@@ -7,6 +7,7 @@
 #include <stillleben/mesh.h>
 #include <stillleben/cuda_interop.h>
 #include <stillleben/context.h>
+#include <stillleben/light_map.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -21,6 +22,7 @@
 
 #include <Magnum/MeshTools/Compile.h>
 
+#include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/Square.h>
 
@@ -30,6 +32,7 @@
 
 #include "shaders/render_shader.h"
 #include "shaders/background_shader.h"
+#include "shaders/background_cube_shader.h"
 #include "shaders/ssao_shader.h"
 #include "shaders/ssao_apply_shader.h"
 
@@ -101,10 +104,12 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
+ , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
+    m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
 
     m_result = std::make_shared<Result>(cuda);
@@ -267,6 +272,20 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
         // Draw on top
         m_framebuffer.clear(GL::FramebufferClear::Depth);
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
+    }
+    else if(scene.lightMap())
+    {
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
+        m_backgroundCubeShader->bindRGB(scene.lightMap()->cubeMap());
+        m_backgroundCubeShader->setViewMatrix(scene.camera().cameraMatrix());
+        m_backgroundCubeShader->setProjectionMatrix(scene.camera().projectionMatrix());
+        m_cubeMesh.draw(*m_backgroundCubeShader);
+
+        // Draw on top
+        m_framebuffer.clear(GL::FramebufferClear::Depth);
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::Less);
         GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
     }
     else
