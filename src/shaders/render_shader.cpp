@@ -127,9 +127,9 @@ RenderShader::RenderShader(const Flags flags)
     #endif
     {
         _meshToObjectMatrixUniform = uniformLocation("meshToObject");
-        _objectToCamMatrixUniform = uniformLocation("objectToCam");
+        _objectToWorldMatrixUniform = uniformLocation("objectToWorld");
         _projectionMatrixUniform = uniformLocation("projectionMatrix");
-        _normalMatrixUniform = uniformLocation("normalMatrix");
+        _worldToCamMatrixUniform = uniformLocation("worldToCamMatrix");
         _lightPositionUniform = uniformLocation("lightPosition");
         _ambientColorUniform = uniformLocation("ambientColor");
         _diffuseColorUniform = uniformLocation("diffuseColor");
@@ -143,6 +143,7 @@ RenderShader::RenderShader(const Flags flags)
         _roughnessUniform = uniformLocation("roughness");
         _stickerProjection = uniformLocation("stickerProjection");
         _stickerRange = uniformLocation("stickerRange");
+        _camPositionUniform = uniformLocation("camPosition");
         if(flags & Flag::AlphaMask) _alphaMaskUniform = uniformLocation("alphaMask");
     }
 

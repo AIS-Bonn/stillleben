@@ -33,6 +33,9 @@ layout(binding = 2)
 uniform lowp sampler2D specularTexture;
 #endif
 
+layout(location = 4)
+uniform highp vec3 lightPosition; /* in world coordinates, defaults to zero */
+
 layout(location = 7)
 uniform lowp vec4 specularColor = vec4(1.0);
 
@@ -66,6 +69,8 @@ uniform float metallic = 0.04;
 layout(location = 15)
 uniform float roughness = 0.5;
 
+layout(location = 18)
+uniform vec3 camPosition;
 
 layout(binding = 3)
 uniform highp samplerCube lightMapIrradiance;
@@ -83,12 +88,10 @@ uniform highp sampler2DRect stickerTexture;
 layout(binding = 7)
 uniform highp sampler2DRect depthTexture;
 
-
 in DataBridge fragmentData;
 
 flat in centroid uvec3 g_vertexIndices;
 in centroid vec3 g_barycentricCoeffs;
-
 
 layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec4 objectCoordinatesOut;
@@ -183,7 +186,8 @@ vec3 cubemapCoord(vec3 camSpaceCoord)
 {
     // camera coordinates are in y-down frame.
     // FIXME: We should use world coordinates here!
-    return vec3(camSpaceCoord.z, -camSpaceCoord.x, -camSpaceCoord.y);
+//     return vec3(camSpaceCoord.z, -camSpaceCoord.x, -camSpaceCoord.y);
+    return camSpaceCoord;
 }
 
 void main()
@@ -230,10 +234,13 @@ void main()
         finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
     }
 
-    mediump vec3 N = normalize(fragmentData.transformedNormal);
+    highp vec3 cameraDirection = normalize(camPosition - fragmentData.worldCoordinates);
+    highp vec3 lightDirection = normalize(lightPosition - fragmentData.worldCoordinates);
+
+    mediump vec3 N = normalize(fragmentData.normalInWorld);
     /* Output the normal and dot product with camera ray */
-    normalOut.xyz = N;
-    normalOut.w = dot(N, fragmentData.cameraDirection);
+    normalOut.xyz = normalize(fragmentData.normalInCam);
+    normalOut.w = dot(N, cameraDirection);
 
     #ifdef FLAT
     color = finalDiffuseColor;
@@ -248,14 +255,14 @@ void main()
     {
         float gamma = 1.8;
 
-        vec3 V = normalize(fragmentData.cameraDirection); // cameraDirection: camera - object
+        vec3 V = cameraDirection; // cameraDirection: camera - object
         vec3 R = reflect(-V, N);
 
         color = toLinear(color, gamma);
 
         // HACK: the diffuse textures we load are not designed for PBR
         // and usually result in very dark results.
-        vec3 albedo = 5.0 * toLinear(finalDiffuseColor.rgb, gamma);
+        vec3 albedo = 1.0 * toLinear(finalDiffuseColor.rgb, gamma);
 
         // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
         // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
@@ -289,7 +296,7 @@ void main()
     }
     else
     {
-        highp vec3 normalizedLightDirection = normalize(fragmentData.lightDirection);
+        highp vec3 normalizedLightDirection = lightDirection;
 
         /* Add diffuse color */
         lowp float intensity = max(0.0, dot(N, normalizedLightDirection));
@@ -298,7 +305,7 @@ void main()
         /* Add specular color, if needed */
         if(intensity > 0.001) {
             highp vec3 reflection = reflect(-normalizedLightDirection, N);
-            mediump float specularity = pow(max(0.0, dot(normalize(fragmentData.cameraDirection), reflection)), shininess);
+            mediump float specularity = pow(max(0.0, dot(cameraDirection, reflection)), shininess);
             color += finalSpecularColor*specularity;
         }
     }

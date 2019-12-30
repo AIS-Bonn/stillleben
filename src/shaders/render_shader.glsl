@@ -8,11 +8,11 @@ struct DataBridge
     mediump vec4 interpolatedVertexColors;
     #endif
 
-    mediump vec3 transformedNormal;
-    highp vec3 lightDirection;
-    highp vec3 cameraDirection;
+    mediump vec3 normalInCam;
+    mediump vec3 normalInWorld;
 
     centroid highp vec4 objectCoordinates;
+    centroid highp vec3 worldCoordinates;
     centroid highp vec3 camCoordinates;
     mediump vec2 stickerCoordinates;
 };

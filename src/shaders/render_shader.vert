@@ -11,17 +11,13 @@ layout(location = 0)
 uniform highp mat4 meshToObject = mat4(1.0);
 
 layout(location = 1)
-uniform highp mat4 objectToCam = mat4(1.0);
+uniform highp mat4 objectToWorld = mat4(1.0);
 
 layout(location = 2)
 uniform highp mat4 projectionMatrix = mat4(1.0);
 
 layout(location = 3)
-uniform mediump mat3 normalMatrix = mat3(1.0);
-
-layout(location = 4)
-uniform highp vec3 lightPosition; /* defaults to zero */
-
+uniform mediump mat4 worldToCam = mat4(1.0);
 
 // Sticker simulator
 layout(location = 16)
@@ -53,9 +49,8 @@ in uint vertexIndex;
 
 
 out DataBridge primitiveData;
-flat out uint gsVertexIndex;;
+flat out uint gsVertexIndex;
 out highp vec4 vsPosition;
-
 
 
 void main()
@@ -64,21 +59,20 @@ void main()
     highp vec4 objectCoordinates4 = meshToObject * position;
     primitiveData.objectCoordinates = objectCoordinates4 / objectCoordinates4.w;
 
-    /* Object coordinates to camera coordinates */
-    highp vec4 camCoordinates4 = objectToCam * objectCoordinates4;
+    /* Object coordinates to world coordinates */
+    highp vec4 worldCoordinates4 = objectToWorld * objectCoordinates4;
+    primitiveData.worldCoordinates = (worldCoordinates4 / worldCoordinates4.w).xyz;
+
+    /* World coordinates to camera coordinates */
+    highp vec4 camCoordinates4 = worldToCam * worldCoordinates4;
     primitiveData.camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
 
     /* Output depth in fourth channel of the coordinate output */
     primitiveData.objectCoordinates.w = primitiveData.camCoordinates.z;
 
     /* Transformed normal vector */
-    primitiveData.transformedNormal = normalMatrix*normal;
-
-    /* Direction to the light */
-    primitiveData.lightDirection = normalize(lightPosition - primitiveData.camCoordinates);
-
-    /* Direction to the camera */
-    primitiveData.cameraDirection = -primitiveData.camCoordinates;
+    primitiveData.normalInWorld = mat3(objectToWorld) * mat3(meshToObject) * normal;
+    primitiveData.normalInCam = mat3(worldToCam) * primitiveData.normalInWorld;
 
     /* Transform the position */
     vsPosition = projectionMatrix*camCoordinates4;

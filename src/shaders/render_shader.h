@@ -322,28 +322,18 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Set world transformation matrix
-     * @return Reference to self (for method chaining)
-     *
-     * Initial value is an identity matrix.
-     */
-    RenderShader& setObjectToCamMatrix(const Matrix4& matrix) {
-        setUniform(_objectToCamMatrixUniform, matrix);
+    RenderShader& setObjectToWorldMatrix(const Matrix4& matrix) {
+        setUniform(_objectToWorldMatrixUniform, matrix);
         return *this;
     }
 
-    /**
-     * @brief Set normal matrix
-     * @return Reference to self (for method chaining)
-     *
-     * The matrix doesn't need to be normalized, as the renormalization
-     * must be done in the shader anyway. You need to set also
-     * @ref setTransformationMatrix() with a corresponding value. Initial
-     * value is an identity matrix.
-     */
-    RenderShader& setNormalMatrix(const Matrix3x3& matrix) {
-        setUniform(_normalMatrixUniform, matrix);
+    RenderShader& setWorldToCamMatrix(const Matrix4& matrix) {
+        setUniform(_worldToCamMatrixUniform, matrix);
+        return *this;
+    }
+
+    RenderShader& setCamPosition(const Vector3& pos) {
+        setUniform(_camPositionUniform, pos);
         return *this;
     }
 
@@ -438,9 +428,9 @@ public:
 private:
     Flags _flags;
     Int _meshToObjectMatrixUniform{0},
-        _objectToCamMatrixUniform{1},
+        _objectToWorldMatrixUniform{1},
         _projectionMatrixUniform{2},
-        _normalMatrixUniform{3},
+        _worldToCamMatrixUniform{3},
         _lightPositionUniform{4},
         _ambientColorUniform{5},
         _diffuseColorUniform{6},
@@ -454,7 +444,8 @@ private:
         _metallicUniform{14},
         _roughnessUniform{15},
         _stickerProjection{16},
-        _stickerRange{17};
+        _stickerRange{17},
+        _camPositionUniform{18};
 };
 
 }
