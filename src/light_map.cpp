@@ -14,6 +14,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
+#include <Corrade/Utility/String.h>
 
 #include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/GL/DebugOutput.h>
@@ -220,43 +221,76 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 {
     using namespace Utility;
 
-    Configuration config{path, Configuration::Flag::ReadOnly};
-
-    if(config.isEmpty())
-    {
-        Error{} << "Could not open .ibl file:" << path;
-        return false;
-    }
-
-    std::string baseDir = Directory::path(path);
-
-    auto reflectionGroup = config.group("Reflection");
-    if(!reflectionGroup)
-    {
-        Error{} << path << "does not contain a Reflection group";
-        return false;
-    }
-
-    auto refSpec = IBLSpec::load(*reflectionGroup, "REF");
-
-    if(!refSpec)
-        return false;
-
-    // Load the texture!
     Magnum::GL::Texture2D hdrEquirectangular{NoCreate};
+    if(String::endsWith(path, ".ibl"))
+    {
+        Configuration config{path, Configuration::Flag::ReadOnly};
+
+        if(config.isEmpty())
+        {
+            Error{} << "Could not open .ibl file:" << path;
+            return false;
+        }
+
+        std::string baseDir = Directory::path(path);
+
+        auto reflectionGroup = config.group("Reflection");
+        if(!reflectionGroup)
+        {
+            Error{} << path << "does not contain a Reflection group";
+            return false;
+        }
+
+        auto refSpec = IBLSpec::load(*reflectionGroup, "REF");
+
+        if(!refSpec)
+            return false;
+
+        // Load the texture!
+        {
+            Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(ctx->importerPluginPath());
+            auto importer = manager.loadAndInstantiate("StbImageImporter");
+            if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
+
+            auto refTex = loadTexture(*refSpec, *importer, baseDir);
+            if(!refTex)
+            {
+                Error{} << "Could not load ref texture";
+                return false;
+            }
+
+            hdrEquirectangular = std::move(*refTex);
+        }
+    }
+    else
     {
         Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(ctx->importerPluginPath());
         auto importer = manager.loadAndInstantiate("StbImageImporter");
         if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
 
-        auto refTex = loadTexture(*refSpec, *importer, baseDir);
-        if(!refTex)
+        if(!importer->openFile(path))
         {
-            Error{} << "Could not load ref texture";
+            Error{} << "Could not load texture:" << path;
             return false;
         }
 
-        hdrEquirectangular = std::move(*refTex);
+        auto image = importer->image2D(0);
+        if(!image)
+        {
+            Error{} << "Could not load image from" << path;
+            return {};
+        }
+
+        Magnum::GL::Texture2D texture;
+        texture.setMagnificationFilter(GL::SamplerFilter::Linear)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+            .setStorage(Math::log2(image->size().x())+1, GL::TextureFormat::RGB32F, image->size())
+            .setSubImage(0, {}, *image)
+            .generateMipmap();
+
+        hdrEquirectangular = std::move(texture);
     }
 
     // Setup a framebuffer for the remapping / convolution operations
