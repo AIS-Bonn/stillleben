@@ -181,6 +181,8 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
 
 vec3 cubemapCoord(vec3 camSpaceCoord)
 {
+    // camera coordinates are in y-down frame.
+    // FIXME: We should use world coordinates here!
     return vec3(camSpaceCoord.z, -camSpaceCoord.x, -camSpaceCoord.y);
 }
 
