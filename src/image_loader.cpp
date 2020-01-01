@@ -8,6 +8,7 @@
 #include <random>
 #include <chrono>
 #include <sstream>
+#include <thread>
 
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/Image.h>
@@ -84,10 +85,12 @@ void ImageLoader::thread()
 {
     Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager{m_pluginPath};
 
-    auto sendEmptyResult = [this](){
+    unsigned int errorCounter = 0;
+    auto sendEmptyResult = [&](){
         std::unique_lock<std::mutex> lock(m_mutex);
         m_outputQueue.emplace();
         m_outputCond.notify_all();
+        errorCounter++;
     };
 
     // Swallow any warnings / errors
@@ -98,10 +101,12 @@ void ImageLoader::thread()
     Corrade::Utility::Error errorRedirect{&null};
     Corrade::Utility::Warning warningRedirect{&null};
 
-    unsigned int errorCounter = 0;
 
     while(1)
     {
+        if(errorCounter > 10)
+            fprintf(stderr, "Image error: '%s'\n", null.str().c_str());
+
         // Prevent errors / warnings from piling up
         null.clear();
 
@@ -137,10 +142,6 @@ void ImageLoader::thread()
         auto imageData = importer->image2D(0);
         if(!imageData)
         {
-            errorCounter++;
-            if(errorCounter > 10)
-                fprintf(stderr, "Image error: '%s'\n", null.str().c_str());
-
             sendEmptyResult();
             continue;
         }
@@ -163,7 +164,10 @@ ImageLoader::Result ImageLoader::nextResult()
     {
         if(errorCounter >= 10)
         {
+            using namespace std::chrono_literals;
+
             Magnum::Warning{} << "ImageLoader: 10 errors in a row, probably something is wrong with your images";
+            std::this_thread::sleep_for(500ms); // crude rate limiting
             errorCounter = 0;
         }
 
