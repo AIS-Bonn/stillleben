@@ -857,7 +857,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
             auto quat_view = tmp.accessor<float,1>();
             Magnum::Quaternion magnumQ{{quat_view[0], quat_view[1], quat_view[2]}, quat_view[3]};
 
-            return toTorch<Magnum::Matrix3>::convert(magnumQ.toMatrix());
+            return toTorch<Magnum::Matrix3>::convert(magnumQ.normalized().toMatrix());
         },
         R"EOS(
             Convert a quaternion into a 3x3 rotation matrix.
