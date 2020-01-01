@@ -104,7 +104,7 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
 
     // far and near
     constexpr float f = 10.0f;
-    constexpr float n = 0.01;
+    constexpr float n = 0.1;
 
     const float H = m_camera->viewport().y();
     const float W = m_camera->viewport().x();
