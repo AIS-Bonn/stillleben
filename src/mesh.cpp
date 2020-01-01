@@ -384,7 +384,6 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
         if(buffer)
         {
-            Debug{} << "Using mesh cache file";
             buf = PhysXOutputBuffer{std::move(*buffer)};
         }
         else
@@ -753,19 +752,10 @@ namespace
     {
         auto mesh = std::make_shared<Mesh>(filename, ctx);
 
-        auto t1 = std::chrono::high_resolution_clock::now();
         mesh->openFile();
-        auto t2 = std::chrono::high_resolution_clock::now();
 
         if(physics)
             mesh->loadPhysics(maxPhysicsTriangles);
-
-        auto t3 = std::chrono::high_resolution_clock::now();
-
-        Debug{}
-            << "openFile:" << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
-            << "physics:" << std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count()
-        ;
 
         return mesh;
     }
