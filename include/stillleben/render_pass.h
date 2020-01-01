@@ -51,9 +51,6 @@ public:
         CUDATexture instanceIndex;
         CUDATexture normals;
 
-        [[deprecated("valid mask is not used anymore")]]
-        CUDATexture validMask;
-
         CUDATexture vertexIndex;
         CUDATexture barycentricCoeffs;
 

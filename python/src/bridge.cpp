@@ -267,7 +267,7 @@ namespace
             if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 4 || cpuTensor.size(1) != 4)
                 throw std::invalid_argument("A pose tensor must be 4x4");
 
-            const float* data = cpuTensor.data<float>();
+            const float* data = cpuTensor.data_ptr<float>();
 
             Magnum::Matrix4 mat{Magnum::Math::NoInit};
 
@@ -287,7 +287,7 @@ namespace
             if(cpuTensor.dim() != 2 || cpuTensor.size(0) != 3 || cpuTensor.size(1) != 3)
                 throw std::invalid_argument("An orientation tensor must be 3x3");
 
-            const float* data = cpuTensor.data<float>();
+            const float* data = cpuTensor.data_ptr<float>();
 
             Magnum::Matrix3 mat{Magnum::Math::NoInit};
 
@@ -307,7 +307,7 @@ namespace
             if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 2)
                 throw std::invalid_argument("A 2D vector tensor must have size 2");
 
-            const float* data = cpuTensor.data<float>();
+            const float* data = cpuTensor.data_ptr<float>();
             Magnum::Vector2 vec{Magnum::Math::NoInit};
             memcpy(vec.data(), data, 2*sizeof(float));
 
@@ -325,7 +325,7 @@ namespace
             if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 3)
                 throw std::invalid_argument("A vector tensor must have size 3");
 
-            const float* data = cpuTensor.data<float>();
+            const float* data = cpuTensor.data_ptr<float>();
             Magnum::Vector3 vec{Magnum::Math::NoInit};
             memcpy(vec.data(), data, 3*sizeof(float));
 
@@ -343,7 +343,7 @@ namespace
             if(cpuTensor.dim() != 1 || cpuTensor.size(0) != 4)
                 throw std::invalid_argument("A vector4 tensor must have size 4");
 
-            const float* data = cpuTensor.data<float>();
+            const float* data = cpuTensor.data_ptr<float>();
             Magnum::Vector4 vec{Magnum::Math::NoInit};
             memcpy(vec.data(), data, 4*sizeof(float));
 
@@ -484,11 +484,6 @@ static at::Tensor readCoordTensor(sl::CUDATexture& texture)
 static at::Tensor readDepthTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).select(2, 3);
-}
-
-static at::Tensor readByteTensor(sl::CUDATexture& texture)
-{
-    return extract(texture, Magnum::PixelFormat::R8UI, 1, at::kByte);
 }
 
 static at::Tensor readShortTensor(sl::CUDATexture& texture)
@@ -913,7 +908,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
                 Magnum::PixelStorage{}.setAlignment(1),
                 Magnum::PixelFormat::RGB8Unorm,
                 {static_cast<int>(tensor.size(1)), static_cast<int>(tensor.size(0))},
-                Corrade::Containers::ArrayView<uint8_t>(tensor.data<uint8_t>(), tensor.numel())
+                Corrade::Containers::ArrayView<uint8_t>(tensor.data_ptr<uint8_t>(), tensor.numel())
             };
 
             Magnum::GL::RectangleTexture texture;
@@ -955,7 +950,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
                 Magnum::PixelStorage{}.setAlignment(1),
                 Magnum::PixelFormat::RGB8Unorm,
                 {static_cast<int>(tensor.size(1)), static_cast<int>(tensor.size(0))},
-                Corrade::Containers::ArrayView<uint8_t>(tensor.data<uint8_t>(), tensor.numel())
+                Corrade::Containers::ArrayView<uint8_t>(tensor.data_ptr<uint8_t>(), tensor.numel())
             };
 
             Magnum::GL::Texture2D texture;
@@ -1553,22 +1548,6 @@ PYBIND11_MODULE(libstillleben_python, m) {
 
                 Returns:
                     tensor: (H x W) short tensor with instance values.
-            )EOS")
-
-        .def("valid_mask", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
-                return readByteTensor(result->validMask);
-            }, R"EOS(
-                Read valid mask. If and only if :func:`class_index`,
-                :func:`instance_index`, and :func:`coordinates` is valid at this
-                particular point, the mask will be non-zero.
-
-                If CUDA support is active, the tensor will reside on the GPU
-                which was used during rendering. Note: background pixels are
-                considered valid, even though they do not have an associated
-                coordinate.
-
-                Returns:
-                    tensor: (H x W) byte tensor
             )EOS")
 
         .def("coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){

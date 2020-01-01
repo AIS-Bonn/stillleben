@@ -66,7 +66,6 @@ RenderPass::Result::Result(bool cuda)
  , classIndex{m_mapper}
  , instanceIndex{m_mapper}
  , normals{m_mapper}
- , validMask{m_mapper}
  , vertexIndex{m_mapper}
  , barycentricCoeffs{m_mapper}
  , camCoordinates{m_mapper}
@@ -159,7 +158,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
-        result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
 
         result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
         result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
