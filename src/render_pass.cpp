@@ -312,8 +312,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             shader.get()->disableLightMap();
     }
 
-    Vector3 lightPositionInCam = scene.camera().cameraMatrix().transformPoint(scene.lightPosition());
-
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
     {
@@ -341,7 +339,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
                 .bindDiffuseTexture(*texture)
             ;
 
@@ -363,7 +361,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
                 .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
             ;
 
@@ -395,7 +393,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setSpecularColor(object->specularColor())
                 .setShininess(object->shininess())
 
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
 
                 .setStickerProjection(object->stickerViewProjection())
                 .setStickerRange(object->stickerRange())
