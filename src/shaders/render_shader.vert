@@ -47,60 +47,55 @@ layout(location = VERTEXCOLORS_ATTRIBUTE_LOCATION)
 in mediump vec4 vertexColors;
 #endif
 
-#ifdef TEXTURED
-out mediump vec2 interpolatedTextureCoords;
-#endif
+// for differentiable renderer 
+layout(location = VERTEXINDEX_ATTRIBUTE_LOCATION)
+in uint vertexIndex;
 
-#ifdef VERTEX_COLORS
-out mediump vec4 interpolatedVertexColors;
-#endif
 
-out mediump vec3 transformedNormal;
-out highp vec3 lightDirection;
-out highp vec3 cameraDirection;
+out DataBridge primitiveData;
+flat out uint gsVertexIndex;;
+out highp vec4 vsPosition;
 
-centroid out highp vec4 objectCoordinates;
-centroid out highp vec3 camCoordinates;
 
-out mediump vec2 stickerCoordinates;
 
 void main()
 {
     /* Mesh points to object coordinates */
     highp vec4 objectCoordinates4 = meshToObject * position;
-    objectCoordinates = objectCoordinates4 / objectCoordinates4.w;
+    primitiveData.objectCoordinates = objectCoordinates4 / objectCoordinates4.w;
 
     /* Object coordinates to camera coordinates */
     highp vec4 camCoordinates4 = objectToCam * objectCoordinates4;
-    camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
+    primitiveData.camCoordinates = camCoordinates4.xyz / camCoordinates4.w;
 
     /* Output depth in fourth channel of the coordinate output */
-    objectCoordinates.w = camCoordinates.z;
+    primitiveData.objectCoordinates.w = primitiveData.camCoordinates.z;
 
     /* Transformed normal vector */
-    transformedNormal = normalMatrix*normal;
+    primitiveData.transformedNormal = normalMatrix*normal;
 
     /* Direction to the light */
-    lightDirection = normalize(lightPosition - camCoordinates);
+    primitiveData.lightDirection = normalize(lightPosition - primitiveData.camCoordinates);
 
     /* Direction to the camera */
-    cameraDirection = -camCoordinates;
+    primitiveData.cameraDirection = -primitiveData.camCoordinates;
 
     /* Transform the position */
-    gl_Position = projectionMatrix*camCoordinates4;
+    vsPosition = projectionMatrix*camCoordinates4;
 
     #ifdef TEXTURED
     /* Texture coordinates, if needed */
-    interpolatedTextureCoords = textureCoords;
+    primitiveData.interpolatedTextureCoords = textureCoords;
     #endif
 
     #ifdef VERTEX_COLORS
-    interpolatedVertexColors = vertexColors;
+    primitiveData.interpolatedVertexColors = vertexColors;
     #endif
 
+    gsVertexIndex = vertexIndex;
     /* Project into sticker frame */
     highp vec4 stickerPos = stickerProjection * objectCoordinates4;
     stickerPos = stickerPos / stickerPos.w;
 
-    stickerCoordinates = (stickerPos.xy - stickerRange.xy) / stickerRange.zw;
+    primitiveData.stickerCoordinates = (stickerPos.xy - stickerRange.xy) / stickerRange.zw;
 }

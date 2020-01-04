@@ -5,6 +5,7 @@
 #define RENDER_SHADER_H
 
 #include <Magnum/GL/AbstractShaderProgram.h>
+#include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/Shaders/Generic.h>
 #include <Magnum/Math/Color.h>
@@ -47,7 +48,23 @@ public:
      */
     typedef Shaders::Generic3D::TextureCoordinates TextureCoordinates;
 
+
+    /**
+     * @brief Vertex colors
+     *
+     * @ref shaders-generic "Generic attribute",
+     * @ref Magnum::Vector4 "Vector4"
+     */
     typedef Shaders::Generic3D::Color4 VertexColors;
+
+    /**
+     * @brief Vertex index
+     *
+     * @ref shaders-generic "Generic attribute",
+     * @ref Magnum::UnsignedInt
+     */
+
+    typedef GL::Attribute<4, UnsignedInt> VertexIndex;
 
     enum: UnsignedInt {
         ColorOutput = 0,
@@ -55,7 +72,9 @@ public:
         ClassIndexOutput = 2,
         InstanceIndexOutput = 3,
         NormalOutput = 4,
-        CamCoordinatesOutput = 5
+        VertexIndexOutput = 5,
+        BarycentricCoeffsOutput = 6,
+        CamCoordinatesOutput = 7
     };
 
     /**
@@ -197,6 +216,18 @@ public:
      * @see @ref bindTextures(), @ref setDiffuseColor()
      */
     RenderShader& bindDiffuseTexture(GL::Texture2D& texture);
+
+    /**
+     * @brief Bind a depth texture
+     * @return Reference to self (for method chaining)
+     *
+     * Facilitates depth peeling.
+     * The fragments closer to camera than the binded depth will be decarded in
+     * the rendering step.
+     *
+     * FIXME: rename this to minDepth or something similar
+     */
+    RenderShader& bindDepthTexture(GL::RectangleTexture& texture);
 
     #ifdef MAGNUM_BUILD_DEPRECATED
     /** @brief @copybrief bindDiffuseTexture()
