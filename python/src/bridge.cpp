@@ -18,6 +18,7 @@
 
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/Debug.h>
+#include <Corrade/Containers/ArrayView.h>
 
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
@@ -157,6 +158,50 @@ namespace
         static at::Tensor convert(const Magnum::Vector4& vec)
         {
             return torch::from_blob(const_cast<float*>(vec.data()), {4}, at::kFloat).clone();
+        }
+    };
+
+    template<>
+    struct toTorch<std::vector<Magnum::Vector3>>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const std::vector<Magnum::Vector3>& vec)
+        {
+            //return torch::from_blob( reinterpret_cast<const float*>(vec.data()), {vec.size() * 3}, at::kFloat).clone();
+            return torch::from_blob(
+                const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
+                {static_cast<long int>(vec.size()) * 3},
+                at::kFloat
+            ).clone();
+        }
+    };
+    template<>
+    struct toTorch<std::vector<Magnum::Color4>>
+    {
+        using Result = at::Tensor;
+        static at::Tensor convert(const std::vector<Magnum::Color4>& vec)
+        {
+            return torch::from_blob(
+                const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
+                {static_cast<long int>(vec.size()) * 4},
+                at::kFloat
+            ).clone();
+        }
+    };
+
+    template<>
+    struct toTorch<std::vector<Magnum::UnsignedInt>>
+    {
+        using Result = at::Tensor;
+        static_assert(sizeof(int) == sizeof(Magnum::UnsignedInt), "Mismatch between PyTorch and Magnum int sizes");
+
+        static at::Tensor convert(const std::vector<Magnum::UnsignedInt>& vec)
+        {
+            return torch::from_blob(
+                const_cast<int*>(reinterpret_cast<const int*>(vec.data())),
+                {static_cast<int>(vec.size())},
+                at::kInt
+            ).clone();
         }
     };
 
@@ -451,7 +496,15 @@ static at::Tensor readShortTensor(sl::CUDATexture& texture)
     return extract(texture, Magnum::PixelFormat::R16UI, 1, at::kShort);
 }
 
+static at::Tensor readVertexIndicesTensor(sl::CUDATexture& texture)
+{
+    return extract(texture, Magnum::PixelFormat::RGBA32UI, 4, at::kInt);
+}
 
+static at::Tensor readBaryCentricCoeffsTensor(sl::CUDATexture& texture)
+{
+    return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat);
+}
 static void init()
 {
     if(g_context)
@@ -530,6 +583,185 @@ static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, floa
         throw std::invalid_argument("invalid value '" + modeStr + "' for mode argument");
 
     mesh->scaleToBBoxDiagonal(diagonal, mode);
+}
+
+static void Mesh_updatePositions(const std::shared_ptr<sl::Mesh>& mesh,
+    torch::Tensor& verticesIndex,
+    torch::Tensor& positionsUpdate)
+{
+    if(verticesIndex.dim() != 1)
+        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+    if(positionsUpdate.dim() != 2)
+        throw std::invalid_argument{"vertices_update (2nd argument) should be two dimensional"};
+    if(verticesIndex.size(0) != positionsUpdate.size(0))
+        throw std::invalid_argument{"vertices_index and vertices_update should be of same size"};
+    if(positionsUpdate.size(1) != 3)
+        throw std::invalid_argument{"vertices_update should be of shape (N,3)"};
+    if(verticesIndex.type().device_type() == torch::kCUDA || positionsUpdate.type().device_type() == torch::kCUDA)
+        throw std::invalid_argument{"vertices_index and vertices_update should be CPU tensors"};
+
+    if(!verticesIndex.is_contiguous())
+    {
+        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
+            "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+    }
+
+    if(!positionsUpdate.is_contiguous())
+    {
+        throw std::invalid_argument{"vertices_update should be contiguous tensor\n"
+            "(use vertices_update.contiguous() before passing vertices_update as an argument)"};
+    }
+
+    Corrade::Containers::ArrayView<int> vertexIndexView{
+        verticesIndex.data_ptr<int>(),
+        static_cast<std::size_t>(verticesIndex.numel())
+    };
+
+    auto positionUpdateView = Corrade::Containers::arrayCast<Magnum::Vector3>(
+        Corrade::Containers::arrayView(
+            positionsUpdate.data_ptr<float>(), positionsUpdate.numel()
+        )
+    );
+    mesh->updateVertexPositions(vertexIndexView, positionUpdateView);
+}
+
+static void Mesh_updateColors(const std::shared_ptr<sl::Mesh>& mesh,
+    torch::Tensor& verticesIndex,
+    torch::Tensor& ColorsUpdate)
+{
+    if(verticesIndex.dim() != 1)
+        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+
+    if(ColorsUpdate.dim() != 3)
+        throw std::invalid_argument{"vertices_update (2nd argument) should be three dimensional"};
+
+    if(verticesIndex.size(0) != ColorsUpdate.size(0))
+        throw std::invalid_argument{"vertices_index and colors_update should be of same size"};
+
+    if(ColorsUpdate.size(1) != 4)
+        throw std::invalid_argument{"vertices_update should be of shape (N,4)"};
+
+    if(verticesIndex.type().device_type() == torch::kCUDA || ColorsUpdate.type().device_type() == torch::kCUDA)
+        throw std::invalid_argument{"vertices_index and colors_update should be CPU tensors"};
+
+    if(!verticesIndex.is_contiguous())
+    {
+        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
+                    "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+    }
+
+    if(!ColorsUpdate.is_contiguous())
+    {
+        throw std::invalid_argument{"colors_update should be contiguous tensor\n"
+                    "(use colors_update.contiguous() before passing colors_update as an argument)"};
+    }
+
+    Corrade::Containers::ArrayView<int> vertexIndexView{
+        verticesIndex.data_ptr<int>(),
+        static_cast<std::size_t>(verticesIndex.numel())
+    };
+
+    auto colorUpdateView = Corrade::Containers::arrayCast<Magnum::Color4>(
+        Corrade::Containers::arrayView(
+            ColorsUpdate.data_ptr<float>(), ColorsUpdate.numel()
+        )
+    );
+
+    mesh->updateVertexColors(vertexIndexView, colorUpdateView);
+}
+
+static void Mesh_updatePositionsAndColors(const std::shared_ptr<sl::Mesh>& mesh,
+    torch::Tensor& verticesIndex,
+    torch::Tensor& positionsUpdate,
+    torch::Tensor& ColorsUpdate)
+{
+    if(verticesIndex.dim() != 1)
+        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+    if(positionsUpdate.dim() != 2)
+        throw std::invalid_argument{"vertices_update (2nd argument) should be two dimensional"};
+    if(ColorsUpdate.dim() != 3)
+        throw std::invalid_argument{"vertices_update (3rd argument) should be three dimensional"};
+    if(verticesIndex.size(0) != positionsUpdate.size(0))
+        throw std::invalid_argument{"vertices_index  and vertices_update should be of same size"};
+    if(verticesIndex.size(0) != ColorsUpdate.size(0))
+        throw std::invalid_argument{"vertices_index  and vertices_update should be of same size"};
+    if(positionsUpdate.size(1) != 3)
+        throw std::invalid_argument{"vertices_update should be of shape (N,3)"};
+    if(ColorsUpdate.size(1) != 4)
+        throw std::invalid_argument{"color_update should be of shape (N,4)"};
+    if(verticesIndex.type().device_type() != torch::kCPU
+        || positionsUpdate.type().device_type() != torch::kCPU
+        || ColorsUpdate.type().device_type() != torch::kCPU )
+        throw std::invalid_argument{"vertices_index, vertices_update, and color_update should be CPU tensors"};
+
+    if(!verticesIndex.is_contiguous())
+    {
+        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
+            "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+    }
+
+    if(!positionsUpdate.is_contiguous())
+    {
+        throw std::invalid_argument{"vertices_update should be contiguous tensor\n"
+            "(use vertices_update.contiguous() before passing vertices_update as an argument)"};
+    }
+
+    if(!ColorsUpdate.is_contiguous())
+    {
+        throw std::invalid_argument{"colors_update should be contiguous tensor\n"
+            "(use colors_update.contiguous() before passing colors_update as an argument)"};
+    }
+
+    Corrade::Containers::ArrayView<int> vertexIndexView{
+        verticesIndex.data_ptr<int>(),
+        static_cast<std::size_t>(verticesIndex.numel())
+    };
+
+    auto positionUpdateView = Corrade::Containers::arrayCast<Magnum::Vector3>(
+        Corrade::Containers::arrayView(
+            positionsUpdate.data_ptr<float>(), positionsUpdate.numel()
+        )
+    );
+    auto colorUpdateView = Corrade::Containers::arrayCast<Magnum::Color4>(
+        Corrade::Containers::arrayView(
+            ColorsUpdate.data_ptr<float>(), ColorsUpdate.numel()
+        )
+    );
+
+    mesh->updateVertexPositionsAndColors(
+        vertexIndexView, positionUpdateView, colorUpdateView
+    );
+}
+
+static void Mesh_setNewPositions(const std::shared_ptr<sl::Mesh>& mesh,
+    torch::Tensor& newVertices)
+{
+    if(!newVertices.is_contiguous())
+    {
+        throw std::invalid_argument{"new_positions should be contiguous tensor\n"
+            "(use new_positions.contiguous() before passing new_positions as an argument)"};
+    }
+
+    auto newVertexView = Corrade::Containers::arrayCast<Magnum::Vector3>(
+        Corrade::Containers::arrayView(newVertices.data_ptr<float>(), newVertices.numel())
+    );
+    mesh->setVertexPositions(newVertexView);
+}
+
+static void Mesh_setNewColors(const std::shared_ptr<sl::Mesh>& mesh,
+    torch::Tensor& newColors)
+{
+    if(!newColors.is_contiguous())
+        throw std::invalid_argument{"new_colors should be contiguous tensor \n"
+                    "(use new_colors.contiguous() before passing new_colors as an argument)"};
+
+    auto newColorView = Corrade::Containers::arrayCast<Magnum::Color4>(
+        Corrade::Containers::arrayView(
+            newColors.data_ptr<float>(),
+            newColors.numel()
+        )
+    );
+    mesh->setVertexColors(newColorView);
 }
 
 // Scene
@@ -796,6 +1028,45 @@ PYBIND11_MODULE(libstillleben_python, m) {
                     the scale of arbitrary mesh files.
         )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
+        .def("update_positions", &Mesh_updatePositions, R"EOS(
+            Updates the mesh vertices.
+
+            Args:
+                vertex_indices (tensor): FIXME
+                position_update (tensor): FIXME
+        )EOS", py::arg("vertex_indices"), py::arg("position_update"))
+
+        .def("update_colors", &Mesh_updateColors, R"EOS(
+            Updates the mesh vertex colors.
+
+            Args:
+                vertex_indices (tensor): FIXME
+                color_update (tensor): FIXME
+        )EOS", py::arg("vertex_indices"), py::arg("color_update"))
+
+        .def("update_positions_and_colors", &Mesh_updatePositionsAndColors, R"EOS(
+            Updates the mesh vertices and vertex colors.
+
+            Args:
+                vertex_indices (tensor): FIXME
+                position_update (tensor): FIXME
+                color_update (tensor): FIXME
+        )EOS", py::arg("vertex_indices"), py::arg("position_update"), py::arg("color_update"))
+
+        .def("set_new_positions", &Mesh_setNewPositions, R"EOS(
+            Set new vertex positions.
+
+            Args:
+                new_positions (tensor): FIXME
+        )EOS", py::arg("new_positions"))
+
+        .def("set_new_colors", &Mesh_setNewColors, R"EOS(
+            Set new vertex colors.
+
+            Args:
+                new_colors (tensor): FIXME
+        )EOS", py::arg("new_colors"))
+
         .def_property("pretransform", wrapShared(&sl::Mesh::pretransform), wrapShared(&sl::Mesh::setPretransform), R"EOS(
             The current pretransform matrix. Initialized to identity and
             modified by :func:`center_bbox` and :func:`scale_to_bbox_diagonal`.
@@ -804,6 +1075,31 @@ PYBIND11_MODULE(libstillleben_python, m) {
         .def_property("class_index",
             &sl::Mesh::classIndex, &sl::Mesh::setClassIndex, R"EOS(
             Class index for training semantic segmentation.
+        )EOS")
+
+        .def_property_readonly("num_vertices", &sl::Mesh::numVertices,
+        R"EOS(
+            Number of vertices in the mesh. WARNING: Single Mesh assumption.
+        )EOS")
+
+        .def_property_readonly("points", wrapShared(&sl::Mesh::meshPoints),
+        R"EOS(
+            Returns mesh points. WARNING: Single Mesh assumption.
+        )EOS")
+
+        .def_property_readonly("normals", wrapShared(&sl::Mesh::meshNormals),
+        R"EOS(
+            Returns mesh normals. WARNING: Single Mesh assumption.
+        )EOS")
+
+        .def_property_readonly("faces", wrapShared(&sl::Mesh::meshFaces),
+        R"EOS(
+            Returns mesh faces. WARNING: Single Mesh assumption.
+        )EOS")
+
+        .def_property_readonly("colors", wrapShared(&sl::Mesh::meshColors),
+        R"EOS(
+            Returns mesh colors. WARNING: Single Mesh assumption.
         )EOS")
     ;
 
@@ -1202,6 +1498,17 @@ PYBIND11_MODULE(libstillleben_python, m) {
             Result of a :class:`RenderPass` run.
         )EOS")
 
+        .def(py::init([](){
+                if(!g_context)
+                    throw std::logic_error("Call sl::init() first");
+
+                return std::make_shared<sl::RenderPass::Result>(
+                    g_cudaEnabled
+                );
+            }), R"EOS(
+            Constructor.
+         )EOS")
+
         .def("rgb", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readRGBATensor(result->rgb);
             }, R"EOS(
@@ -1307,6 +1614,24 @@ PYBIND11_MODULE(libstillleben_python, m) {
                     tensor: (H x W x 4) float tensor with normals.
             )EOS")
 
+        .def("vertex_indices", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+                return readVertexIndicesTensor(result->vertexIndex);
+            }, R"EOS(
+                Read vertex indices map.
+                If CUDA support is active, the tensor will reside on the GPU
+                which was used during rendering.
+
+                Returns:
+                    tensor: (H x W x 4) int tensor with vertex indices. NOTE: Ignore the 4th channel. FIXME then don't return it.
+            )EOS")
+
+        .def("barycentric_coeffs", [](const std::shared_ptr<sl::RenderPass::Result>& result){
+                return readBaryCentricCoeffsTensor(result->barycentricCoeffs);
+            }, R"EOS(
+                Read barycentric coefficients map.
+                    tensor: (H x W x 4) float tensor with barycentric coefficients. NOTE: Ignore the 4th channel. FIXME then don't return it.
+            )EOS")
+
         .def("cam_coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readXYZWTensor(result->camCoordinates);
             }, R"EOS(
@@ -1319,7 +1644,6 @@ PYBIND11_MODULE(libstillleben_python, m) {
                 Returns:
                     tensor: (H x W x 4) float tensor (x, y, z, 1)
             )EOS")
-
     ;
 
     py::class_<sl::RenderPass, ContextSharedPtr<sl::RenderPass>>(m, "RenderPass", R"EOS(
@@ -1346,17 +1670,28 @@ PYBIND11_MODULE(libstillleben_python, m) {
          )EOS", py::arg("shading")="phong")
 
         .def("render",
-            [](const ContextSharedPtr<sl::RenderPass>& pass, const std::shared_ptr<sl::Scene>& scene){
-                return ContextSharedPtr<sl::RenderPass::Result>{pass->render(*scene)};
+            [](const ContextSharedPtr<sl::RenderPass>& pass,
+                const std::shared_ptr<sl::Scene>& scene,
+                std::shared_ptr<sl::RenderPass::Result> result,
+                std::shared_ptr<sl::RenderPass::Result> depthBufferResult){
+                return ContextSharedPtr<sl::RenderPass::Result>{pass->render(*scene, result, depthBufferResult.get())};
             }, R"EOS(
             Render a scene.
 
             Args:
                 scene (Scene): The scene to render.
+                result (RenderPassResult): The caller can pass in a result
+                    instance to be filled. If this is None, the internal result
+                    instance of the RenderPass object will be used.
 
+                    NOTE: A second render with `result=None` will overwrite
+                    the results of the first render.
+                depth_peel (RenderPassResult): If you want to retrieve the
+                    layer behind the last rendered one, pass in the result of
+                    the previous render here (depth peeling).
             Returns:
                 RenderPassResult
-        )EOS", py::arg("scene"))
+        )EOS", py::arg("scene"), py::arg("result")=nullptr, py::arg("depth_peel")=nullptr)
 
         .def_property("ssao_enabled", &sl::RenderPass::ssaoEnabled, &sl::RenderPass::setSSAOEnabled, "SSAO enable")
     ;
