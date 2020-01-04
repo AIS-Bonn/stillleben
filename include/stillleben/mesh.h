@@ -10,10 +10,12 @@
 #include <stillleben/exception.h>
 
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/PluginManager/PluginManager.h>
 
 #include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Range.h>
 
 #include <Magnum/Trade/AbstractImporter.h>
@@ -24,6 +26,7 @@
 #include <Magnum/Trade/TextureData.h>
 
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/Buffer.h>
 
 namespace physx
 {
@@ -51,6 +54,9 @@ public:
     using MeshArray = Corrade::Containers::Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using MeshFlagArray = Corrade::Containers::Array<MeshFlags>;
     using PointArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
+    using NormalArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Vector3>>>;
+    using FaceArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::UnsignedInt>>>;
+    using ColorArray = Corrade::Containers::Array<Corrade::Containers::Optional<std::vector<Magnum::Color4>>>;
     using TextureArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::PhongMaterialData>>;
     using SimplifiedMeshArray = Corrade::Containers::Array<Corrade::Containers::Optional<Magnum::Trade::MeshData3D>>;
@@ -109,6 +115,45 @@ public:
      **/
     void loadPhysics(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 
+    /**
+     * @brief Update vertex positions
+     **/
+    void updateVertexPositions(
+        Corrade::Containers::ArrayView<int>& verticesIndex,
+        Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
+    );
+
+    /**
+     * @brief Update vertex colors
+     **/
+    void updateVertexColors(
+        Corrade::Containers::ArrayView<int>& verticesIndex,
+        Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+    );
+
+    /**
+     * @brief Update vertex positions and colors
+    **/
+    void updateVertexPositionsAndColors(
+        Corrade::Containers::ArrayView<int>& verticesIndex,
+        Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
+        Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+    );
+
+    /**
+     * @brief set vertex positions
+     **/
+    void setVertexPositions(
+        Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
+    );
+
+    /**
+     * @brief set vertex colors
+     **/
+    void setVertexColors(
+        Corrade::Containers::ArrayView<Magnum::Color4>& newColors
+    );
+
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
         const std::shared_ptr<Context>& ctx,
         const std::vector<std::string>& filenames,
@@ -150,8 +195,48 @@ public:
     MeshFlagArray& meshFlags()
     { return m_meshFlags; }
 
-    PointArray& meshPoints()
-    { return m_meshPoints; }
+    std::vector<Magnum::Vector3> meshPoints()
+    {
+        if(m_meshPoints.size() == 0)
+            return {};
+
+        auto& points = m_meshPoints[0];
+        if(!points)
+            return {};
+
+        return *points;
+    }
+
+    std::vector<Magnum::Vector3> meshNormals()
+    {
+        if(m_meshNormals.size() == 0)
+            return {};
+
+        auto& normals = m_meshNormals[0];
+        if(!normals)
+            return {};
+        return *normals;
+    }
+
+    std::vector<Magnum::UnsignedInt> meshFaces()
+    {
+        if(m_meshFaces.size() == 0)
+            return {};
+        auto& faces = m_meshFaces[0];
+        if(!faces)
+            return {};
+        return *faces;
+    }
+
+    std::vector<Magnum::Color4> meshColors()
+    {
+        if( m_meshColors.size() == 0)
+            return {};
+        auto& colors = m_meshColors[0];
+        if(!colors)
+            return {};
+        return *colors;
+    }
 
     PhysXMeshArray& physXMeshes()
     { return m_physXMeshes; }
@@ -168,6 +253,10 @@ public:
 
     std::string filename() const
     { return m_filename; }
+
+    unsigned int numVertices() const
+    { return m_numVertices; }
+
 
 private:
     void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
@@ -187,6 +276,9 @@ private:
     MeshArray m_meshes;
     MeshFlagArray m_meshFlags;
     PointArray m_meshPoints;
+    NormalArray m_meshNormals;
+    FaceArray m_meshFaces;
+    ColorArray m_meshColors;
     TextureArray m_textures;
     MaterialArray m_materials;
     SimplifiedMeshArray m_simplifiedMeshes;
@@ -204,6 +296,13 @@ private:
     Magnum::Matrix4 m_pretransform;
 
     unsigned int m_classIndex = 1;
+
+    Magnum::GL::Buffer m_vertexIndexBuf{Magnum::NoCreate};
+
+    Magnum::Containers::Optional<Magnum::Trade::MeshData3D> m_meshData;
+    unsigned int m_numVertices;
+
+    Corrade::Containers::Array<Magnum::UnsignedInt> m_vertexIndices;
 };
 
 }

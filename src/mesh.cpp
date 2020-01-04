@@ -29,7 +29,7 @@
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/MeshData3D.h>
+
 #include <Magnum/Trade/MeshObjectData3D.h>
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/PhongMaterialData.h>
@@ -40,6 +40,7 @@
 #include <sstream>
 #include <fstream>
 
+#include "shaders/render_shader.h"
 #include "physx_impl.h"
 #include "utils/os.h"
 
@@ -185,6 +186,7 @@ void Mesh::openFile()
 
     // Set up postprocess options if using AssimpImporter
     auto group = m_importer->configuration().group("postprocess");
+
     if(group)
     {
         group->setValue("JoinIdenticalVertices", true);
@@ -210,6 +212,11 @@ void Mesh::openFile()
 
     // Compute bounding box
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_meshNormals = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_meshFaces = Containers::Array<Containers::Optional<std::vector<UnsignedInt>>>{m_importer->mesh3DCount()};
+    m_meshColors = Containers::Array<Containers::Optional<std::vector<Color4>>>{m_importer->mesh3DCount()};
+
+
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -217,13 +224,43 @@ void Mesh::openFile()
             continue; // we print a proper warning in loadVisual()
 
         std::vector<Vector3> points;
+        std::vector<Vector3> normals;
+        std::vector<UnsignedInt> faces;
+        std::vector<Color4> colors;
+
+        auto colorArraySize = meshData->colorArrayCount();
         for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
         {
             auto array = meshData->positions(j);
             std::copy(array.begin(), array.end(), std::back_inserter(points));
+
+            auto normalsArray = meshData->normals(j);
+            std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
+
+            if(colorArraySize != 0)
+            {
+                // mesh has prevextex coloring
+                auto colorArray = meshData->colors(j);
+                std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
+            }
+            else
+            {
+                // mesh has no coloring
+                // fill all vertices to white color
+                for(std::size_t ic=0; ic < array.size(); ++ic)
+                {
+                    colors.push_back( Color4(1.0, 1.0, 1.0, 1.0) );
+                }
+            }
         }
 
+        auto facesArray = meshData->indices();
+        std::copy(facesArray.begin(), facesArray.end(), std::back_inserter(faces));
+
         m_meshPoints[i] = std::move(points);
+        m_meshNormals[i] = std::move(normals);
+        m_meshFaces[i] = std::move(faces);
+        m_meshColors[i] = std::move(colors);
     }
 
     // Update the bounding box
@@ -393,6 +430,7 @@ void Mesh::loadVisual()
     m_meshFlags = Containers::Array<MeshFlags>{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
+
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
         if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
         {
@@ -400,15 +438,423 @@ void Mesh::loadVisual()
             continue;
         }
 
+        // FIXME: Is copying colors necessary here?
+        std::vector<Vector3> points;
+        std::vector<Vector3> normals;
+        std::vector<Color4> colors;
+
+        auto colorArraySize = meshData->colorArrayCount();
+        for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
+        {
+            auto array = meshData->positions(j);
+            std::copy(array.begin(), array.end(), std::back_inserter(points));
+
+            auto normalsArray = meshData->normals(j);
+            std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
+
+            if(colorArraySize != 0)
+            {
+                // mesh has prevextex coloring
+                auto colorArray = meshData->colors(j);
+                std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
+            }
+            else
+            {
+                // mesh has no coloring
+                // fill all vertices to white color
+                for(std::size_t ic=0; ic < array.size(); ++ic)
+                {
+                    colors.push_back( Color4(1.0, 1.0, 1.0, 1.0) );
+                }
+
+                // add colors to the meshData
+            }
+        }
+
+        m_meshPoints[i] = points;
+        m_meshNormals[i] = normals;
+        m_meshColors[i] = colors; // Is this move constructor by default?
+        // Line 188 uses move, for example.
+
         m_meshes[i] = std::make_shared<GL::Mesh>(
             MeshTools::compile(*meshData)
         );
 
+        // add an index to each vertex in the mesh
+        {
+            m_vertexIndices =  Corrade::Containers::Array<Magnum::UnsignedInt>(Corrade::Containers::NoInit, points.size());
+            for(std::size_t i = 0; i < points.size(); ++i)
+            {
+                m_vertexIndices[i] = i + 1;
+            }
+
+            // Vertex index starts from 1
+            // this is done to avoid the confusion of 0 being the default value in the texel fetch sampling.
+
+            m_vertexIndexBuf = Magnum::GL::Buffer{};
+            m_vertexIndexBuf.setData(m_vertexIndices);
+            m_meshes[i]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+        }
+
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
+
+        // NOTE: This works only for YCBVideos dataset
+        if(i == 0)
+        {
+            m_numVertices = meshData->positions(i).size();
+            m_meshData = std::move(meshData) ;
+        }
     }
 
     m_visualLoaded = true;
+}
+
+void Mesh::updateVertexPositions(
+    Corrade::Containers::ArrayView<int>& verticesIndex,
+    Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
+)
+{
+    // if(verticesIndex.size() != verticesUpdate.size())
+    //     throw std::logic_error("Size of vertexIndices and vertexUpdates should be equal");
+
+    // FIXME: Assumption
+    // A stillleben mesh always contains only one Magnum mesh
+    // This is okay for YCB video dataset
+
+    // TODO:q: Isn't i size always 1
+
+    // update the meshes
+    auto& meshData = *m_meshData;
+
+    // for(std::size_t vi = 0; vi < m_meshPoints[0]->size(); ++vi)
+    // {
+    //     auto& point = m_meshData->positions(0)[vi];
+    //     Warning{} << point.x() <<point.y()<<point.z();
+    // }
+
+    // update
+    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+    {
+        Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
+        Vector3 update = positionsUpdate[vi];
+        point = point + update;
+    }
+
+    // recompute normals
+
+    // we follow angle-based weighting scheme for per vertex normals computing
+    // PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE case in libigl per_vertex_normals code
+    // https://github.com/libigl/libigl/blob/master/include/igl/per_vertex_normals.cpp
+
+    // steps
+    // 1: find list of faces a vertex is part of.
+    // 2: compute area of each face
+    // 3: compute angular weight
+
+    // TODO: Implement angular weighting
+    // For now, only area weighting is implemented.
+
+    // recompute normals
+    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<float> facesArea(m_meshData->indices().size());
+    std::vector<Vector3> facesNormal(m_meshData->indices().size());
+    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
+    {
+        auto face = i / 3;
+        auto& vertexOne = m_meshData->indices()[i ];
+        auto& vertexTwo = m_meshData->indices()[i+1];
+        auto& vertexThree = m_meshData->indices()[i+2];
+        vertexFacesMap[vertexOne].push_back( face );
+        vertexFacesMap[vertexTwo ].push_back( face );
+        vertexFacesMap[vertexThree].push_back( face );
+
+        // area of the face
+        Vector3 v1 = m_meshData->positions(0)[vertexOne];
+        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
+        Vector3 v3 = m_meshData->positions(0)[vertexThree];
+
+        auto v1v2 = v1 - v2;
+        auto v1v3 = v1 - v3;
+
+        // FIXME: Magnum has routines for cross product & vector norm, use these!
+        Vector3 crossProduct = Vector3(v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y());
+
+        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        facesArea[face] = area;
+
+        Vector3 normal = crossProduct.normalized() ;
+
+        facesNormal[face] = normal;
+    }
+
+    // compute new normals weight
+    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
+    {
+        Vector3 normal = Vector3(0., 0., 0.);
+
+        for(const auto& face : vertexFacesMap[i])
+            normal += facesNormal[face] * facesArea[face];
+
+        //normal = facesNormal[vertexFacesMap[i][0]];
+        normal = normal.normalized();
+
+        Vector3& oldNormal = m_meshData->normals(0)[i];
+        oldNormal = normal;
+    }
+
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
+    *m_meshes[0] = std::move(
+        MeshTools::compile(meshData)
+    );
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
+}
+
+void Mesh::updateVertexColors(
+    Corrade::Containers::ArrayView<int>& verticesIndex,
+    Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+)
+{
+    // ************************************************
+    // follows updateVertexPositions implementation
+    // ************************************************
+
+    // update the meshes
+    auto& meshData = *m_meshData;
+
+    // update
+    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+    {
+        Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
+        Color4 update = colorsUpdate[vi];
+        color = color + update;
+
+        // clip color between 0 and 1
+        // FIXME:
+        // No interface for updating individual elements?
+    }
+
+    m_meshColors[0] = m_meshData->colors(0);
+
+    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
+    *m_meshes[0] = std::move(
+        MeshTools::compile(meshData)
+    );
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
+}
+
+void Mesh::updateVertexPositionsAndColors(
+    Corrade::Containers::ArrayView<int>& verticesIndex,
+    Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
+    Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+)
+{
+    // ************************************************
+    // follows updateVertexPositions implementation
+    // ************************************************
+
+    // update the meshes
+    auto& meshData = *m_meshData;
+
+    // update
+    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+    {
+        Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
+        Vector3 update = positionsUpdate[vi];
+        point = point + update;
+
+        Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
+        Color4 cUpdate = colorsUpdate[vi];
+        color = color + cUpdate;
+
+        // clip color between 0 and 1
+        // FIXME:
+        // No interface for updating individual elements?
+    }
+
+    // recompute normals
+    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<float> facesArea(m_meshData->indices().size());
+    std::vector<Vector3> facesNormal(m_meshData->indices().size());
+    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
+    {
+        auto face = i / 3;
+        auto& vertexOne = m_meshData->indices()[i ];
+        auto& vertexTwo = m_meshData->indices()[i+1];
+        auto& vertexThree = m_meshData->indices()[i+2];
+        vertexFacesMap[vertexOne].push_back( face );
+        vertexFacesMap[vertexTwo ].push_back( face );
+        vertexFacesMap[vertexThree].push_back( face );
+
+        // area of the face
+        Vector3 v1 = m_meshData->positions(0)[vertexOne];
+        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
+        Vector3 v3 = m_meshData->positions(0)[vertexThree];
+
+        auto v1v2 = v1 - v2;
+        auto v1v3 = v1 - v3;
+
+        Vector3 crossProduct = Vector3( v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y() );
+
+        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        facesArea[face] = area;
+
+        Vector3 normal = crossProduct.normalized();
+
+        facesNormal[face] = normal;
+    }
+
+    // compute new normals weight
+    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
+    {
+        Vector3 normal = Vector3(0., 0., 0.);
+
+        for(const auto& face :  vertexFacesMap[i])
+            normal += facesNormal[face] * facesArea[face];
+
+        //normal = facesNormal[vertexFacesMap[i][0]];
+        normal = normal.normalized();
+
+        Vector3& oldNormal = m_meshData->normals(0)[i];
+        oldNormal = normal;
+    }
+
+    m_meshColors[0] = m_meshData->colors(0);
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
+    *m_meshes[0] = std::move(
+        MeshTools::compile(meshData)
+    );
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
+}
+
+void Mesh::setVertexPositions(
+    Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
+    )
+{
+    if  (m_meshData->positions(0).size() != newVertices.size())
+        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
+
+    std::copy(newVertices.begin(), newVertices.end(), m_meshData->positions(0).begin());
+
+    // recompute normals
+    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<float> facesArea(m_meshData->indices().size());
+    std::vector<Vector3> facesNormal(m_meshData->indices().size());
+    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
+    {
+        auto face = i / 3;
+        auto& vertexOne = m_meshData->indices()[i];
+        auto& vertexTwo = m_meshData->indices()[i+1];
+        auto& vertexThree = m_meshData->indices()[i+2];
+        vertexFacesMap[vertexOne].push_back(face);
+        vertexFacesMap[vertexTwo ].push_back(face);
+        vertexFacesMap[vertexThree].push_back(face);
+
+        // area of the face
+        Vector3 v1 = m_meshData->positions(0)[vertexOne];
+        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
+        Vector3 v3 = m_meshData->positions(0)[vertexThree];
+
+        auto v1v2 = v1 - v2;
+        auto v1v3 = v1 - v3;
+
+        Vector3 crossProduct = Vector3(v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y());
+
+        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        facesArea[face] = area;
+
+        Vector3 normal = crossProduct.normalized();
+
+        facesNormal[face] = normal;
+    }
+
+    // compute new normals weight
+    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
+    {
+        Vector3 normal = Vector3(0., 0., 0.);
+
+        for(const auto& face :  vertexFacesMap[i])
+            normal += facesNormal[face] * facesArea[face];
+
+        //normal = facesNormal[vertexFacesMap[i][0]];
+        normal = normal.normalized();
+
+        Vector3& oldNormal = m_meshData->normals(0)[i];
+        oldNormal = normal;
+    }
+
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
+    *m_meshes[0] = std::move(
+        MeshTools::compile(*m_meshData)
+    );
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
+}
+
+void Mesh::setVertexColors(
+    Corrade::Containers::ArrayView<Magnum::Color4>& newColors
+    )
+{
+    if(m_meshData->colorArrayCount() == 0)
+    {
+        throw Exception("MeshData does not contain colors attribute."
+            "This could happend if the mesh file does not contain per vertex coloring.");
+    }
+
+    if  (m_meshData->positions(0).size() != newColors.size())
+        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
+
+    std::copy(newColors.begin(), newColors.end(), m_meshData->colors(0).begin());
+
+    m_meshColors[0] = m_meshData->colors(0);
+
+    *m_meshes[0] = std::move(
+        MeshTools::compile(*m_meshData)
+    );
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
 }
 
 void Mesh::loadPretransform(const std::string& filename)
