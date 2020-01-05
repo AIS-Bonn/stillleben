@@ -515,23 +515,7 @@ void Mesh::updateVertexPositions(
     Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
 )
 {
-    // if(verticesIndex.size() != verticesUpdate.size())
-    //     throw std::logic_error("Size of vertexIndices and vertexUpdates should be equal");
-
-    // FIXME: Assumption
-    // A stillleben mesh always contains only one Magnum mesh
-    // This is okay for YCB video dataset
-
-    // TODO:q: Isn't i size always 1
-
-    // update the meshes
     auto& meshData = *m_meshData;
-
-    // for(std::size_t vi = 0; vi < m_meshPoints[0]->size(); ++vi)
-    // {
-    //     auto& point = m_meshData->positions(0)[vi];
-    //     Warning{} << point.x() <<point.y()<<point.z();
-    // }
 
     // update
     for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
@@ -542,20 +526,9 @@ void Mesh::updateVertexPositions(
     }
 
     // recompute normals
-
-    // we follow angle-based weighting scheme for per vertex normals computing
+    // we follow area-based weighting scheme for per vertex normals computing
     // PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE case in libigl per_vertex_normals code
     // https://github.com/libigl/libigl/blob/master/include/igl/per_vertex_normals.cpp
-
-    // steps
-    // 1: find list of faces a vertex is part of.
-    // 2: compute area of each face
-    // 3: compute angular weight
-
-    // TODO: Implement angular weighting
-    // For now, only area weighting is implemented.
-
-    // recompute normals
     std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
     std::vector<float> facesArea(m_meshData->indices().size());
     std::vector<Vector3> facesNormal(m_meshData->indices().size());
@@ -577,10 +550,9 @@ void Mesh::updateVertexPositions(
         auto v1v2 = v1 - v2;
         auto v1v3 = v1 - v3;
 
-        // FIXME: Magnum has routines for cross product & vector norm, use these!
-        Vector3 crossProduct = Vector3(v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y());
+        Vector3 crossProduct = Math::cross(v1v2, v1v3);
 
-        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        float area = crossProduct.length();
         facesArea[face] = area;
 
         Vector3 normal = crossProduct.normalized() ;
@@ -596,7 +568,6 @@ void Mesh::updateVertexPositions(
         for(const auto& face : vertexFacesMap[i])
             normal += facesNormal[face] * facesArea[face];
 
-        //normal = facesNormal[vertexFacesMap[i][0]];
         normal = normal.normalized();
 
         Vector3& oldNormal = m_meshData->normals(0)[i];
@@ -606,7 +577,6 @@ void Mesh::updateVertexPositions(
     m_meshPoints[0] = m_meshData->positions(0);
     m_meshNormals[0] = m_meshData->normals(0);
 
-    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
     *m_meshes[0] = std::move(
         MeshTools::compile(meshData)
     );
@@ -638,15 +608,10 @@ void Mesh::updateVertexColors(
         Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
         Color4 update = colorsUpdate[vi];
         color = color + update;
-
-        // clip color between 0 and 1
-        // FIXME:
-        // No interface for updating individual elements?
     }
 
     m_meshColors[0] = m_meshData->colors(0);
 
-    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
     *m_meshes[0] = std::move(
         MeshTools::compile(meshData)
     );
@@ -683,10 +648,6 @@ void Mesh::updateVertexPositionsAndColors(
         Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
         Color4 cUpdate = colorsUpdate[vi];
         color = color + cUpdate;
-
-        // clip color between 0 and 1
-        // FIXME:
-        // No interface for updating individual elements?
     }
 
     // recompute normals
@@ -711,9 +672,9 @@ void Mesh::updateVertexPositionsAndColors(
         auto v1v2 = v1 - v2;
         auto v1v3 = v1 - v3;
 
-        Vector3 crossProduct = Vector3( v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y() );
+        Vector3 crossProduct = Math::cross(v1v2, v1v3);
 
-        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        float area = crossProduct.length();
         facesArea[face] = area;
 
         Vector3 normal = crossProduct.normalized();
@@ -740,7 +701,6 @@ void Mesh::updateVertexPositionsAndColors(
     m_meshPoints[0] = m_meshData->positions(0);
     m_meshNormals[0] = m_meshData->normals(0);
 
-    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
     *m_meshes[0] = std::move(
         MeshTools::compile(meshData)
     );
@@ -785,9 +745,9 @@ void Mesh::setVertexPositions(
         auto v1v2 = v1 - v2;
         auto v1v3 = v1 - v3;
 
-        Vector3 crossProduct = Vector3(v1v2.y()*v1v3.z() - v1v3.y() * v1v2.z(), -1 * (v1v2.x()*v1v3.z() - v1v3.x() * v1v2.z()), v1v2.x()*v1v3.y() - v1v3.x() * v1v2.y());
+        Vector3 crossProduct = Math::cross(v1v2, v1v3);
 
-        float area = std::sqrt(crossProduct.x() * crossProduct.x() + crossProduct.y() * crossProduct.y() + crossProduct.z() * crossProduct.z());
+        float area = crossProduct.length();
         facesArea[face] = area;
 
         Vector3 normal = crossProduct.normalized();
@@ -813,7 +773,6 @@ void Mesh::setVertexPositions(
     m_meshPoints[0] = m_meshData->positions(0);
     m_meshNormals[0] = m_meshData->normals(0);
 
-    // Warning{} << "Total number of vertices "<< m_meshData->positions(0).size();
     *m_meshes[0] = std::move(
         MeshTools::compile(*m_meshData)
     );
