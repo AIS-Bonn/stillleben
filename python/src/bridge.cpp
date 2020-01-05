@@ -498,12 +498,12 @@ static at::Tensor readShortTensor(sl::CUDATexture& texture)
 
 static at::Tensor readVertexIndicesTensor(sl::CUDATexture& texture)
 {
-    return extract(texture, Magnum::PixelFormat::RGBA32UI, 4, at::kInt);
+    return extract(texture, Magnum::PixelFormat::RGBA32UI, 4, at::kInt).slice(2, 0, 3);
 }
 
 static at::Tensor readBaryCentricCoeffsTensor(sl::CUDATexture& texture)
 {
-    return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat);
+    return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
 }
 static void init()
 {
@@ -590,26 +590,26 @@ static void Mesh_updatePositions(const std::shared_ptr<sl::Mesh>& mesh,
     torch::Tensor& positionsUpdate)
 {
     if(verticesIndex.dim() != 1)
-        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+        throw std::invalid_argument{"vertex_indices (1st argument) should be one dimensional"};
     if(positionsUpdate.dim() != 2)
-        throw std::invalid_argument{"vertices_update (2nd argument) should be two dimensional"};
+        throw std::invalid_argument{"position_update (2nd argument) should be two dimensional"};
     if(verticesIndex.size(0) != positionsUpdate.size(0))
-        throw std::invalid_argument{"vertices_index and vertices_update should be of same size"};
+        throw std::invalid_argument{"vertex_indices and position_update should be of same size"};
     if(positionsUpdate.size(1) != 3)
-        throw std::invalid_argument{"vertices_update should be of shape (N,3)"};
+        throw std::invalid_argument{"position_update should be of shape (N,3)"};
     if(verticesIndex.type().device_type() == torch::kCUDA || positionsUpdate.type().device_type() == torch::kCUDA)
-        throw std::invalid_argument{"vertices_index and vertices_update should be CPU tensors"};
+        throw std::invalid_argument{"vertex_indices and position_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
     {
-        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
-            "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+        throw std::invalid_argument{"vertex_indices should be contiguous tensor\n"
+            "(use vertex_indices.contiguous() before passing vertex_indices as an argument)"};
     }
 
     if(!positionsUpdate.is_contiguous())
     {
-        throw std::invalid_argument{"vertices_update should be contiguous tensor\n"
-            "(use vertices_update.contiguous() before passing vertices_update as an argument)"};
+        throw std::invalid_argument{"position_update should be contiguous tensor\n"
+            "(use position_update.contiguous() before passing position_update as an argument)"};
     }
 
     Corrade::Containers::ArrayView<int> vertexIndexView{
@@ -630,24 +630,24 @@ static void Mesh_updateColors(const std::shared_ptr<sl::Mesh>& mesh,
     torch::Tensor& ColorsUpdate)
 {
     if(verticesIndex.dim() != 1)
-        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+        throw std::invalid_argument{"vertex_indices (1st argument) should be one dimensional"};
 
-    if(ColorsUpdate.dim() != 3)
-        throw std::invalid_argument{"vertices_update (2nd argument) should be three dimensional"};
+    if(ColorsUpdate.dim() != 2)
+        throw std::invalid_argument{"color_update (2nd argument) should be two dimensional"};
 
     if(verticesIndex.size(0) != ColorsUpdate.size(0))
-        throw std::invalid_argument{"vertices_index and colors_update should be of same size"};
+        throw std::invalid_argument{"vertex_indices and colors_update should be of same size"};
 
     if(ColorsUpdate.size(1) != 4)
-        throw std::invalid_argument{"vertices_update should be of shape (N,4)"};
+        throw std::invalid_argument{"color_update should be of shape (N,4)"};
 
     if(verticesIndex.type().device_type() == torch::kCUDA || ColorsUpdate.type().device_type() == torch::kCUDA)
-        throw std::invalid_argument{"vertices_index and colors_update should be CPU tensors"};
+        throw std::invalid_argument{"vertex_indices and colors_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
     {
-        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
-                    "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+        throw std::invalid_argument{"vertex_indices should be contiguous tensor\n"
+                    "(use vertex_indices.contiguous() before passing vertex_indices as an argument)"};
     }
 
     if(!ColorsUpdate.is_contiguous())
@@ -676,40 +676,40 @@ static void Mesh_updatePositionsAndColors(const std::shared_ptr<sl::Mesh>& mesh,
     torch::Tensor& ColorsUpdate)
 {
     if(verticesIndex.dim() != 1)
-        throw std::invalid_argument{"vertices_index (1st argument) should be one dimensional"};
+        throw std::invalid_argument{"vertex_indices (1st argument) should be one dimensional"};
     if(positionsUpdate.dim() != 2)
-        throw std::invalid_argument{"vertices_update (2nd argument) should be two dimensional"};
-    if(ColorsUpdate.dim() != 3)
-        throw std::invalid_argument{"vertices_update (3rd argument) should be three dimensional"};
+        throw std::invalid_argument{"position_update (2nd argument) should be two dimensional"};
+    if(ColorsUpdate.dim() != 2)
+        throw std::invalid_argument{"color_update (3rd argument) should be two dimensional"};
     if(verticesIndex.size(0) != positionsUpdate.size(0))
         throw std::invalid_argument{"vertices_index  and vertices_update should be of same size"};
     if(verticesIndex.size(0) != ColorsUpdate.size(0))
-        throw std::invalid_argument{"vertices_index  and vertices_update should be of same size"};
+        throw std::invalid_argument{"vertices_index  and color_update should be of same size"};
     if(positionsUpdate.size(1) != 3)
-        throw std::invalid_argument{"vertices_update should be of shape (N,3)"};
+        throw std::invalid_argument{"position_update should be of shape (N,3)"};
     if(ColorsUpdate.size(1) != 4)
         throw std::invalid_argument{"color_update should be of shape (N,4)"};
     if(verticesIndex.type().device_type() != torch::kCPU
         || positionsUpdate.type().device_type() != torch::kCPU
         || ColorsUpdate.type().device_type() != torch::kCPU )
-        throw std::invalid_argument{"vertices_index, vertices_update, and color_update should be CPU tensors"};
+        throw std::invalid_argument{"vertex_indices, position_update, and color_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
     {
-        throw std::invalid_argument{"vertices_index should be contiguous tensor\n"
-            "(use vertices_index.contiguous() before passing vertices_index as an argument)"};
+        throw std::invalid_argument{"vertex_indices should be contiguous tensor\n"
+            "(use vertex_indices.contiguous() before passing vertex_indices as an argument)"};
     }
 
     if(!positionsUpdate.is_contiguous())
     {
-        throw std::invalid_argument{"vertices_update should be contiguous tensor\n"
-            "(use vertices_update.contiguous() before passing vertices_update as an argument)"};
+        throw std::invalid_argument{"position_update should be contiguous tensor\n"
+            "(use position_update.contiguous() before passing position_update as an argument)"};
     }
 
     if(!ColorsUpdate.is_contiguous())
     {
-        throw std::invalid_argument{"colors_update should be contiguous tensor\n"
-            "(use colors_update.contiguous() before passing colors_update as an argument)"};
+        throw std::invalid_argument{"color_update should be contiguous tensor\n"
+            "(use color_update.contiguous() before passing color_update as an argument)"};
     }
 
     Corrade::Containers::ArrayView<int> vertexIndexView{
@@ -1029,42 +1029,42 @@ PYBIND11_MODULE(libstillleben_python, m) {
         )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
         .def("update_positions", &Mesh_updatePositions, R"EOS(
-            Updates the mesh vertices.
+            Updates the mesh vertex positions.
 
             Args:
-                vertex_indices (tensor): FIXME
-                position_update (tensor): FIXME
+                vertex_indices (tensor): N (dim=1)
+                position_update (tensor): NX3
         )EOS", py::arg("vertex_indices"), py::arg("position_update"))
 
         .def("update_colors", &Mesh_updateColors, R"EOS(
             Updates the mesh vertex colors.
 
             Args:
-                vertex_indices (tensor): FIXME
-                color_update (tensor): FIXME
+                vertex_indices (tensor): N (dim=1)
+                color_update (tensor): NX4
         )EOS", py::arg("vertex_indices"), py::arg("color_update"))
 
         .def("update_positions_and_colors", &Mesh_updatePositionsAndColors, R"EOS(
-            Updates the mesh vertices and vertex colors.
+            Updates the mesh verticex positions and vertex colors.
 
             Args:
-                vertex_indices (tensor): FIXME
-                position_update (tensor): FIXME
-                color_update (tensor): FIXME
+                vertex_indices (tensor): N (dim=1)
+                position_update (tensor): NX3
+                color_update (tensor): NX4
         )EOS", py::arg("vertex_indices"), py::arg("position_update"), py::arg("color_update"))
 
         .def("set_new_positions", &Mesh_setNewPositions, R"EOS(
             Set new vertex positions.
 
             Args:
-                new_positions (tensor): FIXME
+                new_positions (tensor): NX3
         )EOS", py::arg("new_positions"))
 
         .def("set_new_colors", &Mesh_setNewColors, R"EOS(
             Set new vertex colors.
 
             Args:
-                new_colors (tensor): FIXME
+                new_colors (tensor): NX4
         )EOS", py::arg("new_colors"))
 
         .def_property("pretransform", wrapShared(&sl::Mesh::pretransform), wrapShared(&sl::Mesh::setPretransform), R"EOS(
@@ -1622,14 +1622,14 @@ PYBIND11_MODULE(libstillleben_python, m) {
                 which was used during rendering.
 
                 Returns:
-                    tensor: (H x W x 4) int tensor with vertex indices. NOTE: Ignore the 4th channel. FIXME then don't return it.
+                    tensor: (H x W x 3) int tensor with vertex indices.
             )EOS")
 
         .def("barycentric_coeffs", [](const std::shared_ptr<sl::RenderPass::Result>& result){
                 return readBaryCentricCoeffsTensor(result->barycentricCoeffs);
             }, R"EOS(
                 Read barycentric coefficients map.
-                    tensor: (H x W x 4) float tensor with barycentric coefficients. NOTE: Ignore the 4th channel. FIXME then don't return it.
+                    tensor: (H x W x 3) float tensor with barycentric coefficients.
             )EOS")
 
         .def("cam_coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
