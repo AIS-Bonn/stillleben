@@ -449,8 +449,6 @@ def backpropagate_gradient_to_poses(scene, render_result, grad_objective_wrt_rnd
                 grad = torch.bmm(_grad_in, _grad_xy_pose) # [N, 1, 6]
 
             if visualize_grad:
-                # import ipdb; ipdb.set_trace()
-                # FIXME: Have to bring grad back into image shape here
                 grad_tmp = grad.view(grad_in.shape[1], grad_in.shape[2], 6).cpu()
 
                 _grad = []
