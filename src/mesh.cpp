@@ -488,6 +488,9 @@ void Mesh::updateVertexColors(
 
 void Mesh::recomputeNormals()
 {
+    if(!m_meshData)
+        throw Exception{"Mesh::recomputeNormals() assumes a single sub-mesh"};
+
     std::vector<std::vector<int>> vertexFacesMap(m_meshData->positions(0).size()); // Faces a vertex is associated with.
     std::vector<float> facesArea(m_meshData->indices().size());
     std::vector<Vector3> facesNormal(m_meshData->indices().size());
@@ -537,6 +540,9 @@ void Mesh::recomputeNormals()
 
 void Mesh::recompileMesh()
 {
+    if(!m_meshData)
+        throw Exception{"Mesh::recompileMesh() assumes a single sub-mesh"};
+
     *m_meshes[0] = MeshTools::compile(*m_meshData);
 
     // add an index to each vertex in the mesh
@@ -554,6 +560,9 @@ void Mesh::updateVertexPositionsAndColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
 )
 {
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::updateVertexPositionsAndColors() assumes a single sub-mesh"};
+
     // update
     if(!positionsUpdate.empty())
     {
@@ -589,6 +598,9 @@ void Mesh::setVertexPositions(
     const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
 )
 {
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::setVertexPositions() assumes a single sub-mesh"};
+
     if(m_meshData->positions(0).size() != newVertices.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
 
@@ -606,6 +618,9 @@ void Mesh::setVertexColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
 )
 {
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::setVertexColors() assumes a single sub-mesh"};
+
     if(m_meshData->colorArrayCount() == 0)
     {
         throw Exception("MeshData does not contain colors attribute."
