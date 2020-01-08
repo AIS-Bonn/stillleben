@@ -7,7 +7,6 @@ Author: Arul Periyasamy <arul.periyasamy@ais.uni-bonn.de>
 import torch
 import torch.nn.functional as F
 import os
-from PIL import Image
 import numpy as np
 import types
 
