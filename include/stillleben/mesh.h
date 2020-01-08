@@ -141,14 +141,14 @@ public:
     );
 
     /**
-     * @brief set vertex positions
+     * @brief Set vertex positions
      **/
     void setVertexPositions(
         Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
     );
 
     /**
-     * @brief set vertex colors
+     * @brief Set vertex colors
      **/
     void setVertexColors(
         Corrade::Containers::ArrayView<Magnum::Color4>& newColors
@@ -195,47 +195,48 @@ public:
     MeshFlagArray& meshFlags()
     { return m_meshFlags; }
 
-    std::vector<Magnum::Vector3> meshPoints()
+    const std::vector<Magnum::Vector3>& meshPoints()
     {
         if(m_meshPoints.size() == 0)
-            return {};
+            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshPoints supports only single meshes"};
 
-        auto& points = m_meshPoints[0];
-        if(!points)
-            return {};
+        if(!m_meshPoints[0])
+            throw Exception{"Submesh 0 has no points"};
 
-        return *points;
+        return *m_meshPoints[0];
     }
 
-    std::vector<Magnum::Vector3> meshNormals()
+    const std::vector<Magnum::Vector3>& meshNormals()
     {
-        if(m_meshNormals.size() == 0)
-            return {};
+        if(m_meshPoints.size() == 0)
+            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshNormals supports only single meshes"};
 
-        auto& normals = m_meshNormals[0];
-        if(!normals)
-            return {};
-        return *normals;
+        if(!m_meshNormals[0])
+            throw Exception{"Submesh 0 has no points"};
+
+        return *m_meshNormals[0];
     }
 
-    std::vector<Magnum::UnsignedInt> meshFaces()
+    const std::vector<Magnum::UnsignedInt>& meshFaces()
     {
-        if(m_meshFaces.size() == 0)
-            return {};
-        auto& faces = m_meshFaces[0];
-        if(!faces)
-            return {};
-        return *faces;
+        if(m_meshPoints.size() == 0)
+            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshFaces supports only single meshes"};
+
+        if(!m_meshFaces[0])
+            throw Exception{"Submesh 0 has no points"};
+
+        return *m_meshFaces[0];
     }
 
-    std::vector<Magnum::Color4> meshColors()
+    const std::vector<Magnum::Color4>& meshColors()
     {
-        if( m_meshColors.size() == 0)
-            return {};
-        auto& colors = m_meshColors[0];
-        if(!colors)
-            return {};
-        return *colors;
+        if(m_meshPoints.size() == 0)
+            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshColors supports only single meshes"};
+
+        if(!m_meshFaces[0])
+            throw Exception{"Submesh 0 has no points"};
+
+        return *m_meshColors[0];
     }
 
     PhysXMeshArray& physXMeshes()
