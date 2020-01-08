@@ -48,6 +48,10 @@ install(TARGETS stillleben_python
 
 # diff packages
 if(TORCH_USE_CUDA)
+    find_package(CUDA QUIET)
+
+    find_program(CMAKE_CUDA_COMPILER nvcc HINTS ${CUDA_TOOLKIT_ROOT_DIR}/bin)
+
     include(CheckLanguage)
     check_language(CUDA)
     if(CMAKE_CUDA_COMPILER)
@@ -58,7 +62,7 @@ if(TORCH_USE_CUDA)
 endif()
 
 if(TORCH_USE_CUDA AND CMAKE_CUDA_COMPILER)
-    message(STATUS "Building Differentiation Modules" )
+    message(STATUS "Building Differentiation Modules")
 
     find_package(CUDA REQUIRED)
     add_library(stillleben_diff_python MODULE
