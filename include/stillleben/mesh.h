@@ -119,39 +119,39 @@ public:
      * @brief Update vertex positions
      **/
     void updateVertexPositions(
-        Corrade::Containers::ArrayView<int>& verticesIndex,
-        Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
+        const Corrade::Containers::ArrayView<int>& verticesIndex,
+        const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
     );
 
     /**
      * @brief Update vertex colors
      **/
     void updateVertexColors(
-        Corrade::Containers::ArrayView<int>& verticesIndex,
-        Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+        const Corrade::Containers::ArrayView<int>& verticesIndex,
+        const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
     );
 
     /**
      * @brief Update vertex positions and colors
     **/
     void updateVertexPositionsAndColors(
-        Corrade::Containers::ArrayView<int>& verticesIndex,
-        Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
-        Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+        const Corrade::Containers::ArrayView<int>& verticesIndex,
+        const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
+        const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
     );
 
     /**
      * @brief Set vertex positions
      **/
     void setVertexPositions(
-        Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
+        const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
     );
 
     /**
      * @brief Set vertex colors
      **/
     void setVertexColors(
-        Corrade::Containers::ArrayView<Magnum::Color4>& newColors
+        const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
     );
 
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
@@ -261,6 +261,9 @@ private:
     void updatePretransform();
 
     void loadPretransform(const std::string& filename);
+
+    void recomputeNormals();
+    void recompileMesh();
 
     std::shared_ptr<Context> m_ctx;
 

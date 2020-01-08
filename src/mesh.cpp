@@ -471,226 +471,31 @@ void Mesh::loadVisual()
 }
 
 void Mesh::updateVertexPositions(
-    Corrade::Containers::ArrayView<int>& verticesIndex,
-    Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
 )
 {
-    auto& meshData = *m_meshData;
-
-    // update
-    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
-    {
-        Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
-        Vector3 update = positionsUpdate[vi];
-        point = point + update;
-    }
-
-    // recompute normals
-    // we follow area-based weighting scheme for per vertex normals computing
-    // PER_VERTEX_NORMALS_WEIGHTING_TYPE_ANGLE case in libigl per_vertex_normals code
-    // https://github.com/libigl/libigl/blob/master/include/igl/per_vertex_normals.cpp
-    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
-    std::vector<float> facesArea(m_meshData->indices().size());
-    std::vector<Vector3> facesNormal(m_meshData->indices().size());
-    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
-    {
-        auto face = i / 3;
-        auto& vertexOne = m_meshData->indices()[i ];
-        auto& vertexTwo = m_meshData->indices()[i+1];
-        auto& vertexThree = m_meshData->indices()[i+2];
-        vertexFacesMap[vertexOne].push_back( face );
-        vertexFacesMap[vertexTwo ].push_back( face );
-        vertexFacesMap[vertexThree].push_back( face );
-
-        // area of the face
-        Vector3 v1 = m_meshData->positions(0)[vertexOne];
-        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
-        Vector3 v3 = m_meshData->positions(0)[vertexThree];
-
-        auto v1v2 = v1 - v2;
-        auto v1v3 = v1 - v3;
-
-        Vector3 crossProduct = Math::cross(v1v2, v1v3);
-
-        float area = crossProduct.length();
-        facesArea[face] = area;
-
-        Vector3 normal = crossProduct.normalized() ;
-
-        facesNormal[face] = normal;
-    }
-
-    // compute new normals weight
-    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
-    {
-        Vector3 normal = Vector3(0., 0., 0.);
-
-        for(const auto& face : vertexFacesMap[i])
-            normal += facesNormal[face] * facesArea[face];
-
-        normal = normal.normalized();
-
-        Vector3& oldNormal = m_meshData->normals(0)[i];
-        oldNormal = normal;
-    }
-
-    m_meshPoints[0] = m_meshData->positions(0);
-    m_meshNormals[0] = m_meshData->normals(0);
-
-    *m_meshes[0] = std::move(
-        MeshTools::compile(meshData)
-    );
-
-    // add an index to each vertex in the mesh
-    {
-        // use the already created m_vertexIndices
-        m_vertexIndexBuf = Magnum::GL::Buffer{};
-        m_vertexIndexBuf.setData(m_vertexIndices);
-        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
-    }
+    updateVertexPositionsAndColors(verticesIndex, positionsUpdate, {});
 }
 
 void Mesh::updateVertexColors(
-    Corrade::Containers::ArrayView<int>& verticesIndex,
-    Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
 )
 {
-    // ************************************************
-    // follows updateVertexPositions implementation
-    // ************************************************
-
-    // update the meshes
-    auto& meshData = *m_meshData;
-
-    // update
-    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
-    {
-        Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
-        Color4 update = colorsUpdate[vi];
-        color = color + update;
-    }
-
-    m_meshColors[0] = m_meshData->colors(0);
-
-    *m_meshes[0] = std::move(
-        MeshTools::compile(meshData)
-    );
-
-    // add an index to each vertex in the mesh
-    {
-        // use the already created m_vertexIndices
-        m_vertexIndexBuf = Magnum::GL::Buffer{};
-        m_vertexIndexBuf.setData(m_vertexIndices);
-        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
-    }
+    updateVertexPositionsAndColors(verticesIndex, {}, colorsUpdate);
 }
 
-void Mesh::updateVertexPositionsAndColors(
-    Corrade::Containers::ArrayView<int>& verticesIndex,
-    Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
-    Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
-)
+void Mesh::recomputeNormals()
 {
-    // ************************************************
-    // follows updateVertexPositions implementation
-    // ************************************************
-
-    // update the meshes
-    auto& meshData = *m_meshData;
-
-    // update
-    for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
-    {
-        Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
-        Vector3 update = positionsUpdate[vi];
-        point = point + update;
-
-        Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
-        Color4 cUpdate = colorsUpdate[vi];
-        color = color + cUpdate;
-    }
-
-    // recompute normals
-    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<std::vector<int>> vertexFacesMap(m_meshData->positions(0).size()); // Faces a vertex is associated with.
     std::vector<float> facesArea(m_meshData->indices().size());
     std::vector<Vector3> facesNormal(m_meshData->indices().size());
+
     for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
     {
         auto face = i / 3;
         auto& vertexOne = m_meshData->indices()[i ];
-        auto& vertexTwo = m_meshData->indices()[i+1];
-        auto& vertexThree = m_meshData->indices()[i+2];
-        vertexFacesMap[vertexOne].push_back( face );
-        vertexFacesMap[vertexTwo ].push_back( face );
-        vertexFacesMap[vertexThree].push_back( face );
-
-        // area of the face
-        Vector3 v1 = m_meshData->positions(0)[vertexOne];
-        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
-        Vector3 v3 = m_meshData->positions(0)[vertexThree];
-
-        auto v1v2 = v1 - v2;
-        auto v1v3 = v1 - v3;
-
-        Vector3 crossProduct = Math::cross(v1v2, v1v3);
-
-        float area = crossProduct.length();
-        facesArea[face] = area;
-
-        Vector3 normal = crossProduct.normalized();
-
-        facesNormal[face] = normal;
-    }
-
-    // compute new normals weight
-    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
-    {
-        Vector3 normal = Vector3(0., 0., 0.);
-
-        for(const auto& face :  vertexFacesMap[i])
-            normal += facesNormal[face] * facesArea[face];
-
-        //normal = facesNormal[vertexFacesMap[i][0]];
-        normal = normal.normalized();
-
-        Vector3& oldNormal = m_meshData->normals(0)[i];
-        oldNormal = normal;
-    }
-
-    m_meshColors[0] = m_meshData->colors(0);
-    m_meshPoints[0] = m_meshData->positions(0);
-    m_meshNormals[0] = m_meshData->normals(0);
-
-    *m_meshes[0] = std::move(
-        MeshTools::compile(meshData)
-    );
-
-    // add an index to each vertex in the mesh
-    {
-        // use the already created m_vertexIndices
-        m_vertexIndexBuf = Magnum::GL::Buffer{};
-        m_vertexIndexBuf.setData(m_vertexIndices);
-        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
-    }
-}
-
-void Mesh::setVertexPositions(
-    Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
-    )
-{
-    if  (m_meshData->positions(0).size() != newVertices.size())
-        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
-
-    std::copy(newVertices.begin(), newVertices.end(), m_meshData->positions(0).begin());
-
-    // recompute normals
-    std::vector<std::vector<int>> vertexFacesMap (m_meshData->positions(0).size()); // Faces a vertex is associated with.
-    std::vector<float> facesArea(m_meshData->indices().size());
-    std::vector<Vector3> facesNormal(m_meshData->indices().size());
-    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
-    {
-        auto face = i / 3;
-        auto& vertexOne = m_meshData->indices()[i];
         auto& vertexTwo = m_meshData->indices()[i+1];
         auto& vertexThree = m_meshData->indices()[i+2];
         vertexFacesMap[vertexOne].push_back(face);
@@ -720,22 +525,19 @@ void Mesh::setVertexPositions(
     {
         Vector3 normal = Vector3(0., 0., 0.);
 
-        for(const auto& face :  vertexFacesMap[i])
+        for(const auto& face : vertexFacesMap[i])
             normal += facesNormal[face] * facesArea[face];
 
-        //normal = facesNormal[vertexFacesMap[i][0]];
         normal = normal.normalized();
 
         Vector3& oldNormal = m_meshData->normals(0)[i];
         oldNormal = normal;
     }
+}
 
-    m_meshPoints[0] = m_meshData->positions(0);
-    m_meshNormals[0] = m_meshData->normals(0);
-
-    *m_meshes[0] = std::move(
-        MeshTools::compile(*m_meshData)
-    );
+void Mesh::recompileMesh()
+{
+    *m_meshes[0] = MeshTools::compile(*m_meshData);
 
     // add an index to each vertex in the mesh
     {
@@ -746,9 +548,63 @@ void Mesh::setVertexPositions(
     }
 }
 
+void Mesh::updateVertexPositionsAndColors(
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
+    const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+)
+{
+    // update
+    if(!positionsUpdate.empty())
+    {
+        for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+        {
+            Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
+            Vector3 update = positionsUpdate[vi];
+            point = point + update;
+        }
+
+        // recompute normals
+        recomputeNormals();
+    }
+
+    if(!colorsUpdate.empty())
+    {
+        for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+        {
+            Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
+            Color4 cUpdate = colorsUpdate[vi];
+            color = color + cUpdate;
+        }
+    }
+
+    m_meshColors[0] = m_meshData->colors(0);
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    recompileMesh();
+}
+
+void Mesh::setVertexPositions(
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
+)
+{
+    if(m_meshData->positions(0).size() != newVertices.size())
+        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
+
+    std::copy(newVertices.begin(), newVertices.end(), m_meshData->positions(0).begin());
+
+    recomputeNormals();
+
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    recompileMesh();
+}
+
 void Mesh::setVertexColors(
-    Corrade::Containers::ArrayView<Magnum::Color4>& newColors
-    )
+    const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
+)
 {
     if(m_meshData->colorArrayCount() == 0)
     {
@@ -756,24 +612,14 @@ void Mesh::setVertexColors(
             "This could happend if the mesh file does not contain per vertex coloring.");
     }
 
-    if  (m_meshData->positions(0).size() != newColors.size())
+    if(m_meshData->positions(0).size() != newColors.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
 
     std::copy(newColors.begin(), newColors.end(), m_meshData->colors(0).begin());
 
     m_meshColors[0] = m_meshData->colors(0);
 
-    *m_meshes[0] = std::move(
-        MeshTools::compile(*m_meshData)
-    );
-
-    // add an index to each vertex in the mesh
-    {
-        // use the already created m_vertexIndices
-        m_vertexIndexBuf = Magnum::GL::Buffer{};
-        m_vertexIndexBuf.setData(m_vertexIndices);
-        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
-    }
+    recompileMesh();
 }
 
 void Mesh::loadPretransform(const std::string& filename)
