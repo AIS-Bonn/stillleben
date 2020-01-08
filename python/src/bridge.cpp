@@ -167,7 +167,6 @@ namespace
         using Result = at::Tensor;
         static at::Tensor convert(const std::vector<Magnum::Vector3>& vec)
         {
-            //return torch::from_blob( reinterpret_cast<const float*>(vec.data()), {vec.size() * 3}, at::kFloat).clone();
             return torch::from_blob(
                 const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
                 {static_cast<long int>(vec.size()) * 3},
@@ -175,6 +174,7 @@ namespace
             ).clone();
         }
     };
+
     template<>
     struct toTorch<std::vector<Magnum::Color4>>
     {
@@ -1079,22 +1079,37 @@ PYBIND11_MODULE(libstillleben_python, m) {
 
         .def_property_readonly("points", wrapShared(&sl::Mesh::meshPoints),
         R"EOS(
-            Returns mesh points. WARNING: Single Mesh assumption.
+            The mesh vertices as (Nx3) float tensor.
+
+            WARNING: This can only be used on single-submesh meshes for now.
+            On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("normals", wrapShared(&sl::Mesh::meshNormals),
         R"EOS(
-            Returns mesh normals. WARNING: Single Mesh assumption.
+            The mesh normals as (Nx3) float tensor.
+
+            WARNING: This can only be used on single-submesh meshes for now.
+            On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("faces", wrapShared(&sl::Mesh::meshFaces),
         R"EOS(
-            Returns mesh faces. WARNING: Single Mesh assumption.
+            The mesh faces as (N*3) int32 tensor.
+
+            NOTE: Because PyTorch does not support unsigned ints, the indices
+            will wrap around at 2**31.
+
+            WARNING: This can only be used on single-submesh meshes for now.
+            On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("colors", wrapShared(&sl::Mesh::meshColors),
         R"EOS(
-            Returns mesh colors. WARNING: Single Mesh assumption.
+            The mesh normals as (Nx4) float tensor.
+
+            WARNING: This can only be used on single-submesh meshes for now.
+            On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
     ;
 
