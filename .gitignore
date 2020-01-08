@@ -5,4 +5,5 @@ build_debug/
 build_only/
 __pycache__
 doc/_*
-
+.vscode/*
+*.mesh0

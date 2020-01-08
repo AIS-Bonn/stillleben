@@ -29,7 +29,7 @@
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/MeshData3D.h>
+
 #include <Magnum/Trade/MeshObjectData3D.h>
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/PhongMaterialData.h>
@@ -40,6 +40,7 @@
 #include <sstream>
 #include <fstream>
 
+#include "shaders/render_shader.h"
 #include "physx_impl.h"
 #include "utils/os.h"
 
@@ -185,6 +186,7 @@ void Mesh::openFile()
 
     // Set up postprocess options if using AssimpImporter
     auto group = m_importer->configuration().group("postprocess");
+
     if(group)
     {
         group->setValue("JoinIdenticalVertices", true);
@@ -210,6 +212,11 @@ void Mesh::openFile()
 
     // Compute bounding box
     m_meshPoints = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_meshNormals = Containers::Array<Containers::Optional<std::vector<Vector3>>>{m_importer->mesh3DCount()};
+    m_meshFaces = Containers::Array<Containers::Optional<std::vector<UnsignedInt>>>{m_importer->mesh3DCount()};
+    m_meshColors = Containers::Array<Containers::Optional<std::vector<Color4>>>{m_importer->mesh3DCount()};
+
+
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
@@ -217,13 +224,43 @@ void Mesh::openFile()
             continue; // we print a proper warning in loadVisual()
 
         std::vector<Vector3> points;
+        std::vector<Vector3> normals;
+        std::vector<UnsignedInt> faces;
+        std::vector<Color4> colors;
+
+        auto colorArraySize = meshData->colorArrayCount();
         for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
         {
             auto array = meshData->positions(j);
+            points.reserve(points.size() + array.size());
             std::copy(array.begin(), array.end(), std::back_inserter(points));
+
+            auto normalsArray = meshData->normals(j);
+            normals.reserve(normals.size() + normalsArray.size());
+            std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
+
+            if(colorArraySize != 0)
+            {
+                // mesh has per-vertex coloring
+                auto colorArray = meshData->colors(j);
+                colors.reserve(colors.size() + colorArray.size());
+                std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
+            }
+            else
+            {
+                // mesh has no per-vertex coloring
+                // fill all vertices to white color
+                colors.resize(colors.size() + array.size(), Color4{1.0f, 1.0f, 1.0f, 1.0f});
+            }
         }
 
+        auto facesArray = meshData->indices();
+        faces = std::vector<UnsignedInt>{facesArray.begin(), facesArray.end()};
+
         m_meshPoints[i] = std::move(points);
+        m_meshNormals[i] = std::move(normals);
+        m_meshFaces[i] = std::move(faces);
+        m_meshColors[i] = std::move(colors);
     }
 
     // Update the bounding box
@@ -404,11 +441,200 @@ void Mesh::loadVisual()
             MeshTools::compile(*meshData)
         );
 
+        if(m_meshPoints[i])
+        {
+            unsigned int numPoints = m_meshPoints[i]->size();
+
+            // Vertex index starts from 1
+            // this is done to avoid the confusion of 0 being the default value in the texel fetch sampling.
+            // FIXME: This produces garbage in the case of multi-submesh meshes.
+
+            m_vertexIndices =  Corrade::Containers::Array<Magnum::UnsignedInt>(Corrade::Containers::NoInit, numPoints);
+            for(std::size_t j = 0; j < numPoints; ++j)
+                m_vertexIndices[j] = j + 1;
+
+            m_vertexIndexBuf = Magnum::GL::Buffer{};
+            m_vertexIndexBuf.setData(m_vertexIndices);
+            m_meshes[i]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+        }
+
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
+
+        // Save the meshData for the first sub-mesh, since we will need it in
+        // updateVertex*()
+        if(i == 0)
+            m_meshData = std::move(meshData);
     }
 
     m_visualLoaded = true;
+}
+
+void Mesh::updateVertexPositions(
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate
+)
+{
+    updateVertexPositionsAndColors(verticesIndex, positionsUpdate, {});
+}
+
+void Mesh::updateVertexColors(
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+)
+{
+    updateVertexPositionsAndColors(verticesIndex, {}, colorsUpdate);
+}
+
+void Mesh::recomputeNormals()
+{
+    if(!m_meshData)
+        throw Exception{"Mesh::recomputeNormals() assumes a single sub-mesh"};
+
+    std::vector<std::vector<int>> vertexFacesMap(m_meshData->positions(0).size()); // Faces a vertex is associated with.
+    std::vector<float> facesArea(m_meshData->indices().size());
+    std::vector<Vector3> facesNormal(m_meshData->indices().size());
+
+    for(std::size_t i = 0; i < m_meshData->indices().size(); i+=3)
+    {
+        auto face = i / 3;
+        auto& vertexOne = m_meshData->indices()[i ];
+        auto& vertexTwo = m_meshData->indices()[i+1];
+        auto& vertexThree = m_meshData->indices()[i+2];
+        vertexFacesMap[vertexOne].push_back(face);
+        vertexFacesMap[vertexTwo ].push_back(face);
+        vertexFacesMap[vertexThree].push_back(face);
+
+        // area of the face
+        Vector3 v1 = m_meshData->positions(0)[vertexOne];
+        Vector3 v2 = m_meshData->positions(0)[vertexTwo];
+        Vector3 v3 = m_meshData->positions(0)[vertexThree];
+
+        auto v1v2 = v1 - v2;
+        auto v1v3 = v1 - v3;
+
+        Vector3 crossProduct = Math::cross(v1v2, v1v3);
+
+        float area = crossProduct.length();
+        facesArea[face] = area;
+
+        Vector3 normal = crossProduct.normalized();
+
+        facesNormal[face] = normal;
+    }
+
+    // compute new normals weight
+    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
+    {
+        Vector3 normal = Vector3(0., 0., 0.);
+
+        for(const auto& face : vertexFacesMap[i])
+            normal += facesNormal[face] * facesArea[face];
+
+        normal = normal.normalized();
+
+        Vector3& oldNormal = m_meshData->normals(0)[i];
+        oldNormal = normal;
+    }
+}
+
+void Mesh::recompileMesh()
+{
+    if(!m_meshData)
+        throw Exception{"Mesh::recompileMesh() assumes a single sub-mesh"};
+
+    *m_meshes[0] = MeshTools::compile(*m_meshData);
+
+    // add an index to each vertex in the mesh
+    {
+        // use the already created m_vertexIndices
+        m_vertexIndexBuf = Magnum::GL::Buffer{};
+        m_vertexIndexBuf.setData(m_vertexIndices);
+        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+    }
+}
+
+void Mesh::updateVertexPositionsAndColors(
+    const Corrade::Containers::ArrayView<int>& verticesIndex,
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& positionsUpdate,
+    const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
+)
+{
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::updateVertexPositionsAndColors() assumes a single sub-mesh"};
+
+    // update
+    if(!positionsUpdate.empty())
+    {
+        for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+        {
+            Vector3& point = m_meshData->positions(0)[verticesIndex[vi] - 1];
+            Vector3 update = positionsUpdate[vi];
+            point = point + update;
+        }
+
+        // recompute normals
+        recomputeNormals();
+    }
+
+    if(!colorsUpdate.empty())
+    {
+        for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
+        {
+            Color4& color = m_meshData->colors(0)[verticesIndex[vi] - 1];
+            Color4 cUpdate = colorsUpdate[vi];
+            color = color + cUpdate;
+        }
+    }
+
+    m_meshColors[0] = m_meshData->colors(0);
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    recompileMesh();
+}
+
+void Mesh::setVertexPositions(
+    const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
+)
+{
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::setVertexPositions() assumes a single sub-mesh"};
+
+    if(m_meshData->positions(0).size() != newVertices.size())
+        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
+
+    std::copy(newVertices.begin(), newVertices.end(), m_meshData->positions(0).begin());
+
+    recomputeNormals();
+
+    m_meshPoints[0] = m_meshData->positions(0);
+    m_meshNormals[0] = m_meshData->normals(0);
+
+    recompileMesh();
+}
+
+void Mesh::setVertexColors(
+    const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
+)
+{
+    if(m_meshPoints.size() != 1 || !m_meshData)
+        throw Exception{"Mesh::setVertexColors() assumes a single sub-mesh"};
+
+    if(m_meshData->colorArrayCount() == 0)
+    {
+        throw Exception("MeshData does not contain colors attribute."
+            "This could happend if the mesh file does not contain per vertex coloring.");
+    }
+
+    if(m_meshData->positions(0).size() != newColors.size())
+        throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
+
+    std::copy(newColors.begin(), newColors.end(), m_meshData->colors(0).begin());
+
+    m_meshColors[0] = m_meshData->colors(0);
+
+    recompileMesh();
 }
 
 void Mesh::loadPretransform(const std::string& filename)

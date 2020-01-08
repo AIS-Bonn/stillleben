@@ -32,6 +32,7 @@ namespace
         LightMapPrefilterLayer = 4,
         LightMapBRDFLUT = 5,
         StickerLayer = 6,
+        DepthTextureLayer = 7,
     };
 }
 
@@ -42,22 +43,25 @@ RenderShader::RenderShader(const Flags flags)
 
     const auto version = GL::Version::GL450;
 
-    GL::Shader vert{version, GL::Shader::Type::Vertex},
+    GL::Shader vert{version, GL::Shader::Type::Vertex}, geom{version, GL::Shader::Type::Geometry},
         frag{version, GL::Shader::Type::Fragment};
 
     if(GL::Context::current().isExtensionDisabled<GL::Extensions::ARB::explicit_attrib_location>(version))
     {
         vert.addSource("#define DISABLE_GL_ARB_explicit_attrib_location\n");
+        geom.addSource("#define DISABLE_GL_ARB_explicit_attrib_location\n");
         frag.addSource("#define DISABLE_GL_ARB_explicit_attrib_location\n");
     }
     if(GL::Context::current().isExtensionDisabled<GL::Extensions::ARB::shading_language_420pack>(version))
     {
         vert.addSource("#define DISABLE_GL_ARB_shading_language_420pack\n");
+        geom.addSource("#define DISABLE_GL_ARB_shading_language_420pack\n");
         frag.addSource("#define DISABLE_GL_ARB_shading_language_420pack\n");
     }
     if(GL::Context::current().isExtensionDisabled<GL::Extensions::ARB::explicit_uniform_location>(version))
     {
         vert.addSource("#define DISABLE_GL_ARB_explicit_uniform_location\n");
+        geom.addSource("#define DISABLE_GL_ARB_explicit_uniform_location\n");
         frag.addSource("#define DISABLE_GL_ARB_explicit_uniform_location\n");
     }
 
@@ -69,8 +73,18 @@ RenderShader::RenderShader(const Flags flags)
         .addSource(rs.get("compatibility.glsl"))
         .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("render_shader.glsl"))
         .addSource(rs.get("render_shader.vert"));
-    frag.addSource(rs.get("compatibility.glsl"))
+
+    geom.addSource(flags ? "#define TEXTURED\n" : "")
+        .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
+        .addSource(rs.get("compatibility.glsl"))
+        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("render_shader.glsl"))
+        .addSource(rs.get("render_shader.geom"));
+
+    frag.addSource(flags ? "#define TEXTURED\n" : "")
+        .addSource(rs.get("compatibility.glsl"))
         .addSource(rs.get("generic.glsl"))
         .addSource((useTexture && (flags & Flag::AmbientTexture)) ? "#define AMBIENT_TEXTURE\n" : "")
         .addSource((useTexture && (flags & Flag::DiffuseTexture)) ? "#define DIFFUSE_TEXTURE\n" : "")
@@ -78,11 +92,12 @@ RenderShader::RenderShader(const Flags flags)
         .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(flags & Flag::AlphaMask ? "#define ALPHA_MASK\n" : "")
         .addSource(flags & Flag::Flat ? "#define FLAT\n" : "")
+        .addSource(rs.get("render_shader.glsl"))
         .addSource(rs.get("render_shader.frag"));
 
-    CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));
+    CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, geom, frag}));
 
-    attachShaders({vert, frag});
+    attachShaders({vert, geom, frag});
 
     #ifndef MAGNUM_TARGET_GLES
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::explicit_attrib_location>(version))
@@ -101,6 +116,8 @@ RenderShader::RenderShader(const Flags flags)
 
         if(useTexture)
             bindAttributeLocation(TextureCoordinates::Location, "textureCoordinates");
+
+        bindAttributeLocation(VertexIndex::Location, "vertexIndex");
     }
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
@@ -140,6 +157,7 @@ RenderShader::RenderShader(const Flags flags)
         setUniform(uniformLocation("lightMapPrefilter"), LightMapPrefilterLayer);
         setUniform(uniformLocation("lightMapBRDFLUT"), LightMapBRDFLUT);
         setUniform(uniformLocation("stickerTexture"), StickerLayer);
+        setUniform(uniformLocation("depthTexture"), DepthTextureLayer);
     }
 }
 
@@ -156,6 +174,13 @@ RenderShader& RenderShader::bindDiffuseTexture(GL::Texture2D& texture)
     CORRADE_ASSERT(_flags & Flag::DiffuseTexture,
         "Shaders::RenderShader::bindDiffuseTexture(): the shader was not created with diffuse texture enabled", *this);
     texture.bind(DiffuseTextureLayer);
+    return *this;
+}
+
+
+RenderShader& RenderShader::bindDepthTexture(GL::RectangleTexture& texture)
+{
+    texture.bind(DepthTextureLayer);
     return *this;
 }
 

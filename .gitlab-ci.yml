@@ -1,4 +1,3 @@
-
 image: "xqms/pytorch:latest"
 
 variables:
@@ -11,10 +10,12 @@ build:
   script:
     - export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
     - export LD_LIBRARY_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib:$LD_LIBRARY_PATH
+    - echo "Using CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} and LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
     - python setup.py install
     - python setup.py bdist_wheel
     - python/cpp_build/tests/tests
     - python tests/test_python.py
+    - python tests/test_grad.py
   artifacts:
     expire_in: 1 week
     paths:
@@ -25,6 +26,7 @@ cpp_debug:
   script:
     - export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
     - export LD_LIBRARY_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib:$LD_LIBRARY_PATH
+    - echo "Using CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} and LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
     - mkdir build_debug && cd build_debug
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address -GNinja ..
     - ninja install

@@ -54,6 +54,7 @@ uniform uint classIndex = 0u;
 layout(location = 12)
 uniform uint instanceIndex = 0u;
 
+
 // Do we use a light map?
 layout(location = 13)
 uniform bool useLightMap = false;
@@ -65,10 +66,13 @@ uniform float metallic = 0.04;
 layout(location = 15)
 uniform float roughness = 0.5;
 
+
 layout(binding = 3)
 uniform highp samplerCube lightMapIrradiance;
+
 layout(binding = 4)
 uniform highp samplerCube lightMapPrefilter;
+
 layout(binding = 5)
 uniform highp sampler2D lightMapBRDFLUT;
 
@@ -76,29 +80,24 @@ uniform highp sampler2D lightMapBRDFLUT;
 layout(binding = 6)
 uniform highp sampler2DRect stickerTexture;
 
-in mediump vec3 transformedNormal;
-in highp vec3 lightDirection;
-in highp vec3 cameraDirection;
+layout(binding = 7)
+uniform highp sampler2DRect depthTexture;
 
-#if defined(AMBIENT_TEXTURE) || defined(DIFFUSE_TEXTURE) || defined(SPECULAR_TEXTURE)
-in mediump vec2 interpolatedTextureCoords;
-#endif
 
-#ifdef VERTEX_COLORS
-in mediump vec4 interpolatedVertexColors;
-#endif
+in DataBridge fragmentData;
 
-centroid in highp vec4 objectCoordinates;
-centroid in highp vec3 camCoordinates;
+flat in centroid uvec3 g_vertexIndices;
+in centroid vec3 g_barycentricCoeffs;
 
-in mediump vec2 stickerCoordinates;
 
 layout(location = 0) out lowp vec4 color;
 layout(location = 1) out highp vec4 objectCoordinatesOut;
 layout(location = 2) out uint classIndexOut;
 layout(location = 3) out uint instanceIndexOut;
 layout(location = 4) out highp vec4 normalOut;
-layout(location = 5) out highp vec3 camCoordinatesOut;
+layout(location = 5) out uvec3 vertexIndices;
+layout(location = 6) out vec3 barycentricCoeffs;
+layout(location = 7) out highp vec3 camCoordinatesOut;
 
 vec2 dirToSpherical(vec3 dir)
 {
@@ -187,45 +186,52 @@ vec3 cubemapCoord(vec3 camSpaceCoord)
 
 void main()
 {
-    objectCoordinatesOut = objectCoordinates;
-    camCoordinatesOut = camCoordinates;
+    // Depth peeling operation
+    // discard fragments that closer to the camera than the current depth.
+    if(fragmentData.objectCoordinates.w - 0.00001 <= texelFetch(depthTexture, ivec2(gl_FragCoord.xy)).w)
+        discard;
+
+    objectCoordinatesOut = fragmentData.objectCoordinates;
+    camCoordinatesOut = fragmentData.camCoordinates;
     classIndexOut = classIndex;
     instanceIndexOut = instanceIndex;
 
     lowp vec4 finalAmbientColor =
         #ifdef AMBIENT_TEXTURE
-        texture(ambientTexture, interpolatedTextureCoords)*
+        texture(ambientTexture, fragmentData.interpolatedTextureCoords)*
         #elif defined(DIFFUSE_TEXTURE)
-        texture(diffuseTexture, interpolatedTextureCoords)*
+        texture(diffuseTexture, fragmentData.interpolatedTextureCoords)*
         #endif
         ambientColor;
     lowp vec4 finalDiffuseColor =
         #ifdef DIFFUSE_TEXTURE
-        texture(diffuseTexture, interpolatedTextureCoords)*
+        texture(diffuseTexture, fragmentData.interpolatedTextureCoords)*
         #endif
         #ifdef VERTEX_COLORS
-        interpolatedVertexColors;
+        fragmentData.interpolatedVertexColors;
         #else
         diffuseColor;
         #endif
     lowp vec4 finalSpecularColor =
         #ifdef SPECULAR_TEXTURE
-        texture(specularTexture, interpolatedTextureCoords)*
+        texture(specularTexture, fragmentData.interpolatedTextureCoords)*
         #endif
         specularColor;
 
     /* Are we inside the simulated sticker? */
-    if(stickerCoordinates.x >= 0 && stickerCoordinates.y >= 0 && stickerCoordinates.x < 1 && stickerCoordinates.y < 1)
+    if(fragmentData.stickerCoordinates.x >= 0 &&
+       fragmentData.stickerCoordinates.y >= 0 &&
+       fragmentData.stickerCoordinates.x < 1 &&
+       fragmentData.stickerCoordinates.y < 1)
     {
-        lowp vec4 stickerColor = texture(stickerTexture, stickerCoordinates * textureSize(stickerTexture));
-//         finalAmbientColor = mix(finalAmbientColor, stickerColor, stickerColor.a);
+        lowp vec4 stickerColor = texture(stickerTexture, fragmentData.stickerCoordinates * textureSize(stickerTexture));
         finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
     }
 
-    mediump vec3 N = normalize(transformedNormal);
+    mediump vec3 N = normalize(fragmentData.transformedNormal);
     /* Output the normal and dot product with camera ray */
     normalOut.xyz = N;
-    normalOut.w = dot(N, cameraDirection);
+    normalOut.w = dot(N, fragmentData.cameraDirection);
 
     #ifdef FLAT
     color = finalDiffuseColor;
@@ -240,7 +246,7 @@ void main()
     {
         float gamma = 1.8;
 
-        vec3 V = normalize(cameraDirection); // cameraDirection: camera - object
+        vec3 V = normalize(fragmentData.cameraDirection); // cameraDirection: camera - object
         vec3 R = reflect(-V, N);
 
         color = toLinear(color, gamma);
@@ -281,7 +287,7 @@ void main()
     }
     else
     {
-        highp vec3 normalizedLightDirection = normalize(lightDirection);
+        highp vec3 normalizedLightDirection = normalize(fragmentData.lightDirection);
 
         /* Add diffuse color */
         lowp float intensity = max(0.0, dot(N, normalizedLightDirection));
@@ -290,7 +296,7 @@ void main()
         /* Add specular color, if needed */
         if(intensity > 0.001) {
             highp vec3 reflection = reflect(-normalizedLightDirection, N);
-            mediump float specularity = pow(max(0.0, dot(normalize(cameraDirection), reflection)), shininess);
+            mediump float specularity = pow(max(0.0, dot(normalize(fragmentData.cameraDirection), reflection)), shininess);
             color += finalSpecularColor*specularity;
         }
     }
@@ -301,4 +307,8 @@ void main()
     #ifdef ALPHA_MASK
     if(color.a < alphaMask) discard;
     #endif
+
+
+    vertexIndices = g_vertexIndices;
+    barycentricCoeffs = g_barycentricCoeffs;
 }

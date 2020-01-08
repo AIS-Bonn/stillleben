@@ -64,6 +64,8 @@ RenderPass::Result::Result(bool cuda)
  , instanceIndex{m_mapper}
  , normals{m_mapper}
  , validMask{m_mapper}
+ , vertexIndex{m_mapper}
+ , barycentricCoeffs{m_mapper}
  , camCoordinates{m_mapper}
 {
 }
@@ -76,6 +78,8 @@ void RenderPass::Result::mapCUDA()
 #if HAVE_CUDA
     m_mapper.mapAll();
 #endif
+
+    m_mapped = true;
 }
 
 void RenderPass::Result::unmapCUDA()
@@ -83,6 +87,8 @@ void RenderPass::Result::unmapCUDA()
 #if HAVE_CUDA
     m_mapper.unmapAll();
 #endif
+
+    m_mapped = false;
 }
 
 
@@ -100,13 +106,15 @@ RenderPass::RenderPass(Type type, bool cuda)
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
+
+    m_result = std::make_shared<Result>(cuda);
 }
 
 RenderPass::~RenderPass()
 {
 }
 
-std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
+std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::shared_ptr<Result>& preAllocatedResult, RenderPass::Result* depthBufferResult)
 {
     scene.loadVisual();
 
@@ -129,21 +137,36 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     // Setup the framebuffer
     auto viewport = scene.viewport();
 
+    std::shared_ptr<Result> result = preAllocatedResult;
+    if (!result)
+    {
+        result = m_result;
+    }
+
+    // Make sure the result textures are not mapped before writing/changing anything
+    if(result->isMapped())
+        result->unmapCUDA();
+
+    if (result->rgb.imageSize() != scene.viewport())
+    {
+        result->rgb.setStorage(GL::TextureFormat::RGBA8, 4, viewport);
+        result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
+        result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
+        result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
+
+        result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
+        result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        result->camCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+
+        result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
+        result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+    }
+
     if(!m_initialized || m_framebuffer.viewport().size() != scene.viewport())
     {
-        m_result.reset();
-
         m_framebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
-
-        m_result = std::make_shared<Result>(m_cuda);
-
-        m_result->rgb.setStorage(GL::TextureFormat::RGBA8, 4, viewport);
-        m_result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
-        m_result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
-        m_result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
-        m_result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
-        m_result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
-        m_result->camCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
 
         m_depthbuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
 
@@ -160,38 +183,60 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
         m_ssaoApplyFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
+        Corrade::Containers::Array<Magnum::Float> data(Corrade::Containers::ValueInit, 4 * viewport.x()*viewport.y());
+        ImageView2D zeroImage{Magnum::PixelFormat::RGBA32F, {viewport.x(), viewport.y()}, data};
+        m_zeroMinDepth.setMagnificationFilter(GL::SamplerFilter::Linear)
+            .setMagnificationFilter(GL::SamplerFilter::Linear)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+            .setStorage(GL::TextureFormat::RGBA32F, {viewport.x(), viewport.y()})
+            .setSubImage({}, zeroImage);
+
         m_initialized = true;
+    }
+
+    Magnum::GL::RectangleTexture* minDepth;
+    if (depthBufferResult)
+    {
+        minDepth = &depthBufferResult->objectCoordinates;
     }
     else
     {
-        // Unmap from CUDA so that we can write into it
-        m_result->unmapCUDA();
+        minDepth = &m_zeroMinDepth;
     }
 
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            m_ssaoEnabled ? m_ssaoRGBInputTexture : m_result->rgb
+            m_ssaoEnabled ? m_ssaoRGBInputTexture : result->rgb
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{1},
-            m_result->objectCoordinates
+            result->objectCoordinates
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{2},
-            m_result->classIndex
+            result->classIndex
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{3},
-            m_result->instanceIndex
+            result->instanceIndex
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{4},
-            m_result->normals
+            result->normals
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{5},
-            m_result->camCoordinates
+            result->vertexIndex
+        )
+        .attachTexture(
+            GL::Framebuffer::ColorAttachment{6},
+            result->barycentricCoeffs
+        )
+        .attachTexture(
+            GL::Framebuffer::ColorAttachment{7},
+            result->camCoordinates
         )
         .attachRenderbuffer(GL::Framebuffer::BufferAttachment::Depth, m_depthbuffer)
         .mapForDraw({
@@ -200,7 +245,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
             {RenderShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{2}},
             {RenderShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{3}},
             {RenderShader::NormalOutput, GL::Framebuffer::ColorAttachment{4}},
-            {RenderShader::CamCoordinatesOutput, GL::Framebuffer::ColorAttachment{5}}
+            {RenderShader::VertexIndexOutput, GL::Framebuffer::ColorAttachment{5}},
+            {RenderShader::BarycentricCoeffsOutput, GL::Framebuffer::ColorAttachment{6}},
+            {RenderShader::CamCoordinatesOutput, GL::Framebuffer::ColorAttachment{7}}
         })
     ;
 
@@ -234,11 +281,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
     m_framebuffer.clearColor(2, Vector4ui{0});
     m_framebuffer.clearColor(3, Vector4ui{0});
     m_framebuffer.clearColor(4, 0x00000000_rgbaf);
-    m_framebuffer.clearColor(5, invalid);
+    m_framebuffer.clearColor(5, Vector4ui{0});
+    m_framebuffer.clearColor(6, 0x00000000_rgbf);
+    m_framebuffer.clearColor(7, invalid);
 
-    // Setup image-based lighting if required
     for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
     {
+        shader.get()->bindDepthTexture(*minDepth);
+
+        // Setup image-based lighting if required
         if(scene.lightMap())
             shader.get()->bindLightMap(*scene.lightMap());
         else
@@ -391,14 +442,14 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
 
         (*m_ssaoShader)
             .setProjection(scene.camera().projectionMatrix())
-            .bindCoordinates(m_result->camCoordinates)
-            .bindNormals(m_result->normals)
+            .bindCoordinates(result->camCoordinates)
+            .bindNormals(result->normals)
             .bindNoise();
 
         m_quadMesh.draw(*m_ssaoShader);
 
         m_ssaoApplyFramebuffer
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_result->rgb)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
             .mapForDraw({
                 {SSAOApplyShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
             });
@@ -409,23 +460,15 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene)
         (*m_ssaoApplyShader)
             .bindAO(m_ssaoTexture)
             .bindColor(m_ssaoRGBInputTexture)
-            .bindCoordinates(m_result->camCoordinates);
+            .bindCoordinates(result->camCoordinates);
 
         m_quadMesh.draw(*m_ssaoApplyShader);
-
-//         Image2D image = m_ssaoTexture.image({PixelFormat::R8Unorm});
-//         {
-//             auto converter = scene.context()->instantiateImageConverter("PngImageConverter");
-//             if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
-//
-//             converter->exportToFile(image, "/tmp/stillleben_ao.png");
-//         }
     }
 
     // Map for CUDA access
-    m_result->mapCUDA();
+    result->mapCUDA();
 
-    return m_result;
+    return result;
 }
 
 void RenderPass::setSSAOEnabled(bool enabled)

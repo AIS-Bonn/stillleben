@@ -53,20 +53,28 @@ public:
         [[deprecated("valid mask is not used anymore")]]
         CUDATexture validMask;
 
+        CUDATexture vertexIndex;
+        CUDATexture barycentricCoeffs;
+
         CUDATexture camCoordinates;
+
+        constexpr bool isMapped() const
+        { return m_mapped; }
 
     private:
         friend class RenderPass;
 
         void mapCUDA();
         void unmapCUDA();
+
+        bool m_mapped = false;
     };
 
     void setSSAOEnabled(bool enabled);
     constexpr bool ssaoEnabled() const
     { return m_ssaoEnabled; }
 
-    std::shared_ptr<Result> render(Scene& scene);
+    std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 private:
     bool m_initialized = false;
     bool m_cuda;
@@ -93,6 +101,8 @@ private:
     Magnum::GL::Mesh m_backgroundPlaneMesh;
 
     std::shared_ptr<Result> m_result;
+
+    Magnum::GL::RectangleTexture m_zeroMinDepth;
 
     bool m_ssaoEnabled = true;
 };
