@@ -232,30 +232,30 @@ void Mesh::openFile()
         for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
         {
             auto array = meshData->positions(j);
+            points.reserve(points.size() + array.size());
             std::copy(array.begin(), array.end(), std::back_inserter(points));
 
             auto normalsArray = meshData->normals(j);
+            normals.reserve(normals.size() + normalsArray.size());
             std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
 
             if(colorArraySize != 0)
             {
-                // mesh has prevextex coloring
+                // mesh has per-vertex coloring
                 auto colorArray = meshData->colors(j);
+                colors.reserve(colors.size() + colorArray.size());
                 std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
             }
             else
             {
-                // mesh has no coloring
+                // mesh has no per-vertex coloring
                 // fill all vertices to white color
-                for(std::size_t ic=0; ic < array.size(); ++ic)
-                {
-                    colors.push_back( Color4(1.0, 1.0, 1.0, 1.0) );
-                }
+                colors.resize(colors.size() + array.size(), Color4{1.0f, 1.0f, 1.0f, 1.0f});
             }
         }
 
         auto facesArray = meshData->indices();
-        std::copy(facesArray.begin(), facesArray.end(), std::back_inserter(faces));
+        faces = std::vector<UnsignedInt>{facesArray.begin(), facesArray.end()};
 
         m_meshPoints[i] = std::move(points);
         m_meshNormals[i] = std::move(normals);
@@ -430,7 +430,6 @@ void Mesh::loadVisual()
     m_meshFlags = Containers::Array<MeshFlags>{m_importer->mesh3DCount()};
     for(UnsignedInt i = 0; i != m_importer->mesh3DCount(); ++i)
     {
-
         Containers::Optional<Trade::MeshData3D> meshData = m_importer->mesh3D(i);
         if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
         {
@@ -438,58 +437,21 @@ void Mesh::loadVisual()
             continue;
         }
 
-        // FIXME: Is copying colors necessary here?
-        std::vector<Vector3> points;
-        std::vector<Vector3> normals;
-        std::vector<Color4> colors;
-
-        auto colorArraySize = meshData->colorArrayCount();
-        for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
-        {
-            auto array = meshData->positions(j);
-            std::copy(array.begin(), array.end(), std::back_inserter(points));
-
-            auto normalsArray = meshData->normals(j);
-            std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
-
-            if(colorArraySize != 0)
-            {
-                // mesh has prevextex coloring
-                auto colorArray = meshData->colors(j);
-                std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
-            }
-            else
-            {
-                // mesh has no coloring
-                // fill all vertices to white color
-                for(std::size_t ic=0; ic < array.size(); ++ic)
-                {
-                    colors.push_back( Color4(1.0, 1.0, 1.0, 1.0) );
-                }
-
-                // add colors to the meshData
-            }
-        }
-
-        m_meshPoints[i] = points;
-        m_meshNormals[i] = normals;
-        m_meshColors[i] = colors; // Is this move constructor by default?
-        // Line 188 uses move, for example.
-
         m_meshes[i] = std::make_shared<GL::Mesh>(
             MeshTools::compile(*meshData)
         );
 
-        // add an index to each vertex in the mesh
+        if(m_meshPoints[i])
         {
-            m_vertexIndices =  Corrade::Containers::Array<Magnum::UnsignedInt>(Corrade::Containers::NoInit, points.size());
-            for(std::size_t i = 0; i < points.size(); ++i)
-            {
-                m_vertexIndices[i] = i + 1;
-            }
+            unsigned int numPoints = m_meshPoints[i]->size();
 
             // Vertex index starts from 1
             // this is done to avoid the confusion of 0 being the default value in the texel fetch sampling.
+            // FIXME: This produces garbage in the case of multi-submesh meshes.
+
+            m_vertexIndices =  Corrade::Containers::Array<Magnum::UnsignedInt>(Corrade::Containers::NoInit, numPoints);
+            for(std::size_t j = 0; j < numPoints; ++j)
+                m_vertexIndices[j] = j + 1;
 
             m_vertexIndexBuf = Magnum::GL::Buffer{};
             m_vertexIndexBuf.setData(m_vertexIndices);
@@ -499,12 +461,10 @@ void Mesh::loadVisual()
         if(meshData->hasColors())
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
 
-        // NOTE: This works only for YCBVideos dataset
+        // Save the meshData for the first sub-mesh, since we will need it in
+        // updateVertex*()
         if(i == 0)
-        {
-            m_numVertices = meshData->positions(i).size();
-            m_meshData = std::move(meshData) ;
-        }
+            m_meshData = std::move(meshData);
     }
 
     m_visualLoaded = true;

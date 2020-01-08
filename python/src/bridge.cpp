@@ -1077,11 +1077,6 @@ PYBIND11_MODULE(libstillleben_python, m) {
             Class index for training semantic segmentation.
         )EOS")
 
-        .def_property_readonly("num_vertices", &sl::Mesh::numVertices,
-        R"EOS(
-            Number of vertices in the mesh. WARNING: Single Mesh assumption.
-        )EOS")
-
         .def_property_readonly("points", wrapShared(&sl::Mesh::meshPoints),
         R"EOS(
             Returns mesh points. WARNING: Single Mesh assumption.

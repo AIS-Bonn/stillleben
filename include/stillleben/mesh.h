@@ -255,9 +255,6 @@ public:
     std::string filename() const
     { return m_filename; }
 
-    unsigned int numVertices() const
-    { return m_numVertices; }
-
 
 private:
     void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
@@ -301,7 +298,6 @@ private:
     Magnum::GL::Buffer m_vertexIndexBuf{Magnum::NoCreate};
 
     Magnum::Containers::Optional<Magnum::Trade::MeshData3D> m_meshData;
-    unsigned int m_numVertices;
 
     Corrade::Containers::Array<Magnum::UnsignedInt> m_vertexIndices;
 };
