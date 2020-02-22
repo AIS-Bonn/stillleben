@@ -39,7 +39,7 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     m_cameraObject.setParent(&m_scene);
     (*(m_camera = new SceneGraph::Camera3D{m_cameraObject}))
-        .setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::Extend)
+        .setAspectRatioPolicy(SceneGraph::AspectRatioPolicy::NotPreserved)
         .setViewport(viewportSize);
 
     setCameraFromFOV(FOV_X);
