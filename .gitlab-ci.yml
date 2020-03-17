@@ -13,7 +13,7 @@ build:
     - echo "Using CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} and LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
     - python setup.py install
     - python setup.py bdist_wheel
-    - python/cpp_build/tests/tests
+    - python/cpp_build/RelWithDebInfo/bin/tests
     - python tests/test_python.py
     - python tests/test_grad.py
   artifacts:
