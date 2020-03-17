@@ -27,6 +27,14 @@ include(${CMAKE_CURRENT_BINARY_DIR}/pytorch_paths.cmake)
 message(STATUS "Found PyTorch ${TORCH_VERSION}.")
 message(STATUS " - CUDA support: ${TORCH_USE_CUDA}")
 
+# Find core libraries
+find_library(C10_LIBRARY c10 PATHS ${TORCH_LIBRARY_DIRS})
+find_library(TORCH_LIBRARY torch PATHS ${TORCH_LIBRARY_DIRS})
+find_library(TORCH_PYTHON_LIBRARY torch_python PATHS ${TORCH_LIBRARY_DIRS})
+message(STATUS " - c10 lib: ${C10_LIBRARY}")
+message(STATUS " - torch lib: ${TORCH_LIBRARY}")
+message(STATUS " - torch_python lib: ${TORCH_PYTHON_LIBRARY}")
+
 add_library(stillleben_python MODULE
     src/bridge.cpp
 )
@@ -36,6 +44,9 @@ target_include_directories(stillleben_python
 target_link_libraries(stillleben_python
     PUBLIC
         stillleben
+        ${C10_LIBRARY}
+        ${TORCH_LIBRARY}
+        ${TORCH_PYTHON_LIBRARY}
 )
 
 if(TORCH_USE_CUDA)
@@ -79,6 +90,9 @@ if(TORCH_USE_CUDA AND CMAKE_CUDA_COMPILER)
         PUBLIC
             Corrade::Utility
             Corrade::Containers
+            ${C10_LIBRARY}
+            ${TORCH_LIBRARY}
+            ${TORCH_PYTHON_LIBRARY}
     )
     target_compile_definitions(stillleben_diff_python PRIVATE HAVE_CUDA=1)
 
