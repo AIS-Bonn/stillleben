@@ -592,7 +592,7 @@ static void Mesh_updatePositions(const std::shared_ptr<sl::Mesh>& mesh,
         throw std::invalid_argument{"vertex_indices and position_update should be of same size"};
     if(positionsUpdate.size(1) != 3)
         throw std::invalid_argument{"position_update should be of shape (N,3)"};
-    if(verticesIndex.type().device_type() == torch::kCUDA || positionsUpdate.type().device_type() == torch::kCUDA)
+    if(verticesIndex.device().type() == torch::kCUDA || positionsUpdate.device().type() == torch::kCUDA)
         throw std::invalid_argument{"vertex_indices and position_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
@@ -636,7 +636,7 @@ static void Mesh_updateColors(const std::shared_ptr<sl::Mesh>& mesh,
     if(ColorsUpdate.size(1) != 4)
         throw std::invalid_argument{"color_update should be of shape (N,4)"};
 
-    if(verticesIndex.type().device_type() == torch::kCUDA || ColorsUpdate.type().device_type() == torch::kCUDA)
+    if(verticesIndex.device().type() == torch::kCUDA || ColorsUpdate.device().type() == torch::kCUDA)
         throw std::invalid_argument{"vertex_indices and colors_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
@@ -684,9 +684,9 @@ static void Mesh_updatePositionsAndColors(const std::shared_ptr<sl::Mesh>& mesh,
         throw std::invalid_argument{"position_update should be of shape (N,3)"};
     if(ColorsUpdate.size(1) != 4)
         throw std::invalid_argument{"color_update should be of shape (N,4)"};
-    if(verticesIndex.type().device_type() != torch::kCPU
-        || positionsUpdate.type().device_type() != torch::kCPU
-        || ColorsUpdate.type().device_type() != torch::kCPU )
+    if(verticesIndex.device().type() != torch::kCPU
+        || positionsUpdate.device().type() != torch::kCPU
+        || ColorsUpdate.device().type() != torch::kCPU )
         throw std::invalid_argument{"vertex_indices, position_update, and color_update should be CPU tensors"};
 
     if(!verticesIndex.is_contiguous())
