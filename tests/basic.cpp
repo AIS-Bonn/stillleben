@@ -114,7 +114,8 @@ TEST_CASE("basic")
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});
     {
-        auto converter = context->instantiateImageConverter("PngImageConverter");
+        Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(context->imageConverterPluginPath());
+        auto converter = manager.loadAndInstantiate("PngImageConverter");
         if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
         CHECK(converter->exportToFile(image, "/tmp/stillleben.png"));
@@ -196,7 +197,8 @@ TEST_CASE("render")
     REQUIRE(buffer);
     CHECK(buffer->imageSize() == Magnum::Vector2i(640, 480));
 
-    auto converter = context->instantiateImageConverter("PngImageConverter");
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(context->imageConverterPluginPath());
+    auto converter = manager.loadAndInstantiate("PngImageConverter");
     if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});

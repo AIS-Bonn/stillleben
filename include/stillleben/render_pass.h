@@ -18,6 +18,7 @@ namespace sl
 {
 
 class BackgroundShader;
+class BackgroundCubeShader;
 class RenderShader;
 class Scene;
 class SSAOShader;
@@ -49,9 +50,6 @@ public:
         CUDATexture classIndex;
         CUDATexture instanceIndex;
         CUDATexture normals;
-
-        [[deprecated("valid mask is not used anymore")]]
-        CUDATexture validMask;
 
         CUDATexture vertexIndex;
         CUDATexture barycentricCoeffs;
@@ -93,11 +91,13 @@ private:
     std::unique_ptr<RenderShader> m_shaderUniform;
 
     std::unique_ptr<BackgroundShader> m_backgroundShader;
+    std::unique_ptr<BackgroundCubeShader> m_backgroundCubeShader;
 
     std::unique_ptr<SSAOShader> m_ssaoShader;
     std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
 
     Magnum::GL::Mesh m_quadMesh;
+    Magnum::GL::Mesh m_cubeMesh;
     Magnum::GL::Mesh m_backgroundPlaneMesh;
 
     std::shared_ptr<Result> m_result;

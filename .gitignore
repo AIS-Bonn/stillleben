@@ -3,6 +3,7 @@
 build/
 build_debug/
 build_only/
+build-ros/
 __pycache__
 doc/_*
 .vscode/*

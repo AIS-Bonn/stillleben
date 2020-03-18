@@ -7,6 +7,7 @@
 #include <stillleben/mesh.h>
 #include <stillleben/cuda_interop.h>
 #include <stillleben/context.h>
+#include <stillleben/light_map.h>
 
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
@@ -21,6 +22,7 @@
 
 #include <Magnum/MeshTools/Compile.h>
 
+#include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/Square.h>
 
@@ -30,6 +32,7 @@
 
 #include "shaders/render_shader.h"
 #include "shaders/background_shader.h"
+#include "shaders/background_cube_shader.h"
 #include "shaders/ssao_shader.h"
 #include "shaders/ssao_apply_shader.h"
 
@@ -63,7 +66,6 @@ RenderPass::Result::Result(bool cuda)
  , classIndex{m_mapper}
  , instanceIndex{m_mapper}
  , normals{m_mapper}
- , validMask{m_mapper}
  , vertexIndex{m_mapper}
  , barycentricCoeffs{m_mapper}
  , camCoordinates{m_mapper}
@@ -101,10 +103,12 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
  , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
+ , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
+    m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
 
     m_result = std::make_shared<Result>(cuda);
@@ -154,7 +158,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
         result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
-        result->validMask.setStorage(GL::TextureFormat::R8UI, 1, viewport);
 
         result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
         result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
@@ -269,6 +272,20 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         m_framebuffer.clear(GL::FramebufferClear::Depth);
         GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
     }
+    else if(scene.lightMap())
+    {
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
+        m_backgroundCubeShader->bindRGB(scene.lightMap()->cubeMap());
+        m_backgroundCubeShader->setViewMatrix(scene.camera().cameraMatrix());
+        m_backgroundCubeShader->setProjectionMatrix(scene.camera().projectionMatrix());
+        m_cubeMesh.draw(*m_backgroundCubeShader);
+
+        // Draw on top
+        m_framebuffer.clear(GL::FramebufferClear::Depth);
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::Less);
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
+    }
     else
     {
         m_framebuffer.clearColor(0, scene.backgroundColor());
@@ -293,15 +310,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             shader.get()->disableLightMap();
     }
 
-    Vector3 lightPositionInCam = scene.camera().cameraMatrix().transformPoint(scene.lightPosition());
-
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
     {
-        auto poseInCam = scene.camera().object().absoluteTransformationMatrix().inverted() * scene.backgroundPlanePose();
-
         // Scale the unit plane s.t. it has the desired dimensions
-        Matrix4 scaledPoseInCam = poseInCam * Matrix4::scaling({
+        Matrix4 scaledPoseInWorld = scene.backgroundPlanePose() * Matrix4::scaling({
             scene.backgroundPlaneSize().x() / 2.0f,
             scene.backgroundPlaneSize().y() / 2.0f,
             1.0f
@@ -311,10 +324,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         if(texture)
         {
             (*m_shaderTextured)
-                .setObjectToCamMatrix(scaledPoseInCam)
                 .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
-                .setNormalMatrix(poseInCam.rotation())
+                .setObjectToWorldMatrix(scaledPoseInWorld)
+                .setWorldToCamMatrix(scene.camera().cameraMatrix())
                 .setProjectionMatrix(scene.camera().projectionMatrix())
+                .setCamPosition(scene.camera().object().absoluteTransformationMatrix().translation())
                 .setClassIndex(0)
                 .setInstanceIndex(0)
                 .setAmbientColor(scene.ambientLight())
@@ -323,7 +337,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
                 .bindDiffuseTexture(*texture)
             ;
 
@@ -332,10 +346,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         else
         {
             (*m_shaderUniform)
-                .setObjectToCamMatrix(scaledPoseInCam)
                 .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
-                .setNormalMatrix(poseInCam.rotation())
+                .setObjectToWorldMatrix(scaledPoseInWorld)
+                .setWorldToCamMatrix(scene.camera().cameraMatrix())
                 .setProjectionMatrix(scene.camera().projectionMatrix())
+                .setCamPosition(scene.camera().object().absoluteTransformationMatrix().translation())
                 .setClassIndex(0)
                 .setInstanceIndex(0)
                 .setAmbientColor(scene.ambientLight())
@@ -344,7 +359,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setMetalness(0.04f)
                 .setRoughness(0.5f)
                 .setStickerRange({})
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
                 .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
             ;
 
@@ -355,22 +370,28 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     // Let the fun begin!
     for(auto& object : scene.objects())
     {
-        Matrix4 objectToCam = scene.camera().object().absoluteTransformationMatrix().inverted() * object->pose();
+        Matrix4 objectToWorld = object->pose();
+
+        Matrix4 objectToCam = scene.camera().cameraMatrix() * object->pose();
         Matrix4 objectToCamInv = objectToCam.inverted();
+
+        Vector3 camPosition = scene.camera().object().absoluteTransformationMatrix().translation();
 
         for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
         {
             (*shader.get())
-                .setObjectToCamMatrix(objectToCam)
+                .setObjectToWorldMatrix(objectToWorld)
+                .setWorldToCamMatrix(scene.camera().cameraMatrix())
+                .setProjectionMatrix(scene.camera().projectionMatrix())
+                .setCamPosition(camPosition)
+
                 .setClassIndex(object->mesh()->classIndex())
                 .setInstanceIndex(object->instanceIndex())
                 .setAmbientColor(scene.ambientLight())
                 .setSpecularColor(object->specularColor())
                 .setShininess(object->shininess())
-                .setMetalness(object->metalness())
-                .setRoughness(object->roughness())
 
-                .setLightPosition(lightPositionInCam)
+                .setLightPosition(scene.lightPosition())
 
                 .setStickerProjection(object->stickerViewProjection())
                 .setStickerRange(object->stickerRange())
@@ -392,9 +413,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             {
                 (*m_shaderTextured)
                     .setMeshToObjectMatrix(meshToObject)
-                    .setNormalMatrix(meshToCam.rotation())
-                    .setProjectionMatrix(cam.projectionMatrix())
                     .bindDiffuseTexture(*drawable->texture())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderTextured);
@@ -403,9 +424,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             {
                 (*m_shaderVertexColors)
                     .setMeshToObjectMatrix(meshToObject)
-                    .setNormalMatrix(meshToCam.rotation())
-                    .setProjectionMatrix(cam.projectionMatrix())
                     .setDiffuseColor(drawable->color())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderVertexColors);
@@ -414,9 +435,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             {
                 (*m_shaderUniform)
                     .setMeshToObjectMatrix(meshToObject)
-                    .setNormalMatrix(meshToCam.rotation())
-                    .setProjectionMatrix(cam.projectionMatrix())
                     .setDiffuseColor(drawable->color())
+                    .setMetalness(object->metalness() * drawable->metallic())
+                    .setRoughness(object->roughness() * drawable->roughness())
                 ;
 
                 drawable->mesh().draw(*m_shaderUniform);

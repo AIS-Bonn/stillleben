@@ -15,12 +15,13 @@
 
 #include <Corrade/Containers/Pointer.h>
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/PluginManager/PluginManager.h>
 
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Image.h>
-
 #include <Magnum/Trade/ImageData.h>
+#include <Magnum/Trade/AbstractImporter.h>
 
 namespace Magnum
 {
@@ -56,24 +57,9 @@ public:
 private:
     using Importer = Magnum::Trade::AbstractImporter;
     using ImporterPtr = Corrade::Containers::Pointer<Importer>;
-    using Request = std::pair<ImporterPtr, std::string>;
+    using Request = std::string;
 
-    struct Result
-    {
-        Result();
-        Result(const Result&) = delete;
-        Result(Result&&) = default;
-        Result(ImporterPtr&& imp);
-        Result(ImporterPtr&& imp, Corrade::Containers::Optional<Magnum::Trade::ImageData2D>&& img);
-
-        ~Result();
-
-        Result& operator=(const Result&) = delete;
-        Result& operator=(Result&&) = default;
-
-        ImporterPtr importer;
-        Corrade::Containers::Optional<Magnum::Trade::ImageData2D> image;
-    };
+    using Result = Corrade::Containers::Optional<Magnum::Trade::ImageData2D>;
 
     void thread();
     void enqueue();
@@ -96,6 +82,8 @@ private:
 
     std::queue<Request> m_inputQueue;
     std::queue<Result> m_outputQueue;
+
+    std::string m_pluginPath;
 };
 
 }

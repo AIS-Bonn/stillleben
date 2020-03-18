@@ -35,10 +35,11 @@ def chromatic_aberration(rgb, translations, scaling):
     transformations[:,1,1] = scaling
     transformations[:,0:2,2] = translations
 
-    grid = torch.nn.functional.affine_grid(transformations.to(rgb.device), (3,1,rgb.size(1),rgb.size(2)))
+    grid = torch.nn.functional.affine_grid(transformations.to(rgb.device), (3,1,rgb.size(1),rgb.size(2)), align_corners=False)
 
     sampled = torch.nn.functional.grid_sample(rgb.unsqueeze(1), grid,
-        mode='bilinear', padding_mode='reflection'
+        mode='bilinear', padding_mode='reflection',
+        align_corners=False
     )
 
     return sampled[:,0]
@@ -237,13 +238,6 @@ def process_image(rgb):
     assert rgb.size(0) == 3
 
     hue_jitter = 0.05
-
-    global NEW_NOISE_MODEL_PRINTED
-    if not NEW_NOISE_MODEL_PRINTED:
-        print('=============================================================')
-        print('WARNING: NEW NOISE MODEL!')
-        print('=============================================================')
-        NEW_NOISE_MODEL_PRINTED = True
 
     return process_deterministic(
         rgb,

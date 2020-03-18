@@ -23,6 +23,8 @@
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 
+#include <sstream>
+
 #include "physx_impl.h"
 
 using namespace Magnum;
@@ -78,6 +80,14 @@ void Scene::clearObjects()
 
 void Scene::setCameraPose(const Magnum::Matrix4& pose)
 {
+    if(!pose.isRigidTransformation())
+    {
+        std::stringstream ss;
+        ss << "Camera pose is not rigid:\n";
+        Debug{&ss} << pose;
+        throw std::invalid_argument{ss.str()};
+    }
+
     m_cameraObject.setTransformation(pose);
 }
 
@@ -104,7 +114,7 @@ void Scene::setCameraIntrinsics(float fx, float fy, float cx, float cy)
 
     // far and near
     constexpr float f = 10.0f;
-    constexpr float n = 0.01;
+    constexpr float n = 0.1;
 
     const float H = m_camera->viewport().y();
     const float W = m_camera->viewport().x();

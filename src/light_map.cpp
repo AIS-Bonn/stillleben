@@ -14,6 +14,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
+#include <Corrade/Utility/String.h>
 
 #include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/GL/DebugOutput.h>
@@ -47,7 +48,7 @@ namespace sl
 
 namespace
 {
-    constexpr bool DEBUG_OUTPUT = true;
+    constexpr bool DEBUG_OUTPUT = false;
 
     struct IBLSpec
     {
@@ -124,12 +125,12 @@ namespace
     };
 
     const std::array<CubeMapSide, 6> CUBE_MAP_SIDES{{
-        {GL::CubeMapCoordinate::PositiveX, Matrix4::lookAt({}, { 1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f})},
-        {GL::CubeMapCoordinate::NegativeX, Matrix4::lookAt({}, {-1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f})},
-        {GL::CubeMapCoordinate::PositiveY, Matrix4::lookAt({}, { 0.0f,  1.0f,  0.0f}, {0.0f,  0.0f,  1.0f})},
-        {GL::CubeMapCoordinate::NegativeY, Matrix4::lookAt({}, { 0.0f, -1.0f,  0.0f}, {0.0f,  0.0f, -1.0f})},
-        {GL::CubeMapCoordinate::PositiveZ, Matrix4::lookAt({}, { 0.0f,  0.0f,  1.0f}, {0.0f, -1.0f,  0.0f})},
-        {GL::CubeMapCoordinate::NegativeZ, Matrix4::lookAt({}, { 0.0f,  0.0f, -1.0f}, {0.0f, -1.0f,  0.0f})},
+        {GL::CubeMapCoordinate::PositiveX, Matrix4::lookAt({}, { 1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f}).invertedRigid()},
+        {GL::CubeMapCoordinate::NegativeX, Matrix4::lookAt({}, {-1.0f,  0.0f,  0.0f}, {0.0f, -1.0f,  0.0f}).invertedRigid()},
+        {GL::CubeMapCoordinate::PositiveY, Matrix4::lookAt({}, { 0.0f,  1.0f,  0.0f}, {0.0f,  0.0f,  1.0f}).invertedRigid()},
+        {GL::CubeMapCoordinate::NegativeY, Matrix4::lookAt({}, { 0.0f, -1.0f,  0.0f}, {0.0f,  0.0f, -1.0f}).invertedRigid()},
+        {GL::CubeMapCoordinate::PositiveZ, Matrix4::lookAt({}, { 0.0f,  0.0f,  1.0f}, {0.0f, -1.0f,  0.0f}).invertedRigid()},
+        {GL::CubeMapCoordinate::NegativeZ, Matrix4::lookAt({}, { 0.0f,  0.0f, -1.0f}, {0.0f, -1.0f,  0.0f}).invertedRigid()},
     }};
 
     Trade::MeshData3D cubeFromInside()
@@ -220,42 +221,76 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 {
     using namespace Utility;
 
-    Configuration config{path, Configuration::Flag::ReadOnly};
-
-    if(config.isEmpty())
-    {
-        Error{} << "Could not open .ibl file:" << path;
-        return false;
-    }
-
-    std::string baseDir = Directory::path(path);
-
-    auto reflectionGroup = config.group("Reflection");
-    if(!reflectionGroup)
-    {
-        Error{} << path << "does not contain a Reflection group";
-        return false;
-    }
-
-    auto refSpec = IBLSpec::load(*reflectionGroup, "REF");
-
-    if(!refSpec)
-        return false;
-
-    // Load the texture!
     Magnum::GL::Texture2D hdrEquirectangular{NoCreate};
+    if(String::endsWith(path, ".ibl"))
     {
-        auto importer = ctx->instantiateImporter("StbImageImporter");
-        if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
+        Configuration config{path, Configuration::Flag::ReadOnly};
 
-        auto refTex = loadTexture(*refSpec, *importer, baseDir);
-        if(!refTex)
+        if(config.isEmpty())
         {
-            Error{} << "Could not load ref texture";
+            Error{} << "Could not open .ibl file:" << path;
             return false;
         }
 
-        hdrEquirectangular = std::move(*refTex);
+        std::string baseDir = Directory::path(path);
+
+        auto reflectionGroup = config.group("Reflection");
+        if(!reflectionGroup)
+        {
+            Error{} << path << "does not contain a Reflection group";
+            return false;
+        }
+
+        auto refSpec = IBLSpec::load(*reflectionGroup, "REF");
+
+        if(!refSpec)
+            return false;
+
+        // Load the texture!
+        {
+            Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(ctx->importerPluginPath());
+            auto importer = manager.loadAndInstantiate("StbImageImporter");
+            if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
+
+            auto refTex = loadTexture(*refSpec, *importer, baseDir);
+            if(!refTex)
+            {
+                Error{} << "Could not load ref texture";
+                return false;
+            }
+
+            hdrEquirectangular = std::move(*refTex);
+        }
+    }
+    else
+    {
+        Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(ctx->importerPluginPath());
+        auto importer = manager.loadAndInstantiate("StbImageImporter");
+        if(!importer) Fatal{} << "Cannot load the StbImageImporter plugin";
+
+        if(!importer->openFile(path))
+        {
+            Error{} << "Could not load texture:" << path;
+            return false;
+        }
+
+        auto image = importer->image2D(0);
+        if(!image)
+        {
+            Error{} << "Could not load image from" << path;
+            return {};
+        }
+
+        Magnum::GL::Texture2D texture;
+        texture.setMagnificationFilter(GL::SamplerFilter::Linear)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+            .setStorage(Math::log2(image->size().x())+1, GL::TextureFormat::RGB32F, image->size())
+            .setSubImage(0, {}, *image)
+            .generateMipmap();
+
+        hdrEquirectangular = std::move(texture);
     }
 
     // Setup a framebuffer for the remapping / convolution operations
@@ -313,23 +348,25 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
         if constexpr(DEBUG_OUTPUT)
         {
+            Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
+
             Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xn.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yn.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zn.png");
         }
     }
 
@@ -370,23 +407,25 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
         if constexpr(DEBUG_OUTPUT)
         {
+            Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
+
             Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zp.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zn.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zn.png");
         }
 
         hdrIrradiance.generateMipmap();
@@ -443,8 +482,10 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
         if constexpr(DEBUG_OUTPUT)
         {
+            Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
+
             Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            ctx->instantiateImageConverter("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
         }
     }
 
