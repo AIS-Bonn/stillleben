@@ -13,6 +13,10 @@
 
 namespace Magnum
 {
+    namespace DebugTools
+    {
+        class ResourceManager;
+    }
     namespace Trade
     {
         class AbstractImporter;
@@ -56,6 +60,8 @@ public:
 
     physx::PxPhysics& physxPhysics();
     physx::PxCooking& physxCooking();
+
+    Magnum::DebugTools::ResourceManager& debugResourceManager();
 private:
     class Private;
 

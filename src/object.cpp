@@ -145,7 +145,7 @@ void Object::loadVisual()
         }
     }
 
-    new DebugTools::ObjectRenderer3D{m_sceneObject, {}, &m_debugDrawables};
+    new DebugTools::ObjectRenderer3D{m_mesh->context()->debugResourceManager(), m_sceneObject, {}, &m_debugDrawables};
 
     m_visualLoaded = true;
 }

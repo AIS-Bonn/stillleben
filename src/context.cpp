@@ -578,6 +578,9 @@ std::string Context::imageConverterPluginPath() const
     return m_d->imageConverterPath;
 }
 
-
+Magnum::DebugTools::ResourceManager& Context::debugResourceManager()
+{
+    return m_d->resourceManager;
+}
 
 }
