@@ -24,7 +24,7 @@ std::size_t elementSize(const tinygltf::Accessor& accessor)
 {
     /* GetTypeSizeInBytes() is totally bogus and misleading name, it should
        have been called GetTypeComponentCount but who am I to judge. */
-    return tinygltf::GetComponentSizeInBytes(accessor.componentType)*tinygltf::GetTypeSizeInBytes(accessor.type);
+    return tinygltf::GetComponentSizeInBytes(accessor.componentType)*tinygltf::GetNumComponentsInType(accessor.type);
 }
 
 Containers::ArrayView<const char> bufferView(const tinygltf::Model& model, const tinygltf::Accessor& accessor)
