@@ -202,9 +202,9 @@ namespace diff
     {
         // Type and shape checks are already done in bridge.cpp
         // skip sanity checks
-        int16_t *instanceIndicesPtr = instanceIndices.data<int16_t>();
-        float *depthImagePtr = depthImage.data<float>();
-        bool *validMaskPtr = validMask.data<bool>();
+        int16_t *instanceIndicesPtr = instanceIndices.data_ptr<int16_t>();
+        float *depthImagePtr = depthImage.data_ptr<float>();
+        bool *validMaskPtr = validMask.data_ptr<bool>();
         auto numRows = instanceIndices.size(0);
         auto numCols = instanceIndices.size(1);
 
@@ -235,11 +235,11 @@ namespace diff
     {
         // Type and shape checks are already done in bridge.cpp
         // skip sanity checks
-        bool *objectMaskPtr = objectMask.data<bool>();
-        bool *sobelValidMaskPtr = sobelValidMask.data<bool>();
-        float *coordsPtr = coordinates.data<float>();
-        bool *dilatedMaskPtr = dilatedMask.data<bool>();
-        float *dilatedCoordsPtr = dilatedCoordinates.data<float>();
+        bool *objectMaskPtr = objectMask.data_ptr<bool>();
+        bool *sobelValidMaskPtr = sobelValidMask.data_ptr<bool>();
+        float *coordsPtr = coordinates.data_ptr<float>();
+        bool *dilatedMaskPtr = dilatedMask.data_ptr<bool>();
+        float *dilatedCoordsPtr = dilatedCoordinates.data_ptr<float>();
 
         float3 *coordinatesPtr = (float3 *)coordsPtr;
         float3 *dilatedCoordinatesPtr = (float3 *)dilatedCoordsPtr;
