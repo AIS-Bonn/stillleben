@@ -515,7 +515,6 @@ void Mesh::loadVisual()
     }
 
     // Nobody needs these anymore
-    m_meshData = {};
     m_textureData = {};
     m_imageData = {};
 
