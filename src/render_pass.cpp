@@ -28,8 +28,6 @@
 
 #include <Magnum/PixelFormat.h>
 
-#include <Magnum/Trade/MeshData2D.h>
-
 #include "shaders/render_shader.h"
 #include "shaders/background_shader.h"
 #include "shaders/background_cube_shader.h"
@@ -265,8 +263,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     if(scene.backgroundImage())
     {
         GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
-        m_backgroundShader->bindRGB(*scene.backgroundImage());
-        m_quadMesh.draw(*m_backgroundShader);
+        m_backgroundShader->
+            bindRGB(*scene.backgroundImage())
+            .draw(m_quadMesh);
 
         // Draw on top
         m_framebuffer.clear(GL::FramebufferClear::Depth);
@@ -279,7 +278,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         m_backgroundCubeShader->bindRGB(scene.lightMap()->cubeMap());
         m_backgroundCubeShader->setViewMatrix(scene.camera().cameraMatrix());
         m_backgroundCubeShader->setProjectionMatrix(scene.camera().projectionMatrix());
-        m_cubeMesh.draw(*m_backgroundCubeShader);
+        m_backgroundCubeShader->draw(m_cubeMesh);
 
         // Draw on top
         m_framebuffer.clear(GL::FramebufferClear::Depth);
@@ -339,9 +338,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setStickerRange({})
                 .setLightPosition(scene.lightPosition())
                 .bindDiffuseTexture(*texture)
+                .draw(m_backgroundPlaneMesh)
             ;
-
-            m_backgroundPlaneMesh.draw(*m_shaderTextured);
         }
         else
         {
@@ -361,9 +359,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 .setStickerRange({})
                 .setLightPosition(scene.lightPosition())
                 .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
+                .draw(m_backgroundPlaneMesh)
             ;
-
-            m_backgroundPlaneMesh.draw(*m_shaderUniform);
         }
     }
 
@@ -416,9 +413,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .bindDiffuseTexture(*drawable->texture())
                     .setMetalness(object->metalness() * drawable->metallic())
                     .setRoughness(object->roughness() * drawable->roughness())
+                    .draw(drawable->mesh())
                 ;
-
-                drawable->mesh().draw(*m_shaderTextured);
             }
             else if(drawable->hasVertexColors())
             {
@@ -427,9 +423,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .setDiffuseColor(drawable->color())
                     .setMetalness(object->metalness() * drawable->metallic())
                     .setRoughness(object->roughness() * drawable->roughness())
+                    .draw(drawable->mesh())
                 ;
-
-                drawable->mesh().draw(*m_shaderVertexColors);
             }
             else
             {
@@ -438,9 +433,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                     .setDiffuseColor(drawable->color())
                     .setMetalness(object->metalness() * drawable->metallic())
                     .setRoughness(object->roughness() * drawable->roughness())
+                    .draw(drawable->mesh())
                 ;
-
-                drawable->mesh().draw(*m_shaderUniform);
             }
         });
     }
@@ -462,9 +456,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .setProjection(scene.camera().projectionMatrix())
             .bindCoordinates(result->camCoordinates)
             .bindNormals(result->normals)
-            .bindNoise();
-
-        m_quadMesh.draw(*m_ssaoShader);
+            .bindNoise()
+            .draw(m_quadMesh);
 
         m_ssaoApplyFramebuffer
             .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
@@ -478,9 +471,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         (*m_ssaoApplyShader)
             .bindAO(m_ssaoTexture)
             .bindColor(m_ssaoRGBInputTexture)
-            .bindCoordinates(result->camCoordinates);
-
-        m_quadMesh.draw(*m_ssaoApplyShader);
+            .bindCoordinates(result->camCoordinates)
+            .draw(m_quadMesh);
     }
 
     // Map for CUDA access
