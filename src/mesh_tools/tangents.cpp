@@ -50,7 +50,7 @@ template<class T> Containers::ArrayView<const T> bufferView(const tinygltf::Mode
 namespace sl
 {
 
-Optional<std::vector<Vector3>> extractTangents(const Trade::AbstractImporter& importer, const Trade::MeshData3D& meshData)
+Optional<std::vector<Vector3>> extractTangents(const Trade::AbstractImporter& importer, const Trade::MeshData& meshData)
 {
     auto model = reinterpret_cast<const tinygltf::Model*>(importer.importerState());
     auto mesh = reinterpret_cast<const tinygltf::Mesh*>(meshData.importerState());

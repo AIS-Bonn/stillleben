@@ -86,8 +86,8 @@ namespace
     template<class T>
     struct toTorch
     {
-        using Result = T;
-        static T convert(const T& t)
+        using Result = const T&;
+        static const T& convert(const T& t)
         { return t; }
     };
 
@@ -162,10 +162,10 @@ namespace
     };
 
     template<>
-    struct toTorch<std::vector<Magnum::Vector3>>
+    struct toTorch<Corrade::Containers::Array<Magnum::Vector3>>
     {
         using Result = at::Tensor;
-        static at::Tensor convert(const std::vector<Magnum::Vector3>& vec)
+        static at::Tensor convert(const Corrade::Containers::Array<Magnum::Vector3>& vec)
         {
             return torch::from_blob(
                 const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
@@ -176,10 +176,10 @@ namespace
     };
 
     template<>
-    struct toTorch<std::vector<Magnum::Color4>>
+    struct toTorch<Corrade::Containers::Array<Magnum::Color4>>
     {
         using Result = at::Tensor;
-        static at::Tensor convert(const std::vector<Magnum::Color4>& vec)
+        static at::Tensor convert(const Corrade::Containers::Array<Magnum::Color4>& vec)
         {
             return torch::from_blob(
                 const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
@@ -190,12 +190,12 @@ namespace
     };
 
     template<>
-    struct toTorch<std::vector<Magnum::UnsignedInt>>
+    struct toTorch<Corrade::Containers::Array<Magnum::UnsignedInt>>
     {
         using Result = at::Tensor;
         static_assert(sizeof(int) == sizeof(Magnum::UnsignedInt), "Mismatch between PyTorch and Magnum int sizes");
 
-        static at::Tensor convert(const std::vector<Magnum::UnsignedInt>& vec)
+        static at::Tensor convert(const Corrade::Containers::Array<Magnum::UnsignedInt>& vec)
         {
             return torch::from_blob(
                 const_cast<int*>(reinterpret_cast<const int*>(vec.data())),
@@ -406,7 +406,7 @@ namespace
     std::function<typename toTorch<std::decay_t<R>>::Result (const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type...)> wrapShared(R (T::*fun)(Args...))
     {
         using RConv = toTorch<std::decay_t<R>>;
-        return [=](const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) {
+        return [=](const std::shared_ptr<T>& obj, typename fromTorch<std::decay_t<Args>>::Type ... args) -> typename toTorch<std::decay_t<R>>::Result {
             if constexpr(std::is_same_v<R, void>)
                 (obj.get()->*fun)(fromTorch<std::decay_t<Args>>::convert(args)...);
             else

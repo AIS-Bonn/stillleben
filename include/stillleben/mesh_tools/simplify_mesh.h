@@ -4,7 +4,8 @@
 #ifndef STILLLEBEN_SIMPLIFY_MESH_H
 #define STILLLEBEN_SIMPLIFY_MESH_H
 
-#include <Magnum/GL/Mesh.h>
+#include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/GrowableArray.h>
 
 #include <Magnum/Math/Matrix3.h>
 #include <Magnum/Math/Matrix4.h>
@@ -33,8 +34,8 @@ class QuadricEdgeSimplification
 {
 public:
     QuadricEdgeSimplification(
-        std::vector<Magnum::UnsignedInt>& indices,
-        std::vector<Vertex>& vertices
+        Corrade::Containers::Array<Magnum::UnsignedInt>& indices,
+        Corrade::Containers::Array<Vertex>& vertices
     )
      : m_indices{indices}
      , m_vertices{vertices}
@@ -283,7 +284,7 @@ private:
             }
         }
 
-        m_indices.resize(3*dst);
+        Corrade::Containers::arrayResize(m_indices, 3*dst);
         m_error.resize(3*dst);
         m_normals.resize(dst);
         m_triangleDeleted.resize(dst);
@@ -612,7 +613,7 @@ private:
                 }
                 triangleIdx++;
             }
-            m_indices.resize(triangleIdx*3);
+            Corrade::Containers::arrayResize(m_indices, triangleIdx*3);
         }
 
         // Compact vertices (m_vertices)
@@ -631,7 +632,7 @@ private:
 
                 vertexIdx++;
             }
-            m_vertices.resize(vertexIdx);
+            Corrade::Containers::arrayResize(m_vertices, vertexIdx);
 
             // Repair indices
             const std::size_t numTriangles = m_indices.size() / 3;
@@ -645,8 +646,8 @@ private:
         }
     }
 
-    std::vector<Magnum::UnsignedInt>& m_indices;
-    std::vector<Vertex>& m_vertices;
+    Corrade::Containers::Array<Magnum::UnsignedInt>& m_indices;
+    Corrade::Containers::Array<Vertex>& m_vertices;
 
     std::vector<bool> m_triangleDeleted;
     std::vector<Magnum::Vector3> m_normals;

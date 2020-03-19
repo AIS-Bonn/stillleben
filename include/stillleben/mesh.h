@@ -21,7 +21,7 @@
 
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/Trade/MeshData.h>
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
 #include <Magnum/Trade/TextureData.h>
@@ -63,19 +63,18 @@ public:
     using MeshFlags = Corrade::Containers::EnumSet<MeshFlag>;
 
     using ObjectDataArray = Array<Pointer<Magnum::Trade::ObjectData3D>>;
-    using MeshDataArray = Array<Optional<Magnum::Trade::MeshData3D>>;
+    using MeshDataArray = Array<Optional<Magnum::Trade::MeshData>>;
     using TangentDataArray = Array<Optional<std::vector<Magnum::Vector3>>>;
     using MeshArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
     using MeshFlagArray = Array<MeshFlags>;
-    using PointArray = Array<Optional<std::vector<Magnum::Vector3>>>;
-    using NormalArray = Array<Optional<std::vector<Magnum::Vector3>>>;
-    using FaceArray = Array<Optional<std::vector<Magnum::UnsignedInt>>>;
-    using ColorArray = Array<Optional<std::vector<Magnum::Color4>>>;
+    using PointArray = Array<Optional<Array<Magnum::Vector3>>>;
+    using NormalArray = Array<Optional<Array<Magnum::Vector3>>>;
+    using FaceArray = Array<Optional<Array<Magnum::UnsignedInt>>>;
+    using ColorArray = Array<Optional<Array<Magnum::Color4>>>;
     using ImageDataArray = Array<Optional<Magnum::Trade::ImageData2D>>;
     using TextureDataArray = Array<Optional<Magnum::Trade::TextureData>>;
     using TextureArray = Array<Optional<Magnum::GL::Texture2D>>;
     using MaterialArray = Array<Optional<PBRMaterialData>>;
-    using SimplifiedMeshArray = Array<Optional<Magnum::Trade::MeshData3D>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
     using PhysXMeshArray = Array<Optional<PhysXHolder<physx::PxConvexMesh>>>;
@@ -208,7 +207,7 @@ public:
     const MeshFlagArray& meshFlags() const
     { return m_meshFlags; }
 
-    const std::vector<Magnum::Vector3>& meshPoints()
+    const Array<Magnum::Vector3>& meshPoints()
     {
         if(m_meshPoints.size() == 0)
             throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshPoints supports only single meshes"};
@@ -219,7 +218,7 @@ public:
         return *m_meshPoints[0];
     }
 
-    const std::vector<Magnum::Vector3>& meshNormals()
+    const Array<Magnum::Vector3>& meshNormals()
     {
         if(m_meshPoints.size() == 0)
             throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshNormals supports only single meshes"};
@@ -230,7 +229,7 @@ public:
         return *m_meshNormals[0];
     }
 
-    const std::vector<Magnum::UnsignedInt>& meshFaces()
+    const Array<Magnum::UnsignedInt>& meshFaces()
     {
         if(m_meshPoints.size() == 0)
             throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshFaces supports only single meshes"};
@@ -241,7 +240,7 @@ public:
         return *m_meshFaces[0];
     }
 
-    const std::vector<Magnum::Color4>& meshColors()
+    const Array<Magnum::Color4>& meshColors()
     {
         if(m_meshPoints.size() == 0)
             throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshColors supports only single meshes"};
@@ -307,7 +306,6 @@ private:
     TextureDataArray m_textureData;
     TextureArray m_textures;
     MaterialArray m_materials;
-    SimplifiedMeshArray m_simplifiedMeshes;
     CookedPhysXMeshArray m_physXBuffers;
     PhysXMeshArray m_physXMeshes;
 

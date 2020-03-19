@@ -57,29 +57,18 @@ namespace
     /**
      * @brief Create PhysX collision shape from Trade::MeshData3D
      * */
-    Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Trade::MeshData3D& meshData)
+    Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Containers::Array<Vector3>& vertices, const Containers::Array<UnsignedInt>& indices)
     {
-        if(meshData.primitive() != MeshPrimitive::Triangles)
-        {
-            Error{} << "Cannot load collision mesh, skipping";
-            return {};
-        }
-
-        if(meshData.positionArrayCount() > 1)
-        {
-            Warning{} << "Mesh has more than one position array, this is unsupported";
-        }
-
         Corrade::Containers::Optional<PhysXOutputBuffer> out;
 
         out.emplace();
 
-        static_assert(sizeof(decltype(*meshData.positions(0).data())) == sizeof(physx::PxVec3));
+        static_assert(sizeof(decltype(*vertices.data())) == sizeof(physx::PxVec3));
 
         physx::PxConvexMeshDesc meshDesc;
-        meshDesc.points.count = meshData.positions(0).size();
+        meshDesc.points.count = vertices.size();
         meshDesc.points.stride = sizeof(physx::PxVec3);
-        meshDesc.points.data = meshData.positions(0).data();
+        meshDesc.points.data = vertices.data();
         meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
 
         physx::PxConvexMeshCookingResult::Enum result;
@@ -96,16 +85,14 @@ namespace
     using MeshHash = Corrade::Utility::MurmurHash2;
 
     template<class T>
-    MeshHash::Digest hashVector(const std::vector<T>& vec)
+    MeshHash::Digest hashArray(const Corrade::Containers::Array<T>& vec)
     {
         MeshHash hash{}; // use default seed
-        const auto& view = Corrade::Containers::arrayCast<const char>(
-            Corrade::Containers::arrayView(vec)
-        );
+        const auto& view = Corrade::Containers::arrayCast<const char>(vec);
         return hash(view.data(), view.size());
     }
 
-    Corrade::Containers::Optional<std::vector<uint8_t>> readCacheFile(const std::string& cacheFile, const std::string& sourceFile, const Magnum::Trade::MeshData3D& meshData)
+    Corrade::Containers::Optional<std::vector<uint8_t>> readCacheFile(const std::string& cacheFile, const std::string& sourceFile, const Magnum::Trade::MeshData& meshData)
     {
         auto readHash = [](std::istream& stream) -> Corrade::Containers::Optional<MeshHash::Digest>{
             std::array<char, MeshHash::DigestSize> hashBytes;
@@ -132,14 +119,14 @@ namespace
         auto cacheVertexHash = readHash(stream);
         auto cacheIndicesHash = readHash(stream);
 
-        auto vertexHash = hashVector(meshData.positions(0));
+        auto vertexHash = hashArray(meshData.positions3DAsArray(0));
         if(vertexHash != cacheVertexHash)
         {
             Debug{} << "Vertex hash does not match: cached=" << cacheVertexHash << ", actual=" << vertexHash;
             return {};
         }
 
-        auto indicesHash = hashVector(meshData.indices());
+        auto indicesHash = hashArray(meshData.indicesAsArray());
         if(indicesHash != cacheIndicesHash)
         {
             Debug{} << "Index hash does not match: cached=" << cacheIndicesHash << ", actual=" << indicesHash;
@@ -240,15 +227,15 @@ void Mesh::openFile()
         m_objectData[i] = importer->object3D(i);
 
     // Load meshes
-    m_meshData = Array<Optional<Magnum::Trade::MeshData3D>>{importer->mesh3DCount()};
-    for(UnsignedInt i = 0; i < importer->mesh3DCount(); ++i)
-        m_meshData[i] = importer->mesh3D(i);
+    m_meshData = Array<Optional<Magnum::Trade::MeshData>>{importer->meshCount()};
+    for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
+        m_meshData[i] = importer->mesh(i);
 
     // If possible, load tangent vectors (only TinyGltfImporter)
-    m_tangentData = TangentDataArray{importer->mesh3DCount()};
+    m_tangentData = TangentDataArray{importer->meshCount()};
     if(haveTinyGltf)
     {
-        for(UnsignedInt i = 0; i < importer->mesh3DCount(); ++i)
+        for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
         {
             if(!m_meshData[i])
                 continue;
@@ -285,49 +272,29 @@ void Mesh::openFile()
     }
 
     // Compute bounding box
-    m_meshPoints = PointArray{importer->mesh3DCount()};
-    m_meshNormals = NormalArray{importer->mesh3DCount()};
-    m_meshFaces = FaceArray{importer->mesh3DCount()};
-    m_meshColors = ColorArray{importer->mesh3DCount()};
+    m_meshPoints = PointArray{importer->meshCount()};
+    m_meshNormals = NormalArray{importer->meshCount()};
+    m_meshFaces = FaceArray{importer->meshCount()};
+    m_meshColors = ColorArray{importer->meshCount()};
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
         auto& meshData = m_meshData[i];
-        if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
+        if(!meshData || !meshData->hasAttribute(Trade::MeshAttribute::Normal) || meshData->primitive() != MeshPrimitive::Triangles || !meshData->isIndexed())
             continue; // we print a proper warning in loadVisual()
 
-        std::vector<Vector3> points;
-        std::vector<Vector3> normals;
-        std::vector<UnsignedInt> faces;
-        std::vector<Color4> colors;
+        Array<Vector3> points = meshData->positions3DAsArray();
+        Array<Vector3> normals = meshData->normalsAsArray();
+        Array<UnsignedInt> faces = meshData->indicesAsArray();
+        Array<Color4> colors;
 
-        auto colorArraySize = meshData->colorArrayCount();
-        for(std::size_t j = 0; j < meshData->positionArrayCount(); ++j)
+        if(meshData->hasAttribute(Trade::MeshAttribute::Color))
+            colors = meshData->colorsAsArray();
+        else
         {
-            auto array = meshData->positions(j);
-            points.reserve(points.size() + array.size());
-            std::copy(array.begin(), array.end(), std::back_inserter(points));
-
-            auto normalsArray = meshData->normals(j);
-            normals.reserve(normals.size() + normalsArray.size());
-            std::copy(normalsArray.begin(), normalsArray.end(), std::back_inserter(normals));
-
-            if(colorArraySize != 0)
-            {
-                // mesh has per-vertex coloring
-                auto colorArray = meshData->colors(j);
-                colors.reserve(colors.size() + colorArray.size());
-                std::copy(colorArray.begin(), colorArray.end(), std::back_inserter(colors));
-            }
-            else
-            {
-                // mesh has no per-vertex coloring
-                // fill all vertices to white color
-                colors.resize(colors.size() + array.size(), Color4{1.0f, 1.0f, 1.0f, 1.0f});
-            }
+            // mesh has no per-vertex coloring
+            // fill all vertices to white color
+            colors = Array<Color4>{Containers::DirectInit, meshData->vertexCount(), 1.0f, 1.0f, 1.0f, 1.0f};
         }
-
-        auto facesArray = meshData->indices();
-        faces = std::vector<UnsignedInt>{facesArray.begin(), facesArray.end()};
 
         m_meshPoints[i] = std::move(points);
         m_meshNormals[i] = std::move(normals);
@@ -363,7 +330,6 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
         throw std::runtime_error{"No mesh found"};
 
     // Simplify meshes if possible
-    m_simplifiedMeshes = SimplifiedMeshArray{m_meshData.size()};
     m_physXBuffers = CookedPhysXMeshArray{m_meshData.size()};
     m_physXMeshes = PhysXMeshArray{m_meshData.size()};
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
@@ -389,34 +355,29 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
         else
         {
             Debug{} << "Simplifying mesh and writing cache file...";
-            Trade::MeshData3D simplifiedMesh{
-                MeshPrimitive::Triangles,
-                meshData->indices(),
-                {meshData->positions(0)},
-                {}, {}, {}
-            };
+            Array<Vector3> vertices = meshData->positions3DAsArray();
+            Array<UnsignedInt> indices = meshData->indicesAsArray();
 
-            if(meshData->indices().size()/3 > maxPhysicsTriangles)
+            if(indices.size()/3 > maxPhysicsTriangles)
             {
                 // simplify in-place
                 mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
-                    simplifiedMesh.indices(), simplifiedMesh.positions(0)
+                    indices, vertices
                 };
 
                 simplification.simplify(maxPhysicsTriangles);
             }
 
-            m_simplifiedMeshes[i] = std::move(simplifiedMesh);
-            buf = cookForPhysX(m_ctx->physxCooking(), *m_simplifiedMeshes[i]);
+            buf = cookForPhysX(m_ctx->physxCooking(), vertices, indices);
 
             os::AtomicFileStream ostream(cacheFile);
 
             // Write hashes
-            MeshHash::Digest vertexHash = hashVector(meshData->positions(0));
+            MeshHash::Digest vertexHash = hashArray(meshData->positions3DAsArray());
             vertexHash.byteArray();
             ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
 
-            MeshHash::Digest indicesHash = hashVector(meshData->indices());
+            MeshHash::Digest indicesHash = hashArray(meshData->indicesAsArray());
             ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
 
             ostream.write(reinterpret_cast<char*>(buf->data()), buf->size());
@@ -486,7 +447,7 @@ void Mesh::loadVisual()
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
         const auto& meshData = m_meshData[i];
-        if(!meshData || !meshData->hasNormals() || meshData->primitive() != MeshPrimitive::Triangles)
+        if(!meshData || !meshData->hasAttribute(Trade::MeshAttribute::Normal) || meshData->primitive() != MeshPrimitive::Triangles)
         {
             Warning{} << "Cannot load the mesh, skipping";
             continue;
@@ -513,7 +474,7 @@ void Mesh::loadVisual()
             m_meshes[i]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
         }
 
-        if(meshData->hasColors())
+        if(meshData->hasAttribute(Trade::MeshAttribute::Color))
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
 
         if(m_tangentData[i])
@@ -553,26 +514,30 @@ void Mesh::recomputeNormals()
     if(m_meshData.size() != 1)
         throw Exception{"Mesh::recomputeNormals() assumes a single sub-mesh"};
 
-    auto& meshData = m_meshData.front();
+    const auto& vertices = *m_meshPoints.front();
+    auto numVertices = vertices.size();
 
-    std::vector<std::vector<int>> vertexFacesMap(meshData->positions(0).size()); // Faces a vertex is associated with.
-    std::vector<float> facesArea(meshData->indices().size());
-    std::vector<Vector3> facesNormal(meshData->indices().size());
+    const auto& indices = *m_meshFaces.front();
+    auto numIndices = indices.size();
 
-    for(std::size_t i = 0; i < meshData->indices().size(); i+=3)
+    std::vector<std::vector<int>> vertexFacesMap(numVertices); // Faces a vertex is associated with.
+    std::vector<float> facesArea(numIndices/3);
+    std::vector<Vector3> facesNormal(numIndices/3);
+
+    for(std::size_t i = 0; i < numIndices; i+=3)
     {
         auto face = i / 3;
-        auto& vertexOne = meshData->indices()[i ];
-        auto& vertexTwo = meshData->indices()[i+1];
-        auto& vertexThree = meshData->indices()[i+2];
+        auto& vertexOne = indices[i ];
+        auto& vertexTwo = indices[i+1];
+        auto& vertexThree = indices[i+2];
         vertexFacesMap[vertexOne].push_back(face);
-        vertexFacesMap[vertexTwo ].push_back(face);
+        vertexFacesMap[vertexTwo].push_back(face);
         vertexFacesMap[vertexThree].push_back(face);
 
         // area of the face
-        Vector3 v1 = meshData->positions(0)[vertexOne];
-        Vector3 v2 = meshData->positions(0)[vertexTwo];
-        Vector3 v3 = meshData->positions(0)[vertexThree];
+        Vector3 v1 = vertices[vertexOne];
+        Vector3 v2 = vertices[vertexTwo];
+        Vector3 v3 = vertices[vertexThree];
 
         auto v1v2 = v1 - v2;
         auto v1v3 = v1 - v3;
@@ -588,7 +553,8 @@ void Mesh::recomputeNormals()
     }
 
     // compute new normals weight
-    for(std::size_t i = 0; i < m_meshPoints[0]->size(); ++i)
+    auto& normals = *m_meshNormals.front();
+    for(std::size_t i = 0; i < numVertices; ++i)
     {
         Vector3 normal = Vector3(0., 0., 0.);
 
@@ -597,8 +563,7 @@ void Mesh::recomputeNormals()
 
         normal = normal.normalized();
 
-        Vector3& oldNormal = meshData->normals(0)[i];
-        oldNormal = normal;
+        normals[i] = normal;
     }
 }
 
@@ -607,6 +572,7 @@ void Mesh::recompileMesh()
     if(m_meshData.size() != 1)
         throw Exception{"Mesh::recompileMesh() assumes a single sub-mesh"};
 
+    // FIXME: Use data from m_mesh*
     *m_meshes[0] = MeshTools::compile(*m_meshData.front());
 
     // add an index to each vertex in the mesh
@@ -627,14 +593,13 @@ void Mesh::updateVertexPositionsAndColors(
     if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
         throw Exception{"Mesh::updateVertexPositionsAndColors() assumes a single sub-mesh"};
 
-    auto& meshData = m_meshData.front();
-
     // update
     if(!positionsUpdate.empty())
     {
+        auto& vertices = *m_meshPoints.front();
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
-            Vector3& point = meshData->positions(0)[verticesIndex[vi] - 1];
+            Vector3& point = vertices[verticesIndex[vi] - 1];
             Vector3 update = positionsUpdate[vi];
             point = point + update;
         }
@@ -645,17 +610,14 @@ void Mesh::updateVertexPositionsAndColors(
 
     if(!colorsUpdate.empty())
     {
+        auto& colors = *m_meshColors.front();
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
-            Color4& color = meshData->colors(0)[verticesIndex[vi] - 1];
+            Color4& color = colors[verticesIndex[vi] - 1];
             Color4 cUpdate = colorsUpdate[vi];
             color = color + cUpdate;
         }
     }
-
-    m_meshColors[0] = meshData->colors(0);
-    m_meshPoints[0] = meshData->positions(0);
-    m_meshNormals[0] = meshData->normals(0);
 
     recompileMesh();
 }
@@ -667,18 +629,14 @@ void Mesh::setVertexPositions(
     if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
         throw Exception{"Mesh::setVertexPositions() assumes a single sub-mesh"};
 
-    auto& meshData = m_meshData.front();
+    auto& vertices = *m_meshPoints.front();
 
-    if(meshData->positions(0).size() != newVertices.size())
+    if(vertices.size() != newVertices.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
 
-    std::copy(newVertices.begin(), newVertices.end(), meshData->positions(0).begin());
+    std::copy(newVertices.begin(), newVertices.end(), vertices.begin());
 
     recomputeNormals();
-
-    m_meshPoints[0] = meshData->positions(0);
-    m_meshNormals[0] = meshData->normals(0);
-
     recompileMesh();
 }
 
@@ -691,18 +649,18 @@ void Mesh::setVertexColors(
 
     auto& meshData = m_meshData.front();
 
-    if(meshData->colorArrayCount() == 0)
+    if(!meshData->hasAttribute(Trade::MeshAttribute::Color))
     {
         throw Exception("MeshData does not contain colors attribute."
             "This could happend if the mesh file does not contain per vertex coloring.");
     }
 
-    if(meshData->positions(0).size() != newColors.size())
+    auto& colors = *m_meshColors.front();
+
+    if(colors.size() != newColors.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
 
-    std::copy(newColors.begin(), newColors.end(), meshData->colors(0).begin());
-
-    m_meshColors[0] = meshData->colors(0);
+    std::copy(newColors.begin(), newColors.end(), colors.begin());
 
     recompileMesh();
 }

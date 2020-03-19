@@ -24,7 +24,7 @@ namespace sl
  **/
 Corrade::Containers::Optional<std::vector<Magnum::Vector3>> extractTangents(
     const Magnum::Trade::AbstractImporter& importer,
-    const Magnum::Trade::MeshData3D& mesh
+    const Magnum::Trade::MeshData& mesh
 );
 
 }
