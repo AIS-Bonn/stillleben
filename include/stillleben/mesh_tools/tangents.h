@@ -22,7 +22,7 @@ namespace sl
  *
  * @warning Calling this when not using TinyGltfImporter will crash.
  **/
-Corrade::Containers::Optional<std::vector<Magnum::Vector3>> extractTangents(
+Corrade::Containers::Optional<Corrade::Containers::Array<Magnum::Vector3>> extractTangents(
     const Magnum::Trade::AbstractImporter& importer,
     const Magnum::Trade::MeshData& mesh
 );

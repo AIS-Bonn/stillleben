@@ -8,7 +8,7 @@
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Vector4.h>
 #include <Magnum/Trade/AbstractImporter.h>
-#include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/Trade/MeshData.h>
 
 #include <MagnumExternal/TinyGltf/tiny_gltf.h>
 
@@ -50,7 +50,7 @@ template<class T> Containers::ArrayView<const T> bufferView(const tinygltf::Mode
 namespace sl
 {
 
-Optional<std::vector<Vector3>> extractTangents(const Trade::AbstractImporter& importer, const Trade::MeshData& meshData)
+Optional<Containers::Array<Vector3>> extractTangents(const Trade::AbstractImporter& importer, const Trade::MeshData& meshData)
 {
     auto model = reinterpret_cast<const tinygltf::Model*>(importer.importerState());
     auto mesh = reinterpret_cast<const tinygltf::Mesh*>(meshData.importerState());
@@ -74,18 +74,18 @@ Optional<std::vector<Vector3>> extractTangents(const Trade::AbstractImporter& im
         return {};
     }
 
-    std::vector<Vector3> tangents;
-    tangents.reserve(accessor.count);
+    Containers::Array<Vector3> tangents{accessor.count};
     const auto buffer = bufferView<Vector4>(*model, accessor);
-    for(const auto& vec : buffer)
+    for(std::size_t i = 0; i < buffer.size(); ++i)
     {
+        const Vector4& vec = buffer[i];
         if(std::abs(vec.w() - 1.0f) > 1e-9)
         {
             Warning{} << "extractTangents(): We only support w=1.0 at the moment, will not return tangents";
             return {};
         }
 
-        tangents.push_back(vec.xyz());
+        tangents[i] = vec.xyz();
     }
 
     return tangents;

@@ -8,6 +8,8 @@
 #include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/physx.h>
 
+#include <Corrade/Containers/ArrayView.h>
+
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
@@ -25,6 +27,7 @@
 #include <Magnum/Math/Algorithms/Svd.h>
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
+#include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/SceneGraph.h>
@@ -229,19 +232,82 @@ void Mesh::openFile()
     // Load meshes
     m_meshData = Array<Optional<Magnum::Trade::MeshData>>{importer->meshCount()};
     for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
-        m_meshData[i] = importer->mesh(i);
-
-    // If possible, load tangent vectors (only TinyGltfImporter)
-    m_tangentData = TangentDataArray{importer->meshCount()};
-    if(haveTinyGltf)
     {
-        for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
-        {
-            if(!m_meshData[i])
-                continue;
+        auto mesh = importer->mesh(i);
 
-            m_tangentData[i] = extractTangents(*importer, *m_meshData[i]);
+        if(!mesh)
+            continue;
+
+        if(mesh->primitive() != MeshPrimitive::Triangles || !mesh->isIndexed())
+        {
+            Warning{} << "Ignoring non-triangle (or non-indexed) sub-mesh" << i << "/" << importer->meshCount();
         }
+
+        // All the following code makes the assumption that the mesh has the
+        // following attributes: Position, Normal, Color, VertexIndex
+        // So make sure our meshData has these fields.
+
+        // Vertex indices start at 1
+        // FIXME: This is useless for multi-object meshes.
+        Array<UnsignedInt> vertexIndex(mesh->vertexCount());
+        for(std::size_t j = 0; j < vertexIndex.size(); ++j)
+            vertexIndex[j] = j + 1;
+
+        Array<Trade::MeshAttributeData> extraAttributes{Containers::InPlaceInit, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::ObjectId, Containers::arrayView(vertexIndex)}
+        }};
+
+        Array<Color4> white;
+        if(!mesh->hasAttribute(Trade::MeshAttribute::Color))
+        {
+            white = Array<Color4>{Containers::DirectInit, mesh->vertexCount(), 1.0f, 1.0f, 1.0f, 1.0f};
+
+            Containers::arrayAppend(extraAttributes,
+                Trade::MeshAttributeData{Trade::MeshAttribute::Color, Containers::arrayView(white)}
+            );
+        }
+
+        // For TinyGltf, we can load tangents as well (will hopefully soon be available in the Magnum importer)
+        Array<Vector3> tangents;
+        if(haveTinyGltf)
+        {
+            if(auto tangentData = extractTangents(*importer, *mesh))
+            {
+                tangents = std::move(*tangentData);
+                Containers::arrayAppend(extraAttributes,
+                    Trade::MeshAttributeData{Trade::MeshAttribute::Tangent, Containers::arrayView(tangents)}
+                );
+            }
+        }
+
+        auto interleavedMesh = MeshTools::interleave(std::move(*mesh), extraAttributes);
+
+        // Make sure everything is in the format we expect
+        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Position) != VertexFormat::Vector3)
+        {
+            Warning{} << "Unsupported vertex format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Position);
+            continue;
+        }
+
+        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Normal) != VertexFormat::Vector3)
+        {
+            Warning{} << "Unsupported normal format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Normal);
+            continue;
+        }
+
+        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Color) != VertexFormat::Vector4)
+        {
+            Warning{} << "Unsupported color format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Color);
+            continue;
+        }
+
+        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::ObjectId) != VertexFormat::UnsignedInt)
+        {
+            Warning{} << "Unsupported vertex ID format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::ObjectId);
+            continue;
+        }
+
+        m_meshData[i] = std::move(interleavedMesh);
     }
 
     // Load textures
@@ -272,37 +338,6 @@ void Mesh::openFile()
     }
 
     // Compute bounding box
-    m_meshPoints = PointArray{importer->meshCount()};
-    m_meshNormals = NormalArray{importer->meshCount()};
-    m_meshFaces = FaceArray{importer->meshCount()};
-    m_meshColors = ColorArray{importer->meshCount()};
-    for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
-    {
-        auto& meshData = m_meshData[i];
-        if(!meshData || !meshData->hasAttribute(Trade::MeshAttribute::Normal) || meshData->primitive() != MeshPrimitive::Triangles || !meshData->isIndexed())
-            continue; // we print a proper warning in loadVisual()
-
-        Array<Vector3> points = meshData->positions3DAsArray();
-        Array<Vector3> normals = meshData->normalsAsArray();
-        Array<UnsignedInt> faces = meshData->indicesAsArray();
-        Array<Color4> colors;
-
-        if(meshData->hasAttribute(Trade::MeshAttribute::Color))
-            colors = meshData->colorsAsArray();
-        else
-        {
-            // mesh has no per-vertex coloring
-            // fill all vertices to white color
-            colors = Array<Color4>{Containers::DirectInit, meshData->vertexCount(), 1.0f, 1.0f, 1.0f, 1.0f};
-        }
-
-        m_meshPoints[i] = std::move(points);
-        m_meshNormals[i] = std::move(normals);
-        m_meshFaces[i] = std::move(faces);
-        m_meshColors[i] = std::move(colors);
-    }
-
-    // Update the bounding box
     {
         // Inspect the scene if available
         if(m_sceneData)
@@ -311,11 +346,12 @@ void Mesh::openFile()
             for(UnsignedInt objectId : m_sceneData->children3D())
                 updateBoundingBox(Matrix4{}, objectId);
         }
-        else if(!m_meshPoints.empty() && m_meshPoints[0])
+        else if(!m_meshData.empty() && m_meshData[0])
         {
-            // The format has no scene support, use first mesh
             updateBoundingBox(Matrix4{}, 0);
         }
+        else
+            Warning{} << "Could not estimate bounding box";
     }
 
     m_opened = true;
@@ -443,6 +479,8 @@ void Mesh::loadVisual()
 
     // Load all meshes. Meshes that fail to load will be NullOpt.
     m_meshes = MeshArray{m_meshData.size()};
+    m_vertexBuffers = Array<GL::Buffer>{m_meshData.size()};
+    m_indexBuffers = Array<GL::Buffer>{m_meshData.size()};
     m_meshFlags = Containers::Array<MeshFlags>{m_meshData.size()};
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
@@ -453,36 +491,27 @@ void Mesh::loadVisual()
             continue;
         }
 
+        m_indexBuffers[i].setData(meshData->indexData(), GL::BufferUsage::StaticDraw);
+        m_vertexBuffers[i].setData(meshData->vertexData(), GL::BufferUsage::StaticDraw);
         m_meshes[i] = std::make_shared<GL::Mesh>(
-            MeshTools::compile(*meshData)
+            MeshTools::compile(*meshData, m_indexBuffers[i], m_vertexBuffers[i])
         );
-
-        if(m_meshPoints[i])
+        m_meshes[i]->addVertexBuffer(m_vertexBuffers[i],
+            meshData->attributeOffset(Trade::MeshAttribute::ObjectId),
+            meshData->attributeStride(Trade::MeshAttribute::ObjectId),
+            RenderShader::VertexIndex{}
+        );
+        if(meshData->hasAttribute(Trade::MeshAttribute::Tangent))
         {
-            unsigned int numPoints = m_meshPoints[i]->size();
-
-            // Vertex index starts from 1
-            // this is done to avoid the confusion of 0 being the default value in the texel fetch sampling.
-            // FIXME: This produces garbage in the case of multi-submesh meshes.
-
-            m_vertexIndices =  Corrade::Containers::Array<Magnum::UnsignedInt>(Corrade::Containers::NoInit, numPoints);
-            for(std::size_t j = 0; j < numPoints; ++j)
-                m_vertexIndices[j] = j + 1;
-
-            m_vertexIndexBuf = Magnum::GL::Buffer{};
-            m_vertexIndexBuf.setData(m_vertexIndices);
-            m_meshes[i]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
+            m_meshes[i]->addVertexBuffer(m_vertexBuffers[i],
+                meshData->attributeOffset(Trade::MeshAttribute::Tangent),
+                meshData->attributeStride(Trade::MeshAttribute::Tangent),
+                Shaders::Generic3D::Tangent{}
+            );
         }
 
         if(meshData->hasAttribute(Trade::MeshAttribute::Color))
             m_meshFlags[i] |= MeshFlag::HasVertexColors;
-
-        if(m_tangentData[i])
-        {
-            GL::Buffer tangentBuffer;
-            tangentBuffer.setData(*m_tangentData[i]);
-            m_meshes[i]->addVertexBuffer(std::move(tangentBuffer), 0, Magnum::Shaders::Generic3D::Tangent{});
-        }
     }
 
     // Nobody needs these anymore
@@ -514,10 +543,10 @@ void Mesh::recomputeNormals()
     if(m_meshData.size() != 1)
         throw Exception{"Mesh::recomputeNormals() assumes a single sub-mesh"};
 
-    const auto& vertices = *m_meshPoints.front();
+    const auto& vertices = meshPoints();
     auto numVertices = vertices.size();
 
-    const auto& indices = *m_meshFaces.front();
+    const auto& indices = meshFaces();
     auto numIndices = indices.size();
 
     std::vector<std::vector<int>> vertexFacesMap(numVertices); // Faces a vertex is associated with.
@@ -553,7 +582,7 @@ void Mesh::recomputeNormals()
     }
 
     // compute new normals weight
-    auto& normals = *m_meshNormals.front();
+    auto normals = meshNormals();
     for(std::size_t i = 0; i < numVertices; ++i)
     {
         Vector3 normal = Vector3(0., 0., 0.);
@@ -572,16 +601,9 @@ void Mesh::recompileMesh()
     if(m_meshData.size() != 1)
         throw Exception{"Mesh::recompileMesh() assumes a single sub-mesh"};
 
-    // FIXME: Use data from m_mesh*
-    *m_meshes[0] = MeshTools::compile(*m_meshData.front());
-
-    // add an index to each vertex in the mesh
-    {
-        // use the already created m_vertexIndices
-        m_vertexIndexBuf = Magnum::GL::Buffer{};
-        m_vertexIndexBuf.setData(m_vertexIndices);
-        m_meshes[0]->addVertexBuffer(m_vertexIndexBuf, 0, RenderShader::VertexIndex());
-    }
+    m_vertexBuffers.front().setData(
+        m_meshData.front()->vertexData(), GL::BufferUsage::DynamicDraw
+    );
 }
 
 void Mesh::updateVertexPositionsAndColors(
@@ -590,13 +612,13 @@ void Mesh::updateVertexPositionsAndColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& colorsUpdate
 )
 {
-    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
+    if(m_meshData.size() != 1)
         throw Exception{"Mesh::updateVertexPositionsAndColors() assumes a single sub-mesh"};
 
     // update
     if(!positionsUpdate.empty())
     {
-        auto& vertices = *m_meshPoints.front();
+        auto vertices = meshPoints();
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
             Vector3& point = vertices[verticesIndex[vi] - 1];
@@ -610,7 +632,7 @@ void Mesh::updateVertexPositionsAndColors(
 
     if(!colorsUpdate.empty())
     {
-        auto& colors = *m_meshColors.front();
+        auto colors = meshColors();
         for(std::size_t vi = 0; vi < verticesIndex.size(); ++vi)
         {
             Color4& color = colors[verticesIndex[vi] - 1];
@@ -626,15 +648,16 @@ void Mesh::setVertexPositions(
     const Corrade::Containers::ArrayView<Magnum::Vector3>& newVertices
 )
 {
-    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
+    if(m_meshData.size() != 1)
         throw Exception{"Mesh::setVertexPositions() assumes a single sub-mesh"};
 
-    auto& vertices = *m_meshPoints.front();
+    auto vertices = meshPoints();
 
     if(vertices.size() != newVertices.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices"};
 
-    std::copy(newVertices.begin(), newVertices.end(), vertices.begin());
+    for(std::size_t i = 0; i < vertices.size(); ++i)
+        vertices[i] = newVertices[i];
 
     recomputeNormals();
     recompileMesh();
@@ -644,7 +667,7 @@ void Mesh::setVertexColors(
     const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
 )
 {
-    if(m_meshPoints.size() != 1 || m_meshData.size() != 1)
+    if(m_meshData.size() != 1)
         throw Exception{"Mesh::setVertexColors() assumes a single sub-mesh"};
 
     auto& meshData = m_meshData.front();
@@ -655,12 +678,13 @@ void Mesh::setVertexColors(
             "This could happend if the mesh file does not contain per vertex coloring.");
     }
 
-    auto& colors = *m_meshColors.front();
+    auto colors = meshColors();
 
     if(colors.size() != newColors.size())
         throw std::invalid_argument{"Number of new vertices should match the existing mesh vertices for vertex color update"};
 
-    std::copy(newColors.begin(), newColors.end(), colors.begin());
+    for(std::size_t i = 0; i < colors.size(); ++i)
+        colors[i] = newColors[i];
 
     recompileMesh();
 }
@@ -759,9 +783,9 @@ void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned in
 
     Magnum::Matrix4 transform = parentTransform * objectData->transformation();
 
-    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_meshPoints[objectData->instance()])
+    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_meshData[objectData->instance()])
     {
-        for(const auto& point : *m_meshPoints[objectData->instance()])
+        for(const auto& point : meshPoints())
         {
             auto transformed = transform.transformPoint(point);
 
