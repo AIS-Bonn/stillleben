@@ -231,6 +231,7 @@ void Mesh::openFile()
 
     // Load meshes
     m_meshData = Array<Optional<Magnum::Trade::MeshData>>{importer->meshCount()};
+    m_meshFlags = Containers::Array<MeshFlags>{m_meshData.size()};
     for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
     {
         auto mesh = importer->mesh(i);
@@ -258,7 +259,9 @@ void Mesh::openFile()
         }};
 
         Array<Color4> white;
-        if(!mesh->hasAttribute(Trade::MeshAttribute::Color))
+        if(mesh->hasAttribute(Trade::MeshAttribute::Color))
+            m_meshFlags[i] |= MeshFlag::HasVertexColors;
+        else
         {
             white = Array<Color4>{Containers::DirectInit, mesh->vertexCount(), 1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -481,7 +484,6 @@ void Mesh::loadVisual()
     m_meshes = MeshArray{m_meshData.size()};
     m_vertexBuffers = Array<GL::Buffer>{m_meshData.size()};
     m_indexBuffers = Array<GL::Buffer>{m_meshData.size()};
-    m_meshFlags = Containers::Array<MeshFlags>{m_meshData.size()};
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
         const auto& meshData = m_meshData[i];
@@ -509,9 +511,6 @@ void Mesh::loadVisual()
                 Shaders::Generic3D::Tangent{}
             );
         }
-
-        if(meshData->hasAttribute(Trade::MeshAttribute::Color))
-            m_meshFlags[i] |= MeshFlag::HasVertexColors;
     }
 
     // Nobody needs these anymore
