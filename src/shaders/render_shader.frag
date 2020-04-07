@@ -93,14 +93,30 @@ in DataBridge fragmentData;
 flat in centroid uvec3 g_vertexIndices;
 in centroid vec3 g_barycentricCoeffs;
 
-layout(location = 0) out lowp vec4 color;
-layout(location = 1) out highp vec4 objectCoordinatesOut;
-layout(location = 2) out uint classIndexOut;
-layout(location = 3) out uint instanceIndexOut;
-layout(location = 4) out highp vec4 normalOut;
-layout(location = 5) out uvec3 vertexIndices;
-layout(location = 6) out vec3 barycentricCoeffs;
-layout(location = 7) out highp vec3 camCoordinatesOut;
+// Outputs!
+layout(location = COLOR_OUTPUT_ATTRIBUTE_LOCATION)
+out lowp vec4 color;
+
+layout(location = OBJECT_COORDINATES_OUTPUT_ATTRIBUTE_LOCATION)
+out highp vec4 objectCoordinatesOut;
+
+layout(location = CLASS_INDEX_OUTPUT_ATTRIBUTE_LOCATION)
+out uint classIndexOut;
+
+layout(location = INSTANCE_INDEX_OUTPUT_ATTRIBUTE_LOCATION)
+out uint instanceIndexOut;
+
+layout(location = NORMAL_OUTPUT_ATTRIBUTE_LOCATION)
+out highp vec4 normalOut;
+
+layout(location = VERTEX_INDEX_OUTPUT_ATTRIBUTE_LOCATION)
+out uvec3 vertexIndices;
+
+layout(location = BARYCENTRIC_COEFFS_OUTPUT_ATTRIBUTE_LOCATION)
+out vec3 barycentricCoeffs;
+
+layout(location = CAM_COORDINATES_OUTPUT_ATTRIBUTE_LOCATION)
+out highp vec3 camCoordinatesOut;
 
 vec2 dirToSpherical(vec3 dir)
 {

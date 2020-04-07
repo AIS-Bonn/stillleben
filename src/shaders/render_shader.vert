@@ -44,7 +44,7 @@ in mediump vec4 vertexColors;
 #endif
 
 // for differentiable renderer 
-layout(location = VERTEXINDEX_ATTRIBUTE_LOCATION)
+layout(location = VERTEX_INDEX_ATTRIBUTE_LOCATION)
 in uint vertexIndex;
 
 

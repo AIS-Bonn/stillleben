@@ -49,7 +49,7 @@ BackgroundCubeShader::BackgroundCubeShader()
     }
 
     vert.addSource(rs.get("compatibility.glsl"))
-        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("common.glsl"))
         .addSource(rs.get("background_cube_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
         .addSource(rs.get("background_cube_shader.frag"));

@@ -55,7 +55,7 @@ SSAOApplyShader::SSAOApplyShader()
     }
 
     vert.addSource(rs.get("compatibility.glsl"))
-        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("common.glsl"))
         .addSource(rs.get("ssao_apply_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
         .addSource(rs.get("ssao_apply_shader.frag"));

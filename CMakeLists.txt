@@ -87,6 +87,7 @@ add_library(stillleben SHARED
     src/shaders/background_shader.cpp
     src/shaders/background_cube_shader.cpp
     src/shaders/brdf_shader.cpp
+    src/shaders/check_attributes.cpp
     src/shaders/cubemap_shader.cpp
     src/shaders/render_shader.cpp
     src/shaders/ssao_shader.cpp

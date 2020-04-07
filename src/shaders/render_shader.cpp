@@ -72,20 +72,20 @@ RenderShader::RenderShader(const Flags flags)
     vert.addSource(flags ? "#define TEXTURED\n" : "")
         .addSource(rs.get("compatibility.glsl"))
         .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
-        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("common.glsl"))
         .addSource(rs.get("render_shader.glsl"))
         .addSource(rs.get("render_shader.vert"));
 
     geom.addSource(flags ? "#define TEXTURED\n" : "")
         .addSource(flags & Flag::VertexColors ? "#define VERTEX_COLORS\n" : "")
         .addSource(rs.get("compatibility.glsl"))
-        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("common.glsl"))
         .addSource(rs.get("render_shader.glsl"))
         .addSource(rs.get("render_shader.geom"));
 
     frag.addSource(flags ? "#define TEXTURED\n" : "")
         .addSource(rs.get("compatibility.glsl"))
-        .addSource(rs.get("generic.glsl"))
+        .addSource(rs.get("common.glsl"))
         .addSource((useTexture && (flags & Flag::AmbientTexture)) ? "#define AMBIENT_TEXTURE\n" : "")
         .addSource((useTexture && (flags & Flag::DiffuseTexture)) ? "#define DIFFUSE_TEXTURE\n" : "")
         .addSource((useTexture && (flags & Flag::SpecularTexture)) ? "#define SPECULAR_TEXTURE\n" : "")
