@@ -39,7 +39,7 @@ in mediump vec2 textureCoords;
 #endif
 
 #ifdef VERTEX_COLORS
-layout(location = VERTEXCOLORS_ATTRIBUTE_LOCATION)
+layout(location = COLOR_ATTRIBUTE_LOCATION)
 in mediump vec4 vertexColors;
 #endif
 
