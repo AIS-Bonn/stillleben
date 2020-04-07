@@ -36,7 +36,7 @@
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/ImageData.h>
-#include <Magnum/Trade/MeshData3D.h>
+#include <Magnum/Trade/MeshData.h>
 #include <Magnum/Image.h>
 
 
@@ -133,76 +133,64 @@ namespace
         {GL::CubeMapCoordinate::NegativeZ, Matrix4::lookAt({}, { 0.0f,  0.0f, -1.0f}, {0.0f, -1.0f,  0.0f}).invertedRigid()},
     }};
 
-    Trade::MeshData3D cubeFromInside()
+    /* not 8-bit because GPUs (and Vulkan) don't like it nowadays */
+    constexpr UnsignedShort IndicesSolid[]{
+        0,  1,  2,  0,  2,  3, /* +Z */
+        4,  5,  6,  4,  6,  7, /* +X */
+        8,  9, 10,  8, 10, 11, /* +Y */
+        12, 13, 14, 12, 14, 15, /* -Z */
+        16, 17, 18, 16, 18, 19, /* -Y */
+        20, 21, 22, 20, 22, 23  /* -X */
+    };
+    constexpr struct VertexSolid {
+        Vector3 position;
+        Vector3 normal;
+    } VerticesSolid[]{
+        {{-1.0f, -1.0f,  1.0f}, { 0.0f,  0.0f, -1.0f}},
+        {{ 1.0f, -1.0f,  1.0f}, { 0.0f,  0.0f, -1.0f}},
+        {{ 1.0f,  1.0f,  1.0f}, { 0.0f,  0.0f, -1.0f}}, /* +Z */
+        {{-1.0f,  1.0f,  1.0f}, { 0.0f,  0.0f, -1.0f}},
+
+        {{ 1.0f, -1.0f,  1.0f}, {-1.0f,  0.0f,  0.0f}},
+        {{ 1.0f, -1.0f, -1.0f}, {-1.0f,  0.0f,  0.0f}},
+        {{ 1.0f,  1.0f, -1.0f}, {-1.0f,  0.0f,  0.0f}}, /* +X */
+        {{ 1.0f,  1.0f,  1.0f}, {-1.0f,  0.0f,  0.0f}},
+
+        {{-1.0f,  1.0f,  1.0f}, { 0.0f, -1.0f,  0.0f}},
+        {{ 1.0f,  1.0f,  1.0f}, { 0.0f, -1.0f,  0.0f}},
+        {{ 1.0f,  1.0f, -1.0f}, { 0.0f, -1.0f,  0.0f}}, /* +Y */
+        {{-1.0f,  1.0f, -1.0f}, { 0.0f, -1.0f,  0.0f}},
+
+        {{ 1.0f, -1.0f, -1.0f}, { 0.0f,  0.0f,  1.0f}},
+        {{-1.0f, -1.0f, -1.0f}, { 0.0f,  0.0f,  1.0f}},
+        {{-1.0f,  1.0f, -1.0f}, { 0.0f,  0.0f,  1.0f}}, /* -Z */
+        {{ 1.0f,  1.0f, -1.0f}, { 0.0f,  0.0f,  1.0f}},
+
+        {{-1.0f, -1.0f, -1.0f}, { 0.0f,  1.0f,  0.0f}},
+        {{ 1.0f, -1.0f, -1.0f}, { 0.0f,  1.0f,  0.0f}},
+        {{ 1.0f, -1.0f,  1.0f}, { 0.0f,  1.0f,  0.0f}}, /* -Y */
+        {{-1.0f, -1.0f,  1.0f}, { 0.0f,  1.0f,  0.0f}},
+
+        {{-1.0f, -1.0f, -1.0f}, { 1.0f,  0.0f,  0.0f}},
+        {{-1.0f, -1.0f,  1.0f}, { 1.0f,  0.0f,  0.0f}},
+        {{-1.0f,  1.0f,  1.0f}, { 1.0f,  0.0f,  0.0f}}, /* -X */
+        {{-1.0f,  1.0f, -1.0f}, { 1.0f,  0.0f,  0.0f}}
+    };
+    constexpr Trade::MeshAttributeData AttributesSolid[]{
+        Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+            Containers::stridedArrayView(VerticesSolid, &VerticesSolid[0].position,
+                Containers::arraySize(VerticesSolid), sizeof(VertexSolid))},
+        Trade::MeshAttributeData{Trade::MeshAttribute::Normal,
+            Containers::stridedArrayView(VerticesSolid, &VerticesSolid[0].normal,
+                Containers::arraySize(VerticesSolid), sizeof(VertexSolid))}
+    };
+
+    Trade::MeshData cubeFromInside()
     {
-        return Trade::MeshData3D{MeshPrimitive::Triangles, {
-             0,  2,  1,  0,  3,  2, /* +Z */
-             4,  6,  5,  4,  7,  6, /* +X */
-             8, 10,  9,  8, 11, 10, /* +Y */
-            12, 14, 13, 12, 15, 14, /* -Z */
-            16, 18, 17, 16, 19, 18, /* -Y */
-            20, 22, 21, 20, 23, 22  /* -X */
-        }, {{
-            {-1.0f, -1.0f,  1.0f},
-            { 1.0f, -1.0f,  1.0f},
-            { 1.0f,  1.0f,  1.0f}, /* +Z */
-            {-1.0f,  1.0f,  1.0f},
-
-            { 1.0f, -1.0f,  1.0f},
-            { 1.0f, -1.0f, -1.0f},
-            { 1.0f,  1.0f, -1.0f}, /* +X */
-            { 1.0f,  1.0f,  1.0f},
-
-            {-1.0f,  1.0f,  1.0f},
-            { 1.0f,  1.0f,  1.0f},
-            { 1.0f,  1.0f, -1.0f}, /* +Y */
-            {-1.0f,  1.0f, -1.0f},
-
-            { 1.0f, -1.0f, -1.0f},
-            {-1.0f, -1.0f, -1.0f},
-            {-1.0f,  1.0f, -1.0f}, /* -Z */
-            { 1.0f,  1.0f, -1.0f},
-
-            {-1.0f, -1.0f, -1.0f},
-            { 1.0f, -1.0f, -1.0f},
-            { 1.0f, -1.0f,  1.0f}, /* -Y */
-            {-1.0f, -1.0f,  1.0f},
-
-            {-1.0f, -1.0f, -1.0f},
-            {-1.0f, -1.0f,  1.0f},
-            {-1.0f,  1.0f,  1.0f}, /* -X */
-            {-1.0f,  1.0f, -1.0f}
-        }}, {{
-            { 0.0f,  0.0f, -1.0f},
-            { 0.0f,  0.0f, -1.0f},
-            { 0.0f,  0.0f, -1.0f}, /* +Z */
-            { 0.0f,  0.0f, -1.0f},
-
-            {-1.0f,  0.0f,  0.0f},
-            {-1.0f,  0.0f,  0.0f},
-            {-1.0f,  0.0f,  0.0f}, /* +X */
-            {-1.0f,  0.0f,  0.0f},
-
-            { 0.0f, -1.0f,  0.0f},
-            { 0.0f, -1.0f,  0.0f},
-            { 0.0f, -1.0f,  0.0f}, /* +Y */
-            { 0.0f, -1.0f,  0.0f},
-
-            { 0.0f,  0.0f,  1.0f},
-            { 0.0f,  0.0f,  1.0f},
-            { 0.0f,  0.0f,  1.0f}, /* -Z */
-            { 0.0f,  0.0f,  1.0f},
-
-            { 0.0f,  1.0f,  0.0f},
-            { 0.0f,  1.0f,  0.0f},
-            { 0.0f,  1.0f,  0.0f}, /* -Y */
-            { 0.0f,  1.0f,  0.0f},
-
-            { 1.0f,  0.0f,  0.0f},
-            { 1.0f,  0.0f,  0.0f},
-            { 1.0f,  0.0f,  0.0f}, /* -X */
-            { 1.0f,  0.0f,  0.0f}
-        }}, {}, {}, nullptr};
+        return Trade::MeshData{MeshPrimitive::Triangles,
+            {}, IndicesSolid, Trade::MeshIndexData{IndicesSolid},
+            {}, VerticesSolid, Trade::meshAttributeDataNonOwningArray(AttributesSolid)
+        };
     }
 }
 
@@ -341,7 +329,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
             shader.setView(side.view);
 
-            cube.draw(shader);
+            shader.draw(cube);
         }
 
         hdrCubeMap.generateMipmap();
@@ -402,7 +390,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
             shader.setView(side.view);
 
-            cube.draw(shader);
+            shader.draw(cube);
         }
 
         if constexpr(DEBUG_OUTPUT)
@@ -476,7 +464,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
                 shader.setView(side.view);
 
-                cube.draw(shader);
+                shader.draw(cube);
             }
         }
 
@@ -513,8 +501,8 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 
         BRDFShader shader;
 
-        auto quad = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
-        quad.draw(shader);
+        auto quad = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneFlag::TextureCoordinates));
+        shader.draw(quad);
 
         brdfLUT.generateMipmap();
     }

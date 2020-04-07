@@ -9,6 +9,8 @@
 #include <stillleben/context.h>
 #include <stillleben/light_map.h>
 
+#include <Corrade/Utility/DebugStl.h>
+
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RenderbufferFormat.h>
@@ -105,9 +107,9 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
 {
-    m_quadMesh = MeshTools::compile(Primitives::squareSolid(Primitives::SquareTextureCoords::DontGenerate));
+    m_quadMesh = MeshTools::compile(Primitives::squareSolid());
     m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
-    m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneTextureCoords::Generate));
+    m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneFlag::TextureCoordinates));
 
     m_result = std::make_shared<Result>(cuda);
 }
