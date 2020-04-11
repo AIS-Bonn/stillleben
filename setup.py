@@ -17,30 +17,31 @@ DEBUG = int(os.environ.get('DEBUG', '0')) == 1
 def build_stillleben():
     os.makedirs(BUILD_PATH, exist_ok=True)
 
-    cmd = [
-        'cmake',
-        '-DCMAKE_BUILD_TYPE={}'.format('Debug' if DEBUG else 'RelWithDebInfo'),
-        '-DCMAKE_INSTALL_PREFIX=' + INSTALL_PATH,
-        '-DUSE_RELATIVE_RPATH=ON',
-        '-GNinja',
-        '../..'
-    ]
-
     env = os.environ.copy()
     env['CLICOLOR_FORCE'] = '1'
 
-    # are we installing inside anaconda?
-    # if so, try to be helpful.
-    if 'CONDA_PREFIX' in env:
-        cmd.append(f'-DEXTRA_RPATH={env["CONDA_PREFIX"]}/lib')
+    if not os.path.exists(os.path.join(BUILD_PATH, 'build.ninja')):
+        cmd = [
+            'cmake',
+            '-DCMAKE_BUILD_TYPE={}'.format('Debug' if DEBUG else 'RelWithDebInfo'),
+            '-DCMAKE_INSTALL_PREFIX=' + INSTALL_PATH,
+            '-DUSE_RELATIVE_RPATH=ON',
+            '-GNinja',
+            '../..'
+        ]
 
-        if 'CMAKE_PREFIX_PATH' in env:
-            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX'] + ':' + env['CMAKE_PREFIX_PATH']
-        else:
-            env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX']
+        # are we installing inside anaconda?
+        # if so, try to be helpful.
+        if 'CONDA_PREFIX' in env:
+            cmd.append(f'-DEXTRA_RPATH={env["CONDA_PREFIX"]}/lib')
 
-    if subprocess.call(cmd, cwd=BUILD_PATH, env=env) != 0:
-        print('Failed to run "{}"'.format(' '.join(cmd)))
+            if 'CMAKE_PREFIX_PATH' in env:
+                env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX'] + ':' + env['CMAKE_PREFIX_PATH']
+            else:
+                env['CMAKE_PREFIX_PATH'] = env['CONDA_PREFIX']
+
+        if subprocess.call(cmd, cwd=BUILD_PATH, env=env) != 0:
+            print('Failed to run "{}"'.format(' '.join(cmd)))
 
     make_cmd = [
         'ninja',
