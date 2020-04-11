@@ -2,9 +2,6 @@
 // Author: Arul Periyasamy <arul.periyasamy@ais.uni-bonn.de>
 
 #include "diff.h"
-#include <THC/THC.h>
-
-extern THCState *state;
 
 __device__ void clamp(int & idx, int maxIdx) {
     idx = idx > 0 ? idx : 0;
