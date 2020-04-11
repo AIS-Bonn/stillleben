@@ -66,7 +66,7 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
                     .bindDiffuseTexture(*drawable->texture())
                 ;
 
-                drawable->mesh().draw(m_shaderTextured);
+                m_shaderTextured.draw(drawable->mesh());
             }
             else
             {
@@ -78,7 +78,7 @@ std::shared_ptr<Magnum::GL::RectangleTexture> PhongPass::render(Scene& scene)
                     .setDiffuseColor(drawable->color())
                 ;
 
-                drawable->mesh().draw(m_shaderUniform);
+                m_shaderUniform.draw(drawable->mesh());
             }
         });
     }
