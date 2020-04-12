@@ -7,14 +7,14 @@
 #include <iostream>
 #include <iomanip>
 
+#include "doctest.h"
+
 using namespace Corrade;
 using namespace Magnum;
 
-#include "catch.hpp"
-
 constexpr const char* BUNNY_TEXTURES = PATH_TO_SOURCES "/tests/stanford_bunny/textures";
 
-TEST_CASE("load image", "[image_loader]")
+TEST_CASE("load image")
 {
     // Create our stillleben Context
     auto context = sl::Context::Create();

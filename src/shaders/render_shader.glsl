@@ -11,8 +11,8 @@ struct DataBridge
     mediump vec3 normalInCam;
     mediump vec3 normalInWorld;
 
-    centroid highp vec4 objectCoordinates;
-    centroid highp vec3 worldCoordinates;
-    centroid highp vec3 camCoordinates;
+    highp vec4 objectCoordinates;
+    highp vec3 worldCoordinates;
+    highp vec3 camCoordinates;
     mediump vec2 stickerCoordinates;
 };
