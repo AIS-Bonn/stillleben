@@ -173,7 +173,7 @@ namespace
             }
         }
 
-        return {};
+        return display;
     }
 }
 
