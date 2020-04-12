@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <Corrade/PluginManager/PluginManager.h>
+#include <Corrade/Utility/FormatStl.h>
 
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/RectangleTexture.h>
@@ -57,6 +58,122 @@ namespace
             return false;
 
         return strcmp(env, "1") == 0;
+    }
+
+    std::string eglErrorString(EGLint error)
+    {
+        switch(error)
+        {
+            case EGL_SUCCESS: return "No error";
+            case EGL_NOT_INITIALIZED: return "EGL not initialized or failed to initialize";
+            case EGL_BAD_ACCESS: return "Resource inaccessible";
+            case EGL_BAD_ALLOC: return "Cannot allocate resources";
+            case EGL_BAD_ATTRIBUTE: return "Unrecognized attribute or attribute value";
+            case EGL_BAD_CONTEXT: return "Invalid EGL context";
+            case EGL_BAD_CONFIG: return "Invalid EGL frame buffer configuration";
+            case EGL_BAD_CURRENT_SURFACE: return "Current surface is no longer valid";
+            case EGL_BAD_DISPLAY: return "Invalid EGL display";
+            case EGL_BAD_SURFACE: return "Invalid surface";
+            case EGL_BAD_MATCH: return "Inconsistent arguments";
+            case EGL_BAD_PARAMETER: return "Invalid argument";
+            case EGL_BAD_NATIVE_PIXMAP: return "Invalid native pixmap";
+            case EGL_BAD_NATIVE_WINDOW: return "Invalid native window";
+            case EGL_CONTEXT_LOST: return "Context lost";
+        }
+
+        return Corrade::Utility::formatString("Unknown error 0x%04X", error);
+    }
+
+    EGLDisplay getEglDisplay()
+    {
+        EGLDisplay display = nullptr;
+
+        const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+        if(!extensions)
+        {
+            Error() << "Could not query EGL extensions";
+            return {};
+        }
+
+        auto eglGetPlatformDisplayEXT = getExtension<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
+        if(!eglGetPlatformDisplayEXT)
+        {
+            Error() << "Could not find required eglGetPlatformDisplayEXT";
+            return {};
+        }
+
+        // Try X11 first, if available. The user will likely want to use
+        // the same device as X11 is running on...
+        if(getenv("DISPLAY") && strstr(extensions, "EGL_EXT_platform_x11"))
+        {
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
+            if(display)
+                return display;
+            else
+                Debug() << "X11 failed";
+        }
+
+        // Load required extensions for enumeration
+        auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
+        if(!eglQueryDevicesEXT)
+        {
+            Error() << "Could not find required eglQueryDevicesEXT";
+            return {};
+        }
+
+        auto eglQueryDeviceStringEXT = getExtension<PFNEGLQUERYDEVICESTRINGEXTPROC>("eglQueryDeviceStringEXT");
+
+        // Enumerate devices
+        std::vector<EGLDeviceEXT> devices(64);
+        EGLint num_devices;
+
+        if(!eglQueryDevicesEXT(devices.size(), devices.data(), &num_devices))
+        {
+            Error() << "Could not enumerate EGL devices";
+            return {};
+        }
+
+        if(num_devices > 0)
+        {
+            Debug{} << "Found EGL device(s) (count:" << num_devices << "), trying to create display...";
+
+            if(eglQueryDeviceStringEXT)
+            {
+                for(EGLint i = 0; i < num_devices; ++i)
+                {
+                    const char* extension = eglQueryDeviceStringEXT(devices[i], EGL_EXTENSIONS);
+                    if(strcmp(extension, "EGL_EXT_device_drm") == 0)
+                    {
+                        const char* device = eglQueryDeviceStringEXT(devices[i], EGL_DRM_DEVICE_FILE_EXT);
+                        Debug{} << " - device" << i << ":" << device;
+                    }
+                    else
+                        Debug{} << " - device" << i << ":" << extension;
+                }
+            }
+
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, devices.front(), nullptr);
+        }
+
+        if(!display)
+        {
+            Debug() << "Could not enumerate EGL devices, trying MESA targets with EGL_DEFAULT_DISPLAY...";
+
+            if(strstr(extensions, "EGL_MESA_platform_surfaceless"))
+            {
+                display = eglGetPlatformDisplayEXT(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
+                if(!display)
+                    Debug() << "surfaceless failed";
+            }
+            if(!display && strstr(extensions, "EGL_MESA_platform_gbm"))
+            {
+                display = eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_MESA, EGL_DEFAULT_DISPLAY, nullptr);
+                if(!display)
+                    Debug() << "gpm failed";
+            }
+        }
+
+        return {};
     }
 }
 
@@ -159,70 +276,7 @@ Context::Ptr Context::Create(const std::string& installPrefix)
     Context::Ptr context{new Context(installPrefix)};
 
 #if HAVE_EGL
-    const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
-    if(!extensions)
-    {
-        Error() << "Could not query EGL extensions";
-        return {};
-    }
-
-    // Load required extensions
-    auto eglQueryDevicesEXT = getExtension<PFNEGLQUERYDEVICESEXTPROC>("eglQueryDevicesEXT");
-    if(!eglQueryDevicesEXT)
-    {
-        Error() << "Could not find required eglQueryDevicesEXT";
-        return {};
-    }
-
-    auto eglGetPlatformDisplayEXT = getExtension<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
-    if(!eglGetPlatformDisplayEXT)
-    {
-        Error() << "Could not find required eglGetPlatformDisplayEXT";
-        return {};
-    }
-
-    // Enumerate devices
-    std::vector<EGLDeviceEXT> devices(64);
-    EGLint num_devices;
-
-    if(!eglQueryDevicesEXT(devices.size(), devices.data(), &num_devices))
-    {
-        Error() << "Could not enumerate EGL devices";
-        return {};
-    }
-
-    EGLDisplay display = nullptr;
-
-    if(num_devices > 0)
-    {
-        Debug{} << "Found EGL device, trying to create display...";
-        display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, devices.front(), nullptr);
-    }
-
-    if(!display)
-    {
-        Debug() << "Could not enumerate EGL devices, trying MESA targets with EGL_DEFAULT_DISPLAY...";
-
-        if(strstr(extensions, "EGL_MESA_platform_surfaceless"))
-        {
-            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_SURFACELESS_MESA, EGL_DEFAULT_DISPLAY, nullptr);
-            if(!display)
-                Debug() << "surfaceless failed";
-        }
-        if(!display && strstr(extensions, "EGL_EXT_platform_x11"))
-        {
-            Debug() << "Trying X11";
-            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
-            if(!display)
-                Debug() << "X11 failed";
-        }
-        if(!display && strstr(extensions, "EGL_MESA_platform_gbm"))
-        {
-            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_GBM_MESA, EGL_DEFAULT_DISPLAY, nullptr);
-            if(!display)
-                Debug() << "gpm failed";
-        }
-    }
+    EGLDisplay display = getEglDisplay();
 
     if(!display)
     {
@@ -275,7 +329,7 @@ Context::Ptr Context::Create(const std::string& installPrefix)
     }
 
     EGLint contextAttribs[]{
-        EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+//         EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
         EGL_CONTEXT_MAJOR_VERSION, 4,
         EGL_CONTEXT_MINOR_VERSION, 5,
 
@@ -285,7 +339,7 @@ Context::Ptr Context::Create(const std::string& installPrefix)
     context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, contextAttribs);
     if(!context->m_d->egl_context)
     {
-        fprintf(stderr, "Could not create EGL context: 0x%X\n", eglGetError());
+        Error() << "Could not create EGL context:" << eglErrorString(eglGetError());
         return {};
     }
 
