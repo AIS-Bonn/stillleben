@@ -50,6 +50,7 @@ endif()
 
 add_library(stillleben_python MODULE
     src/bridge.cpp
+    src/py_context.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC

@@ -32,52 +32,9 @@
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 
-static std::shared_ptr<sl::Context> g_context;
-static bool g_cudaEnabled = false;
-static unsigned int g_cudaIndex = 0;
-static std::string g_installPrefix;
+#include "py_context.h"
 
-// shared pointer with reference to the context
-template<class T>
-class ContextSharedPtr : public std::shared_ptr<T>
-{
-public:
-    ContextSharedPtr()
-    {
-        check();
-    }
-
-    explicit ContextSharedPtr(T* ptr)
-     : std::shared_ptr<T>(ptr)
-    {
-        check();
-    }
-
-    ContextSharedPtr(const std::shared_ptr<T>& ptr)
-     : std::shared_ptr<T>(ptr)
-    {
-        check();
-    }
-
-    ~ContextSharedPtr()
-    {
-        // Delete our pointee before we release the context.
-        this->reset();
-    }
-
-    void check()
-    {
-        if(!g_context)
-            throw std::logic_error("Call sl::init() first");
-
-        m_context = g_context;
-    }
-
-private:
-    std::shared_ptr<sl::Context> m_context;
-};
-
-PYBIND11_DECLARE_HOLDER_TYPE(T, ContextSharedPtr<T>);
+using namespace sl::python;
 
 // Conversion functions
 namespace
@@ -438,12 +395,12 @@ namespace
 at::Tensor extract(sl::CUDATexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
 {
 #if HAVE_CUDA
-    if(g_cudaEnabled)
+    if(sl::python::Context::cudaEnabled())
     {
         auto size = texture.imageSize();
         at::Tensor tensor = torch::empty(
             {size.y(), size.x(), channels},
-            opts.device(torch::kCUDA, g_cudaIndex)
+            opts.device(torch::kCUDA, sl::python::Context::cudaDevice())
         );
         texture.readIntoCUDA(static_cast<uint8_t*>(tensor.data_ptr()));
 
@@ -500,57 +457,16 @@ static at::Tensor readBaryCentricCoeffsTensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
 }
-static void init()
-{
-    if(g_context)
-    {
-        if(g_cudaEnabled)
-        {
-            Corrade::Utility::Warning{}
-                << "stillleben context was already created with different CUDA settings";
-        }
-        return;
-    }
-
-    g_context = sl::Context::Create(g_installPrefix);
-    if(!g_context)
-        throw std::runtime_error("Could not create stillleben context");
-}
-
-static void initCUDA(unsigned int cudaIndex, bool useCUDA=true)
-{
-    if(g_context)
-    {
-        if(g_cudaEnabled != useCUDA || g_cudaIndex != cudaIndex)
-        {
-            Corrade::Utility::Warning{}
-                << "stillleben context was already created with different CUDA settings";
-        }
-        return;
-    }
-
-    g_context = sl::Context::CreateCUDA(cudaIndex, g_installPrefix);
-    if(!g_context)
-        throw std::runtime_error("Could not create stillleben context");
-
-    g_cudaIndex = cudaIndex;
-    g_cudaEnabled = useCUDA;
-}
-
-static void setInstallPrefix(const std::string& path)
-{
-    g_installPrefix = path;
-}
 
 static std::shared_ptr<sl::Mesh> Mesh_factory(
     const std::string& filename,
     std::size_t maxPhysicsTriangles,
     bool visual, bool physics)
 {
-    if(!g_context)
+    if(!sl::python::Context::instance())
         throw std::logic_error("You need to call init() first!");
 
-    auto mesh = std::make_shared<sl::Mesh>(filename, g_context);
+    auto mesh = std::make_shared<sl::Mesh>(filename, sl::python::Context::instance());
     mesh->load(maxPhysicsTriangles, visual, physics);
 
     return mesh;
@@ -561,10 +477,10 @@ static std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
     bool visual, bool physics,
     std::size_t maxPhysicsTriangles)
 {
-    if(!g_context)
+    if(!sl::python::Context::instance())
         throw std::logic_error("You need to call init() first!");
 
-    return sl::Mesh::loadThreaded(g_context, filenames, visual, physics, maxPhysicsTriangles);
+    return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenames, visual, physics, maxPhysicsTriangles);
 }
 
 static void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -762,7 +678,7 @@ static void Mesh_setNewColors(const std::shared_ptr<sl::Mesh>& mesh,
 // Scene
 static std::shared_ptr<sl::Scene> Scene_factory(const std::tuple<int, int>& viewportSize)
 {
-    return std::make_shared<sl::Scene>(g_context, sl::ViewportSize{
+    return std::make_shared<sl::Scene>(sl::python::Context::instance(), sl::ViewportSize{
         std::get<0>(viewportSize),
         std::get<1>(viewportSize)
     });
@@ -794,17 +710,9 @@ static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
     return tensor;
 }
 
-PYBIND11_MODULE(libstillleben_python, m) {
-    m.def("init", &init, "Init without CUDA support");
-    m.def("init_cuda", &initCUDA, R"EOS(
-        Init with CUDA support.
-
-        Args:
-            device_index (int): Index of CUDA device to use for rendering
-            use_cuda (bool): If false, return results on CPU
-    )EOS", py::arg("device_index") = 0, py::arg("use_cuda")=true);
-
-    m.def("_set_install_prefix", &setInstallPrefix, "set Magnum install prefix");
+PYBIND11_MODULE(libstillleben_python, m)
+{
+    sl::python::Context::init(m);
 
     m.def("render_debug_image", &renderDebugImage, R"EOS(
         Render a debug image with object coordinate systems
@@ -885,18 +793,18 @@ PYBIND11_MODULE(libstillleben_python, m) {
         )EOS")
 
         .def(py::init([](const std::string& path){
-            if(!g_context)
+            if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             return std::make_shared<Magnum::GL::RectangleTexture>(
-                g_context->loadTexture(path)
+                sl::python::Context::instance()->loadTexture(path)
             );
         }), R"EOS(
             Load the texture from the specified path.
         )EOS", py::arg("path"))
 
         .def(py::init([](torch::Tensor tensor){
-            if(!g_context)
+            if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             if(tensor.dim() != 3 || tensor.size(2) != 3 || tensor.scalar_type() != torch::kByte || tensor.device().type() != torch::kCPU)
@@ -927,18 +835,18 @@ PYBIND11_MODULE(libstillleben_python, m) {
         )EOS")
 
         .def(py::init([](const std::string& path){
-            if(!g_context)
+            if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             return std::make_shared<Magnum::GL::Texture2D>(
-                g_context->loadTexture2D(path)
+                sl::python::Context::instance()->loadTexture2D(path)
             );
         }), R"EOS(
             Load the texture from the specified path.
         )EOS", py::arg("path"))
 
         .def(py::init([](torch::Tensor tensor){
-            if(!g_context)
+            if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             if(tensor.dim() != 3 || tensor.size(2) != 3 || tensor.scalar_type() != torch::kByte || tensor.device().type() != torch::kCPU)
@@ -1218,7 +1126,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
         .def(py::init(), "Constructor")
 
         .def(py::init([](const std::string& path){
-                return std::make_shared<sl::LightMap>(path, g_context);
+                return std::make_shared<sl::LightMap>(path, sl::python::Context::instance());
             }),
             R"EOS(
                 Constructs and calls load().
@@ -1504,11 +1412,11 @@ PYBIND11_MODULE(libstillleben_python, m) {
         )EOS")
 
         .def(py::init([](){
-                if(!g_context)
+                if(!sl::python::Context::instance())
                     throw std::logic_error("Call sl::init() first");
 
                 return std::make_shared<sl::RenderPass::Result>(
-                    g_cudaEnabled
+                    sl::python::Context::cudaEnabled()
                 );
             }), R"EOS(
             Constructor.
@@ -1642,11 +1550,11 @@ PYBIND11_MODULE(libstillleben_python, m) {
         .def(py::init([](const std::string& shading){
                 if(shading == "phong")
                     return ContextSharedPtr<sl::RenderPass>(
-                        new sl::RenderPass(sl::RenderPass::Type::Phong, g_cudaEnabled)
+                        new sl::RenderPass(sl::RenderPass::Type::Phong, sl::python::Context::cudaEnabled())
                     );
                 else if(shading == "flat")
                     return ContextSharedPtr<sl::RenderPass>(
-                        new sl::RenderPass(sl::RenderPass::Type::Flat, g_cudaEnabled)
+                        new sl::RenderPass(sl::RenderPass::Type::Flat, sl::python::Context::cudaEnabled())
                     );
                 else
                     throw std::invalid_argument("unknown shading type specified");
@@ -1712,7 +1620,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
             Caches Mesh instances.
         )EOS")
 
-        .def(py::init([](){ return new sl::MeshCache(g_context); }))
+        .def(py::init([](){ return new sl::MeshCache(sl::python::Context::instance()); }))
 
         .def("add", &sl::MeshCache::add, R"EOS(
             Add a list of meshes to the cache.
@@ -1727,7 +1635,7 @@ PYBIND11_MODULE(libstillleben_python, m) {
         )EOS")
 
         .def(py::init([](const std::string& path){
-                return new sl::ImageLoader(path, g_context);
+                return new sl::ImageLoader(path, sl::python::Context::instance());
             }), R"EOS(
             Constructor.
 
@@ -1748,14 +1656,4 @@ PYBIND11_MODULE(libstillleben_python, m) {
             Return next image (randomly sampled) as rectangle texture
         )EOS")
     ;
-
-    // We need to release our context pointer when the python module is
-    // unloaded. Otherwise, we release it very late (basically, when the
-    // atexit handlers are called. MESA also has atexit handlers, and if they
-    // get called before our cleanup code, bad things happen.
-    auto cleanup_callback = []() {
-        g_context.reset();
-    };
-
-    m.add_object("_cleanup", py::capsule(cleanup_callback));
 }
