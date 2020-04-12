@@ -24,6 +24,7 @@
 #include <Magnum/PixelFormat.h>
 
 #include <stillleben/context.h>
+#include <stillleben/cuda_interop.h>
 
 #include "py_context.h"
 
@@ -385,6 +386,8 @@ std::function<typename toTorch<std::decay_t<R>>::Result (T& obj, typename fromTo
             return RConv::convert((obj.*fun)(fromTorch<std::decay_t<Args>>::convert(args)...));
     };
 }
+
+at::Tensor extract(sl::CUDATexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts);
 
 void init(py::module& m);
 

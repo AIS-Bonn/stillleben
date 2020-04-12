@@ -39,37 +39,6 @@
 using namespace sl::python;
 using namespace sl::python::magnum;
 
-at::Tensor extract(sl::CUDATexture& texture, Magnum::PixelFormat format, int channels, const torch::TensorOptions& opts)
-{
-#if HAVE_CUDA
-    if(sl::python::Context::cudaEnabled())
-    {
-        auto size = texture.imageSize();
-        at::Tensor tensor = torch::empty(
-            {size.y(), size.x(), channels},
-            opts.device(torch::kCUDA, sl::python::Context::cudaDevice())
-        );
-        texture.readIntoCUDA(static_cast<uint8_t*>(tensor.data_ptr()));
-
-        return tensor;
-    }
-    else
-#endif
-    {
-        Magnum::Image2D* img = new Magnum::Image2D{format};
-
-        texture.image(*img);
-
-        at::Tensor tensor = torch::from_blob(img->data(),
-            {img->size().y(), img->size().x(), channels},
-            [=](void*){ delete img; },
-            opts
-        );
-
-        return tensor;
-    }
-}
-
 static at::Tensor readRGBATensor(sl::CUDATexture& texture)
 {
     return extract(texture, Magnum::PixelFormat::RGBA8Unorm, 4, at::kByte);
