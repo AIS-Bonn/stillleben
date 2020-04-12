@@ -1,6 +1,6 @@
-// Catch test runner
+// Doctest test runner
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#define CATCH_CONFIG_MAIN
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "catch.hpp"
+#include "doctest.h"

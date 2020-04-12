@@ -23,30 +23,28 @@
 #include <iostream>
 #include <iomanip>
 
+#include "doctest.h"
+
 using namespace Corrade;
 using namespace Magnum;
 
-// Could be so much nicer with concepts...
-template<std::size_t size, class T>
-std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Vector<size, T>& value)
-{
-    Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
-    return stream;
-}
-template<std::size_t size, class T>
-std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Matrix<size, T>& value)
-{
-    Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
-    return stream;
-}
-template<class T>
-std::ostream& operator<<(std::ostream& stream, const Magnum::Math::Range3D<T>& value)
-{
-    Corrade::Utility::Debug{&stream, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
-    return stream;
-}
+using Approx = doctest::Approx;
 
-#include "catch.hpp"
+#define DEF_TO_STRING(TYPE) doctest::String toString(const TYPE& t) { return toStringImpl<TYPE>(t); }
+
+namespace Magnum
+{
+    template<class T>
+    doctest::String toStringImpl(const T& value)
+    {
+        std::stringstream ss;
+        Corrade::Utility::Debug{&ss, Corrade::Utility::Debug::Flag::NoNewlineAtTheEnd} << value;
+        return ss.str().c_str();
+    }
+
+    DEF_TO_STRING(Matrix4)
+    DEF_TO_STRING(Vector3)
+}
 
 constexpr const char* BUNNY = PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf";
 
