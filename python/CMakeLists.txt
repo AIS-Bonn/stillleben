@@ -53,6 +53,7 @@ add_library(stillleben_python MODULE
     src/py_context.cpp
     src/py_magnum.cpp
     src/py_mesh.cpp
+    src/py_object.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC
