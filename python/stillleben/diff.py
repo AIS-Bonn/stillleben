@@ -10,11 +10,24 @@ import os
 import numpy as np
 import types
 
-from .lib.libstillleben_diff_python import generate_sobel_valid_mask
-from .lib.libstillleben_diff_python import dilate_object_mask
-
 import cv2
 from .profiling import Timer
+
+DIFF_AVAILABLE = False
+try:
+    from .lib.libstillleben_diff_python import generate_sobel_valid_mask
+    from .lib.libstillleben_diff_python import dilate_object_mask
+    DIFF_AVAILABLE = True
+except ImportError as e:
+    DIFF_ERROR = str(e)
+
+def _check():
+    if not DIFF_AVAILABLE:
+        import sys
+        raise NotImplementedError(
+            'Could not import libstillleben_diff_python, maybe stillleben ' +
+            'was built without CUDA support?\n' +
+            'original exception follows:\n' + DIFF_ERROR)
 
 TH_GAUSSIAN_KERNEL = 0
 KS = 0
@@ -22,6 +35,7 @@ KS = 0
 def _init_diff():
     global TH_GAUSSIAN_KERNEL
     global KS
+
     KS = 11
     SIGMA = 1
     o = np.tile(cv2.getGaussianKernel(KS, SIGMA), (1, KS))
@@ -80,6 +94,8 @@ def soft_forward(scene, render_result, obs_rgb, loss_fn):
     NOTE: render_result are expected to be in depth peeling order
     i.e. Oth element has the original renderered scene without any depth peeling
     '''
+
+    _check()
 
     if not (type(render_result) is list or type(render_result) is tuple):
         raise ValueError("render_result should be a list or tuple")
@@ -170,6 +186,8 @@ def bp_to_vertices_and_colors(scene, render_result, grad_objective_wrt_rnd_img, 
     Returns:
         TODO:
     """
+
+    _check()
 
     rgb = render_result.rgb()
     rgb = rgb[:,:,:3]
@@ -321,6 +339,9 @@ def backpropagate_gradient_to_poses(scene, render_result, grad_objective_wrt_rnd
         tensor: Nx6 float gradient of the objective w.r.t. the N poses
         (see above).
     """
+
+    _check()
+
     rgb = render_result.rgb()
     rgb = rgb[:,:,:3]
 
@@ -482,6 +503,8 @@ def apply_pose_delta(pose, delta, orthonormalize=True):
         tensor: New 4x4 pose matrix. If the inputs are batched, this one is as
         well.
     """
+
+    _check()
 
     if pose.dim() == 3:
         assert delta.dim() == 2

@@ -50,6 +50,15 @@ endif()
 
 add_library(stillleben_python MODULE
     src/bridge.cpp
+    src/py_context.cpp
+    src/py_magnum.cpp
+    src/py_mesh.cpp
+    src/py_object.cpp
+    src/py_scene.cpp
+    src/py_render_pass.cpp
+    src/py_image_loader.cpp
+    src/py_light_map.cpp
+    src/py_animator.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC
