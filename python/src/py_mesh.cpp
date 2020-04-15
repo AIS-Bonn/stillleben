@@ -6,6 +6,7 @@
 #include "py_magnum.h"
 
 #include <stillleben/mesh.h>
+#include <stillleben/mesh_cache.h>
 
 using namespace sl::python::magnum;
 
@@ -379,6 +380,20 @@ void init(py::module& m)
             WARNING: This can only be used on single-submesh meshes for now.
             On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
+    ;
+
+    py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
+            Caches Mesh instances.
+        )EOS")
+
+        .def(py::init([](){ return new sl::MeshCache(sl::python::Context::instance()); }))
+
+        .def("add", &sl::MeshCache::add, R"EOS(
+            Add a list of meshes to the cache.
+
+            Args:
+                meshes (list): list of :class:`Mesh` instances
+        )EOS", py::arg("meshes"))
     ;
 }
 

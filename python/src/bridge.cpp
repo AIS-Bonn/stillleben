@@ -78,18 +78,4 @@ PYBIND11_MODULE(libstillleben_python, m)
 
         .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
     ;
-
-    py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
-            Caches Mesh instances.
-        )EOS")
-
-        .def(py::init([](){ return new sl::MeshCache(sl::python::Context::instance()); }))
-
-        .def("add", &sl::MeshCache::add, R"EOS(
-            Add a list of meshes to the cache.
-
-            Args:
-                meshes (list): list of :class:`Mesh` instances
-        )EOS", py::arg("meshes"))
-    ;
 }
