@@ -7,6 +7,9 @@
 
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
+#include <stillleben/debug.h>
+
+#include <Magnum/Image.h>
 
 using namespace sl::python::magnum;
 
@@ -45,6 +48,22 @@ namespace
     at::Tensor readBaryCentricCoeffsTensor(sl::CUDATexture& texture)
     {
         return extract(texture, Magnum::PixelFormat::RGBA32F, 4, at::kFloat).slice(2, 0, 3);
+    }
+
+    at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
+    {
+        auto texture = sl::renderDebugImage(*scene);
+        Magnum::Image2D* img = new Magnum::Image2D{Magnum::PixelFormat::RGBA8Unorm};
+
+        texture.image(*img);
+
+        at::Tensor tensor = torch::from_blob(img->data(),
+            {img->size().y(), img->size().x(), 4},
+            [=](void*){ delete img; },
+            at::kByte
+        );
+
+        return tensor;
     }
 }
 
@@ -242,6 +261,10 @@ void init(py::module& m)
 
         .def_property("ssao_enabled", &sl::RenderPass::ssaoEnabled, &sl::RenderPass::setSSAOEnabled, "SSAO enable")
     ;
+
+    m.def("render_debug_image", &::renderDebugImage, R"EOS(
+        Render a debug image with object coordinate systems
+    )EOS");
 }
 
 }

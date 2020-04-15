@@ -43,24 +43,6 @@
 using namespace sl::python;
 using namespace sl::python::magnum;
 
-// Debug
-
-static at::Tensor renderDebugImage(const std::shared_ptr<sl::Scene>& scene)
-{
-    auto texture = sl::renderDebugImage(*scene);
-    Magnum::Image2D* img = new Magnum::Image2D{Magnum::PixelFormat::RGBA8Unorm};
-
-    texture.image(*img);
-
-    at::Tensor tensor = torch::from_blob(img->data(),
-        {img->size().y(), img->size().x(), 4},
-        [=](void*){ delete img; },
-        at::kByte
-    );
-
-    return tensor;
-}
-
 PYBIND11_MODULE(libstillleben_python, m)
 {
     sl::python::Context::init(m);
@@ -69,10 +51,6 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::Object::init(m);
     sl::python::Scene::init(m);
     sl::python::RenderPass::init(m);
-
-    m.def("render_debug_image", &renderDebugImage, R"EOS(
-        Render a debug image with object coordinate systems
-    )EOS");
 
     py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
             An .ibl light map for image-based lighting.
