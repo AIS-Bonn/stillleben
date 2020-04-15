@@ -1,6 +1,7 @@
 
 # Magnum options
 set(WITH_WINDOWLESSEGLAPPLICATION ON CACHE BOOL "With WindowlessEglApplication" FORCE)
+set(WITH_XEGLAPPLICATION ON CACHE BOOL "With XEglApplication" FORCE)
 set(WITH_ANYIMAGEIMPORTER ON CACHE BOOL "With AnyImageImporter" FORCE)
 set(WITH_EGLCONTEXT ON)
 
@@ -24,3 +25,10 @@ add_subdirectory(magnum)
 add_subdirectory(magnum-plugins)
 add_subdirectory(magnum-integration)
 add_subdirectory(physx)
+
+# hackery.
+add_library(MagnumPlatformPrivate INTERFACE)
+target_include_directories(MagnumPlatformPrivate
+    INTERFACE
+    magnum/src/Magnum/Platform/Implementation
+)

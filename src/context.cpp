@@ -28,7 +28,6 @@
 #include <mutex>
 #include <iostream>
 
-#if HAVE_EGL
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -37,10 +36,6 @@ T getExtension(const char* name)
 {
     return reinterpret_cast<T>(eglGetProcAddress(name));
 }
-
-#endif // HAVE_EGL
-
-#include <Magnum/Platform/WindowlessGlxApplication.h>
 
 #include "physx_impl.h"
 
@@ -234,19 +229,14 @@ public:
 
     ~Private()
     {
-#if HAVE_EGL
         eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         eglDestroyContext(egl_display, egl_context);
         eglTerminate(egl_display);
-#endif
     }
 
     void* egl_display = nullptr;
     void* egl_context = nullptr;
-
-#if !defined(HAVE_EGL) || !HAVE_EGL
-    std::unique_ptr<Platform::WindowlessGlxContext> glx_context;
-#endif
+    EGLConfig egl_config{};
 
     std::unique_ptr<Platform::GLContext> gl_context;
 
@@ -275,7 +265,6 @@ Context::Ptr Context::Create(const std::string& installPrefix)
 {
     Context::Ptr context{new Context(installPrefix)};
 
-#if HAVE_EGL
     EGLDisplay display = getEglDisplay();
 
     if(!display)
@@ -343,22 +332,13 @@ Context::Ptr Context::Create(const std::string& installPrefix)
         return {};
     }
 
+    context->m_d->egl_config = eglConfig;
+
     if(!context->makeCurrent())
     {
         Error() << "Cannot make context current";
         return {};
     }
-#else
-    context->m_d->glx_context = std::make_unique<Magnum::Platform::WindowlessGlxContext>(
-        Magnum::Platform::WindowlessGlxContext::Configuration{}
-    );
-
-    if(!context->m_d->glx_context->isCreated() || !context->m_d->glx_context->makeCurrent())
-    {
-        Error() << "Could not create windowless glx context";
-        return {};
-    }
-#endif
 
     if(!context->m_d->gl_context->tryCreate())
     {
@@ -371,7 +351,6 @@ Context::Ptr Context::Create(const std::string& installPrefix)
 
 Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& installPrefix)
 {
-#if HAVE_EGL
     std::shared_ptr<Context> context(new Context(installPrefix));
 
     if(context->m_d->cudaDebug)
@@ -494,6 +473,8 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
+    context->m_d->egl_config = eglConfig;
+
     if(!context->makeCurrent())
     {
         Error() << "Cannot make context current";
@@ -507,15 +488,10 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
     }
 
     return context;
-#else
-    Error() << "Called Context::createCUDA() without EGL support";
-    return {};
-#endif
 }
 
 bool Context::makeCurrent()
 {
-#if HAVE_EGL
     if(!eglMakeCurrent(m_d->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_d->egl_context))
     {
         Error() << "Cannot make context current";
@@ -523,9 +499,6 @@ bool Context::makeCurrent()
     }
 
     return true;
-#else
-    return m_d->glx_context->makeCurrent();
-#endif
 }
 
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
@@ -635,6 +608,20 @@ std::string Context::imageConverterPluginPath() const
 Magnum::DebugTools::ResourceManager& Context::debugResourceManager()
 {
     return m_d->resourceManager;
+}
+
+int Context::visualID() const
+{
+    EGLint id;
+    if(!eglGetConfigAttrib(m_d->egl_display, m_d->egl_config, EGL_NATIVE_VISUAL_ID, &id))
+        throw std::runtime_error{"Could not query visual ID"};
+
+    return id;
+}
+
+void* Context::eglConfig() const
+{
+    return m_d->egl_config;
 }
 
 }

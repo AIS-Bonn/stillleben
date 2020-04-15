@@ -84,6 +84,7 @@ add_library(stillleben SHARED
     src/render_pass.cpp
     src/scene.cpp
     src/stillleben.cpp
+    src/viewer.cpp
     src/shaders/background_shader.cpp
     src/shaders/background_cube_shader.cpp
     src/shaders/brdf_shader.cpp
@@ -112,7 +113,8 @@ target_link_libraries(stillleben PUBLIC
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::DebugTools
-    Magnum::${MAGNUM_GL_APP}
+    Magnum::XEglApplication
+    MagnumPlatformPrivate
     PhysX
 )
 
