@@ -1,13 +1,17 @@
 // Interactive scene viewer
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include "viewer.h"
+#include <stillleben/viewer.h>
 
 #include <stillleben/context.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
 
 #include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/System.h>
+#include <Corrade/Utility/FormatStl.h>
+
+#include <Magnum/GL/DefaultFramebuffer.h>
 
 #include <Egl.h>
 
@@ -23,6 +27,9 @@ typedef VisualID VisualId;
 typedef EGLInt VisualId;
 #endif
 
+/* Mask for X events */
+#define INPUT_MASK KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|StructureNotifyMask
+
 using namespace Magnum;
 
 namespace sl
@@ -31,6 +38,15 @@ namespace sl
 class Viewer::Private
 {
 public:
+    enum class Flag: unsigned int {
+        Redraw = 1 << 0,
+        Exit = 1 << 1
+    };
+
+    typedef Containers::EnumSet<Flag> Flags;
+    CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
+
+
     explicit Private(const std::shared_ptr<Context>& ctx)
      : ctx{ctx}
      , renderer{std::make_unique<RenderPass>(RenderPass::Type::Phong, false)}
@@ -46,6 +62,10 @@ public:
     Atom deleteWindow{};
 
     EGLSurface surface{};
+
+    Flags flags{};
+
+    Magnum::GL::Framebuffer framebuffer{Magnum::Range2Di{{}, {800,600}}};
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -58,13 +78,21 @@ Viewer::~Viewer()
     if(m_d->surface)
         eglDestroySurface(eglGetCurrentDisplay(), m_d->surface);
 
-    XDestroyWindow(m_d->display, m_d->window);
-    XCloseDisplay(m_d->display);
+    if(m_d->window)
+        XDestroyWindow(m_d->display, m_d->window);
+
+    if(m_d->display)
+        XCloseDisplay(m_d->display);
 }
 
 void Viewer::setScene(const std::shared_ptr<Scene>& scene)
 {
     m_d->scene = scene;
+}
+
+std::shared_ptr<Scene> Viewer::scene() const
+{
+    return m_d->scene;
 }
 
 void Viewer::setup()
@@ -85,7 +113,11 @@ void Viewer::setup()
     visTemplate.visualid = visualId;
     visInfo = XGetVisualInfo(m_d->display, VisualIDMask, &visTemplate, &visualCount);
     if(!visInfo)
-        throw std::runtime_error{"Viewer: cannot get X visual"};
+    {
+        throw std::runtime_error{
+            Corrade::Utility::formatString("Viewer: cannot get X visual using visualid {}", visualId)
+        };
+    }
 
     /* Create X Window */
     Window root = RootWindow(m_d->display, DefaultScreen(m_d->display));
@@ -112,6 +144,11 @@ void Viewer::setup()
 
     // Make current
     eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+
+    Debug{} << "viewport:" << windowSize;
+    Magnum::GL::defaultFramebuffer.setViewport({{}, windowSize});
+
+    m_d->flags |= Private::Flag::Redraw;
 }
 
 void Viewer::draw()
@@ -119,10 +156,95 @@ void Viewer::draw()
     if(!m_d->scene)
         return;
 
+    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
+    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
+    m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+
+    Magnum::GL::defaultFramebuffer.bind();
+    Magnum::GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|
+                                 GL::FramebufferClear::Depth);
+    Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
+
+    Debug{} << "source" << m_d->framebuffer.viewport() << "dest" << GL::defaultFramebuffer.viewport();
+
+    Magnum::GL::Framebuffer::blit(m_d->framebuffer, GL::defaultFramebuffer,
+        m_d->framebuffer.viewport(),
+        GL::defaultFramebuffer.viewport(),
+        Magnum::GL::FramebufferBlit::Color,
+        Magnum::GL::FramebufferBlitFilter::Linear
+    );
+
     eglSwapBuffers(eglGetCurrentDisplay(), m_d->surface);
+
+    m_d->flags |= Private::Flag::Redraw;
 }
 
+void Viewer::run()
+{
+    setup();
+
+    // Show window
+    XMapWindow(m_d->display, m_d->window);
+
+    while(mainLoopIteration()) {}
+}
+
+bool Viewer::mainLoopIteration()
+{
+    XEvent event;
+
+    // Closed window
+    if(XCheckTypedWindowEvent(m_d->display, m_d->window, ClientMessage, &event) &&
+        Atom(event.xclient.data.l[0]) == m_d->deleteWindow)
+    {
+        return false;
+    }
+
+    while(XCheckWindowEvent(m_d->display, m_d->window, INPUT_MASK, &event)) {
+        switch(event.type) {
+            /* Window resizing */
+            case ConfigureNotify: {
+#warning FIXME
+//                 Vector2i size(event.xconfigure.width, event.xconfigure.height);
+//                 if(size != m_d->windowSize) {
+//                     m_d->windowSize = size;
+//                     ViewportEvent e{size};
+//                     viewportEvent(e);
+//                     _flags |= Flag::Redraw;
+//                 }
+            } break;
+
+            /* Key/mouse events */
+            case KeyPress:
+            case KeyRelease: {
+//                 KeyEvent e(static_cast<KeyEvent::Key>(XLookupKeysym(&event.xkey, 0)), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xkey.x, event.xkey.y});
+//                 event.type == KeyPress ? keyPressEvent(e) : keyReleaseEvent(e);
+            } break;
+            case ButtonPress:
+            case ButtonRelease: {
+//                 MouseEvent e(static_cast<MouseEvent::Button>(event.xbutton.button), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xbutton.x, event.xbutton.y});
+//                 event.type == ButtonPress ? mousePressEvent(e) : mouseReleaseEvent(e);
+            } break;
+
+            /* Mouse move events */
+            case MotionNotify: {
+//                 MouseMoveEvent e(static_cast<InputEvent::Modifier>(event.xmotion.state), {event.xmotion.x, event.xmotion.y});
+//                 mouseMoveEvent(e);
+            } break;
+        }
+    }
+
+    if(m_d->flags & Private::Flag::Redraw) {
+        m_d->flags &= ~Private::Flag::Redraw;
+        draw();
+    } else Corrade::Utility::System::sleep(5);
+
+    return !(m_d->flags & Private::Flag::Exit);
+}
 
 }

@@ -25,12 +25,17 @@ public:
     Viewer& operator=(const Viewer&) = delete;
 
     void setScene(const std::shared_ptr<Scene>& scene);
+    std::shared_ptr<Scene> scene() const;
+
+    void run();
 
 private:
     class Private;
 
     void setup();
     void draw();
+
+    bool mainLoopIteration();
 
     std::unique_ptr<Private> m_d;
 };

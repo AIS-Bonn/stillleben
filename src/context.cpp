@@ -79,7 +79,13 @@ namespace
         return Corrade::Utility::formatString("Unknown error 0x%04X", error);
     }
 
-    EGLDisplay getEglDisplay()
+    struct DisplayConfig
+    {
+        EGLDisplay display{};
+        bool useX11 = false;
+    };
+
+    DisplayConfig getEglDisplay()
     {
         EGLDisplay display = nullptr;
 
@@ -103,7 +109,7 @@ namespace
         {
             display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
             if(display)
-                return display;
+                return {display, true};
             else
                 Debug() << "X11 failed";
         }
@@ -168,7 +174,7 @@ namespace
             }
         }
 
-        return display;
+        return {display, false};
     }
 }
 
@@ -265,7 +271,8 @@ Context::Ptr Context::Create(const std::string& installPrefix)
 {
     Context::Ptr context{new Context(installPrefix)};
 
-    EGLDisplay display = getEglDisplay();
+    auto displayConfig = getEglDisplay();
+    EGLDisplay display = displayConfig.display;
 
     if(!display)
     {
@@ -297,10 +304,14 @@ Context::Ptr Context::Create(const std::string& installPrefix)
         return {};
     }
 
+    EGLint surfaceType = EGL_PBUFFER_BIT;
+    if(displayConfig.useX11)
+        surfaceType |= EGL_WINDOW_BIT;
+
     EGLint numberConfigs;
     EGLConfig eglConfig;
     EGLint configAttribs[] = {
-        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT | EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 
         EGL_NONE
@@ -492,6 +503,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
 
 bool Context::makeCurrent()
 {
+    Debug{} << "Context::makeCurrent()";
     if(!eglMakeCurrent(m_d->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_d->egl_context))
     {
         Error() << "Cannot make context current";
@@ -615,6 +627,8 @@ int Context::visualID() const
     EGLint id;
     if(!eglGetConfigAttrib(m_d->egl_display, m_d->egl_config, EGL_NATIVE_VISUAL_ID, &id))
         throw std::runtime_error{"Could not query visual ID"};
+
+    Debug{} << "Context: got EGL visual ID" << id;
 
     return id;
 }

@@ -339,3 +339,8 @@ if __name__ == "__main__":
     if args.serialize:
         print('Serialized scene description:\n')
         print(scene.serialize())
+
+    viewer = sl.Viewer()
+    viewer.scene = scene
+    viewer.run()
+
