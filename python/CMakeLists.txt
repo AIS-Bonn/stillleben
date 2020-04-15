@@ -55,7 +55,9 @@ add_library(stillleben_python MODULE
     src/py_mesh.cpp
     src/py_object.cpp
     src/py_scene.cpp
-    src/py_renderpass.cpp
+    src/py_render_pass.cpp
+    src/py_image_loader.cpp
+    src/py_light_map.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC

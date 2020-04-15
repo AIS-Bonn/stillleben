@@ -38,7 +38,9 @@
 #include "py_mesh.h"
 #include "py_object.h"
 #include "py_scene.h"
-#include "py_renderpass.h"
+#include "py_render_pass.h"
+#include "py_image_loader.h"
+#include "py_light_map.h"
 
 using namespace sl::python;
 using namespace sl::python::magnum;
@@ -51,30 +53,8 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::Object::init(m);
     sl::python::Scene::init(m);
     sl::python::RenderPass::init(m);
-
-    py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
-            An .ibl light map for image-based lighting.
-        )EOS")
-
-        .def(py::init(), "Constructor")
-
-        .def(py::init([](const std::string& path){
-                return std::make_shared<sl::LightMap>(path, sl::python::Context::instance());
-            }),
-            R"EOS(
-                Constructs and calls load().
-            )EOS"
-        )
-
-        .def("load", &sl::LightMap::load, R"EOS(
-            Opens an .ibl file.
-
-            Args:
-                path (str): Path to .ibl file
-            Returns:
-                bool: True if successful
-        )EOS")
-    ;
+    sl::python::ImageLoader::init(m);
+    sl::python::LightMap::init(m);
 
     py::class_<sl::Animator>(m, "Animator", R"EOS(
             Generates interpolated object poses.
@@ -111,32 +91,5 @@ PYBIND11_MODULE(libstillleben_python, m)
             Args:
                 meshes (list): list of :class:`Mesh` instances
         )EOS", py::arg("meshes"))
-    ;
-
-    py::class_<sl::ImageLoader>(m, "ImageLoader", R"EOS(
-            Multi-threaded image loader.
-        )EOS")
-
-        .def(py::init([](const std::string& path){
-                return new sl::ImageLoader(path, sl::python::Context::instance());
-            }), R"EOS(
-            Constructor.
-
-            Args:
-                path: Path to the image directory
-            )EOS", py::arg("path")
-        )
-
-        .def("next", &sl::ImageLoader::nextRectangleTexture, R"EOS(
-            Return next image (randomly sampled). This is the same as nextRectangleTexture().
-        )EOS")
-
-        .def("next_texture2d", &sl::ImageLoader::nextTexture2D, R"EOS(
-            Return next image (randomly sampled) as 2D texture
-        )EOS")
-
-        .def("next_rectangle_texture", &sl::ImageLoader::nextRectangleTexture, R"EOS(
-            Return next image (randomly sampled) as rectangle texture
-        )EOS")
     ;
 }

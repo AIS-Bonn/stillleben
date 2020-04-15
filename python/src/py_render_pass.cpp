@@ -1,7 +1,7 @@
 // sl::RenderPass binding
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include "py_renderpass.h"
+#include "py_render_pass.h"
 #include "py_context.h"
 #include "py_magnum.h"
 
