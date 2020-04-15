@@ -58,6 +58,7 @@ add_library(stillleben_python MODULE
     src/py_render_pass.cpp
     src/py_image_loader.cpp
     src/py_light_map.cpp
+    src/py_animator.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC

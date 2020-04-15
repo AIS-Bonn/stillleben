@@ -41,6 +41,7 @@
 #include "py_render_pass.h"
 #include "py_image_loader.h"
 #include "py_light_map.h"
+#include "py_animator.h"
 
 using namespace sl::python;
 using namespace sl::python::magnum;
@@ -55,27 +56,5 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::RenderPass::init(m);
     sl::python::ImageLoader::init(m);
     sl::python::LightMap::init(m);
-
-    py::class_<sl::Animator>(m, "Animator", R"EOS(
-            Generates interpolated object poses.
-        )EOS")
-
-        .def(py::init([](const std::vector<at::Tensor>& poses, unsigned int ticks){
-            std::vector<Magnum::Matrix4> mPoses;
-            for(auto& p : poses)
-                mPoses.push_back(fromTorch<Magnum::Matrix4>::convert(p));
-            return std::make_unique<sl::Animator>(mPoses, ticks);
-        }), "Constructor", py::arg("poses"), py::arg("ticks"))
-
-        .def("__iter__", [](py::object s) { return s; })
-
-        .def("__next__", [](sl::Animator& s){
-            if(s.currentTick() >= s.totalTicks())
-                throw py::stop_iteration{};
-
-            return toTorch<Magnum::Matrix4>::convert(s());
-        })
-
-        .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
-    ;
+    sl::python::Animator::init(m);
 }
