@@ -36,8 +36,6 @@ def _init_diff():
     global TH_GAUSSIAN_KERNEL
     global KS
 
-    _check()
-
     KS = 11
     SIGMA = 1
     o = np.tile(cv2.getGaussianKernel(KS, SIGMA), (1, KS))
