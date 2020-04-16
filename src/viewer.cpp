@@ -7,6 +7,9 @@
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
 
+#include "utils/arc_ball.h"
+#include "utils/x11_events.h"
+
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/System.h>
 #include <Corrade/Utility/FormatStl.h>
@@ -38,6 +41,7 @@ typedef EGLInt VisualId;
 #define INPUT_MASK KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|StructureNotifyMask
 
 using namespace Magnum;
+using namespace sl::utils;
 
 namespace sl
 {
@@ -59,6 +63,37 @@ public:
      , renderer{std::make_unique<RenderPass>(RenderPass::Type::Phong, false)}
     {}
 
+    void redraw()
+    {
+        flags |= Flag::Redraw;
+    }
+
+    void mousePressEvent(MouseEvent& event)
+    {
+        arcBall->initTransformation(event.position());
+
+        event.setAccepted();
+        redraw(); /* camera has changed, redraw! */
+    }
+
+    void mouseReleaseEvent(MouseEvent& e)
+    {
+
+    }
+
+    void mouseMoveEvent(MouseMoveEvent& event)
+    {
+        if(!event.buttons()) return;
+
+        if(event.modifiers() & MouseMoveEvent::Modifier::Shift)
+            arcBall->translate(event.position());
+        else
+            arcBall->rotate(event.position());
+
+        event.setAccepted();
+        redraw(); /* camera has changed, redraw! */
+    }
+
     std::shared_ptr<Context> ctx;
     std::unique_ptr<RenderPass> renderer;
     std::shared_ptr<Scene> scene;
@@ -77,6 +112,8 @@ public:
     Magnum::Vector2i windowSize{};
 
     Magnum::ImGuiIntegration::Context imgui{Magnum::NoCreate};
+
+    std::unique_ptr<sl::utils::ArcBall> arcBall;
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -156,6 +193,9 @@ void Viewer::setup()
     // Make current
     eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
 
+    // Capture exposure, keyboard and mouse button events
+    XSelectInput(m_d->display, m_d->window, INPUT_MASK);
+
     Magnum::GL::defaultFramebuffer.setViewport({{}, m_d->windowSize});
 
     m_d->imgui = Magnum::ImGuiIntegration::Context{m_d->windowSize};
@@ -180,11 +220,35 @@ void Viewer::setup()
         .setStorage(Math::log2(size.max())+1, GL::TextureFormat::RGBA8, size)
     ;
 
+    // Compute camPosition, viewCenter & FoV from pose + projection matrix
+    // We will position the "ball" at the mean position of the objects in
+    // the scene.
+
+    Vector3 camPosition = m_d->scene->cameraPose().translation();
+
+    Vector3 viewCenter{};
+    if(!m_d->scene->objects().empty())
+    {
+        for(auto& obj : m_d->scene->objects())
+            viewCenter += obj->pose().translation();
+        viewCenter /= m_d->scene->objects().size();
+    }
+
+    Vector3 upDir = m_d->scene->cameraPose().rotation() * Vector3{0.0f, -1.0f, 0.0f};
+    Magnum::Deg fov = 2.0f * Math::atan(1.0f / m_d->scene->camera().projectionMatrix()[0][0]);
+    m_d->arcBall = std::make_unique<utils::ArcBall>(
+        camPosition, viewCenter, upDir, fov,
+        m_d->windowSize
+    );
+
     m_d->flags |= Private::Flag::Redraw;
 }
 
 void Viewer::draw()
 {
+    m_d->arcBall->updateTransformation();
+    m_d->scene->setCameraPose(m_d->arcBall->transformationMatrix());
+
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
     // Get the result into a Texture2D
@@ -291,14 +355,14 @@ bool Viewer::mainLoopIteration()
             } break;
             case ButtonPress:
             case ButtonRelease: {
-//                 MouseEvent e(static_cast<MouseEvent::Button>(event.xbutton.button), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xbutton.x, event.xbutton.y});
-//                 event.type == ButtonPress ? mousePressEvent(e) : mouseReleaseEvent(e);
+                MouseEvent e(static_cast<MouseEvent::Button>(event.xbutton.button), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xbutton.x, event.xbutton.y});
+                event.type == ButtonPress ? m_d->mousePressEvent(e) : m_d->mouseReleaseEvent(e);
             } break;
 
             /* Mouse move events */
             case MotionNotify: {
-//                 MouseMoveEvent e(static_cast<InputEvent::Modifier>(event.xmotion.state), {event.xmotion.x, event.xmotion.y});
-//                 mouseMoveEvent(e);
+                MouseMoveEvent e(static_cast<InputEvent::Modifier>(event.xmotion.state), {event.xmotion.x, event.xmotion.y});
+                m_d->mouseMoveEvent(e);
             } break;
         }
     }
