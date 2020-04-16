@@ -13,8 +13,11 @@
 
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/TextureFormat.h>
 
 #include <Magnum/ImGuiIntegration/Context.h>
+#include <Magnum/ImGuiIntegration/Integration.h>
+#include <Magnum/ImGuiIntegration/Widgets.h>
 #include <imgui.h>
 
 #include <Egl.h>
@@ -69,7 +72,8 @@ public:
 
     Flags flags{};
 
-    Magnum::GL::Framebuffer framebuffer{Magnum::Range2Di{{}, {800,600}}};
+    Magnum::GL::Framebuffer framebuffer{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureRGB{Magnum::NoCreate};
     Magnum::Vector2i windowSize{};
 
     Magnum::ImGuiIntegration::Context imgui{Magnum::NoCreate};
@@ -164,12 +168,31 @@ void Viewer::setup()
     GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
         GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
+    // Setup our intermediate framebuffer
+    auto size = m_d->scene->viewport();
+    m_d->framebuffer = Magnum::GL::Framebuffer{{{}, size}};
+    m_d->textureRGB = Magnum::GL::Texture2D{};
+    m_d->textureRGB
+        .setMagnificationFilter(GL::SamplerFilter::Linear)
+        .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+        .setWrapping(GL::SamplerWrapping::ClampToEdge)
+        .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+        .setStorage(Math::log2(size.max())+1, GL::TextureFormat::RGBA8, size)
+    ;
+
     m_d->flags |= Private::Flag::Redraw;
 }
 
 void Viewer::draw()
 {
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
+
+    // Get the result into a Texture2D
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
+    m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+
+    m_d->framebuffer.copySubImage({{}, m_d->scene->viewport()}, m_d->textureRGB, 0, {});
+    m_d->textureRGB.generateMipmap();
 
     Magnum::GL::defaultFramebuffer.bind();
     Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
@@ -178,27 +201,31 @@ void Viewer::draw()
     if(!m_d->scene)
         return;
 
-//     m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
-//     m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
-//
-//     Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
-//
-//     Debug{} << "source" << m_d->framebuffer.viewport() << "dest" << GL::defaultFramebuffer.viewport() << "windowSize" << m_d->framebufferSize;
-//
-//     Magnum::GL::Framebuffer::blit(m_d->framebuffer, GL::defaultFramebuffer,
-//         {{}, m_d->scene->viewport()},
-//         GL::defaultFramebuffer.viewport(),
-//         Magnum::GL::FramebufferBlit::Color,
-//         Magnum::GL::FramebufferBlitFilter::Linear
-//     );
-
     m_d->imgui.newFrame();
 
+    Vector2 srcSize{m_d->scene->viewport()};
+    Vector2 qSize = Vector2{(m_d->windowSize / 2)};
+
+    auto fitImage = [&](Magnum::GL::Texture2D& tex){
+        auto available = Vector2{ImGui::GetWindowContentRegionMax()} - Vector2{ImGui::GetWindowContentRegionMin()};
+
+        float scale = (available / srcSize).min();
+        Vector2 imgSize = scale * srcSize;
+
+        Magnum::ImGuiIntegration::image(tex, imgSize, {{0.0, 1.0}, {1.0, 0.0}});
+    };
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
+
     {
+        ImGui::SetNextWindowPos(ImVec2{0,0});
+        ImGui::SetNextWindowSize(ImVec2{qSize});
         ImGui::Begin("RGB");
-        ImGui::Text("Hello");
+        fitImage(m_d->textureRGB);
         ImGui::End();
     }
+
+    ImGui::PopStyleVar();
 
     /* Set appropriate states. If you only draw ImGui, it is sufficient to
        just enable blending and scissor test in the constructor. */
