@@ -114,6 +114,7 @@ target_link_libraries(stillleben PUBLIC
     Magnum::Primitives
     Magnum::DebugTools
     Magnum::XEglApplication
+    MagnumIntegration::ImGui
     MagnumPlatformPrivate
     PhysX
 )

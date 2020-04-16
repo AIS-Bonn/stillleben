@@ -12,6 +12,10 @@
 #include <Corrade/Utility/FormatStl.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
+#include <Magnum/GL/Renderer.h>
+
+#include <Magnum/ImGuiIntegration/Context.h>
+#include <imgui.h>
 
 #include <Egl.h>
 
@@ -66,6 +70,9 @@ public:
     Flags flags{};
 
     Magnum::GL::Framebuffer framebuffer{Magnum::Range2Di{{}, {800,600}}};
+    Magnum::Vector2i windowSize{};
+
+    Magnum::ImGuiIntegration::Context imgui{Magnum::NoCreate};
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -100,7 +107,7 @@ void Viewer::setup()
     if(!m_d->scene)
         throw std::logic_error{"Need to call Viewer::setScene() first"};
 
-    auto windowSize = m_d->scene->viewport();
+    m_d->windowSize = {1280, 720};
 
     // Get default X display
     m_d->display = XOpenDisplay(nullptr);
@@ -127,7 +134,7 @@ void Viewer::setup()
     attr.colormap = XCreateColormap(m_d->display, root, visInfo->visual, AllocNone);
     attr.event_mask = 0;
     unsigned long mask = CWBackPixel|CWBorderPixel|CWColormap|CWEventMask;
-    m_d->window = XCreateWindow(m_d->display, root, 20, 20, windowSize.x(), windowSize.y(), 0, visInfo->depth, InputOutput, visInfo->visual, mask, &attr);
+    m_d->window = XCreateWindow(m_d->display, root, 20, 20, m_d->windowSize.x(), m_d->windowSize.y(), 0, visInfo->depth, InputOutput, visInfo->visual, mask, &attr);
     XSetStandardProperties(m_d->display, m_d->window, "stillleben", nullptr, 0, nullptr, 0, nullptr);
     XFree(visInfo);
 
@@ -145,39 +152,69 @@ void Viewer::setup()
     // Make current
     eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
 
-    Debug{} << "viewport:" << windowSize;
-    Magnum::GL::defaultFramebuffer.setViewport({{}, windowSize});
+    Magnum::GL::defaultFramebuffer.setViewport({{}, m_d->windowSize});
+
+    m_d->imgui = Magnum::ImGuiIntegration::Context{m_d->windowSize};
+
+    /* Set up proper blending to be used by ImGui. There's a great chance
+       you'll need this exact behavior for the rest of your scene. If not, set
+       this only for the drawFrame() call. */
+    GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+        GL::Renderer::BlendEquation::Add);
+    GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+        GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
     m_d->flags |= Private::Flag::Redraw;
 }
 
 void Viewer::draw()
 {
+    m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
+
+    Magnum::GL::defaultFramebuffer.bind();
+    Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
+    Magnum::GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
+
     if(!m_d->scene)
         return;
 
-    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+//     m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
+//     m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+//
+//     Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
+//
+//     Debug{} << "source" << m_d->framebuffer.viewport() << "dest" << GL::defaultFramebuffer.viewport() << "windowSize" << m_d->framebufferSize;
+//
+//     Magnum::GL::Framebuffer::blit(m_d->framebuffer, GL::defaultFramebuffer,
+//         {{}, m_d->scene->viewport()},
+//         GL::defaultFramebuffer.viewport(),
+//         Magnum::GL::FramebufferBlit::Color,
+//         Magnum::GL::FramebufferBlitFilter::Linear
+//     );
 
-    m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
+    m_d->imgui.newFrame();
 
-    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+    {
+        ImGui::Begin("RGB");
+        ImGui::Text("Hello");
+        ImGui::End();
+    }
 
-    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
-    m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    /* Set appropriate states. If you only draw ImGui, it is sufficient to
+       just enable blending and scissor test in the constructor. */
+    GL::Renderer::enable(GL::Renderer::Feature::Blending);
+    GL::Renderer::enable(GL::Renderer::Feature::ScissorTest);
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::DepthTest);
 
-    Magnum::GL::defaultFramebuffer.bind();
-    Magnum::GL::defaultFramebuffer.clear(GL::FramebufferClear::Color|
-                                 GL::FramebufferClear::Depth);
-    Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
+    m_d->imgui.drawFrame();
 
-    Debug{} << "source" << m_d->framebuffer.viewport() << "dest" << GL::defaultFramebuffer.viewport();
-
-    Magnum::GL::Framebuffer::blit(m_d->framebuffer, GL::defaultFramebuffer,
-        m_d->framebuffer.viewport(),
-        GL::defaultFramebuffer.viewport(),
-        Magnum::GL::FramebufferBlit::Color,
-        Magnum::GL::FramebufferBlitFilter::Linear
-    );
+    /* Reset state. Only needed if you want to draw something else with
+       different state after. */
+    GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::ScissorTest);
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     eglSwapBuffers(eglGetCurrentDisplay(), m_d->surface);
 
@@ -209,14 +246,14 @@ bool Viewer::mainLoopIteration()
         switch(event.type) {
             /* Window resizing */
             case ConfigureNotify: {
-#warning FIXME
-//                 Vector2i size(event.xconfigure.width, event.xconfigure.height);
-//                 if(size != m_d->windowSize) {
-//                     m_d->windowSize = size;
-//                     ViewportEvent e{size};
-//                     viewportEvent(e);
-//                     _flags |= Flag::Redraw;
-//                 }
+                Vector2i size(event.xconfigure.width, event.xconfigure.height);
+                if(size != m_d->windowSize)
+                {
+                    m_d->windowSize = size;
+                    Magnum::GL::defaultFramebuffer.setViewport({{}, size});
+                    m_d->framebuffer.setViewport({{}, size});
+                    m_d->flags |= Private::Flag::Redraw;
+                }
             } break;
 
             /* Key/mouse events */
