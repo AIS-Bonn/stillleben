@@ -311,7 +311,7 @@ Context::Ptr Context::Create(const std::string& installPrefix)
     EGLint numberConfigs;
     EGLConfig eglConfig;
     EGLint configAttribs[] = {
-        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT | EGL_WINDOW_BIT,
+        EGL_SURFACE_TYPE, surfaceType,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 
         EGL_NONE
