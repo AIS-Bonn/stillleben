@@ -101,8 +101,8 @@ void ArcBall::initTransformation(const Vector2i& mousePos) {
 
 void ArcBall::rotate(const Vector2i& mousePos) {
     const Vector2 mousePosNDC = screenCoordToNDC(mousePos);
-    const Quaternion currentQRotation = ndcToArcBall(mousePosNDC);
-    const Quaternion prevQRotation = ndcToArcBall(_prevMousePosNDC);
+    const Quaternion currentQRotation = ndcToArcBall(-mousePosNDC);
+    const Quaternion prevQRotation = ndcToArcBall(-_prevMousePosNDC);
     _prevMousePosNDC = mousePosNDC;
     _targetQRotation =
         (currentQRotation*prevQRotation*_targetQRotation).normalized();

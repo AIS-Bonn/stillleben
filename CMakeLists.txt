@@ -17,6 +17,15 @@ else()
     set(MAGNUM_GL_APP WindowlessGlxApplication)
 endif()
 
+# Viewer wants Xcursor
+# TODO: move into own file
+add_library(Xcursor INTERFACE)
+if(X11_Xcursor_INCLUDE_PATH AND X11_Xcursor_LIB)
+    target_include_directories(Xcursor INTERFACE ${X11_Xcursor_INCLUDE_PATH})
+    target_link_libraries(Xcursor INTERFACE ${X11_Xcursor_LIB})
+    target_compile_definitions(Xcursor INTERFACE HAVE_XCURSOR=1)
+endif()
+
 option(WITH_ALIGN_MESH "Build the align_mesh tool" OFF)
 option(USE_RELATIVE_RPATH "Set rpath for standalone python installation" OFF)
 
@@ -118,6 +127,7 @@ target_link_libraries(stillleben PUBLIC
     MagnumIntegration::ImGui
     MagnumPlatformPrivate
     PhysX
+    Xcursor
 )
 
 if(CUDA_FOUND)

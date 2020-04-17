@@ -311,6 +311,18 @@ class MouseMoveEvent : public InputEvent
         const Magnum::Vector2i _position;
 };
 
+class MouseScrollEvent
+{
+    public:
+        explicit MouseScrollEvent(const Magnum::Vector2i& position, const Magnum::Vector2i& offset) : _position{position}, _offset{offset} {}
+
+        Magnum::Vector2i position() const { return _position; }
+        Magnum::Vector2i offset() const { return _offset; }
+    private:
+        const Magnum::Vector2i _position;
+        const Magnum::Vector2i _offset;
+};
+
 }
 }
 

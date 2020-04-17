@@ -14,21 +14,29 @@
 #include <Corrade/Utility/System.h>
 #include <Corrade/Utility/FormatStl.h>
 
+#include <Corrade/Containers/StaticArray.h>
+
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/TextureFormat.h>
 
 #include <Magnum/ImGuiIntegration/Context.h>
+#include <Magnum/ImGuiIntegration/Context.hpp>
 #include <Magnum/ImGuiIntegration/Integration.h>
 #include <Magnum/ImGuiIntegration/Widgets.h>
 #include <imgui.h>
 
+// TODO: remove this
 #include <Egl.h>
 
 #include <EGL/egl.h>
 /* undef Xlib nonsense to avoid conflicts */
 #undef None
 #undef Complex
+
+#ifdef HAVE_XCURSOR
+#include <X11/Xcursor/Xcursor.h>
+#endif
 
 /* EGL returns visual ID as int, but Xorg expects long unsigned int */
 #ifdef __unix__
@@ -57,6 +65,19 @@ public:
     typedef Containers::EnumSet<Flag> Flags;
     CORRADE_ENUMSET_FRIEND_OPERATORS(Flags)
 
+    enum class Cursor : unsigned int
+    {
+        Arrow,
+        TextInput,
+        ResizeNS,
+        ResizeWE,
+        ResizeNWSE,
+        ResizeNESW,
+        Hand,
+
+        NumCursors
+    };
+
 
     explicit Private(const std::shared_ptr<Context>& ctx)
      : ctx{ctx}
@@ -70,28 +91,81 @@ public:
 
     void mousePressEvent(MouseEvent& event)
     {
-        arcBall->initTransformation(event.position());
-
-        event.setAccepted();
-        redraw(); /* camera has changed, redraw! */
+        if(imgui.handleMousePressEvent(event)) return;
     }
 
-    void mouseReleaseEvent(MouseEvent& e)
+    void mouseReleaseEvent(MouseEvent& event)
     {
+        if(arcBallHovered)
+        {
+            if(event.button() == MouseEvent::Button::WheelUp)
+            {
+                arcBall->zoom(-0.1 * arcBall->viewDistance());
+                redraw();
+                return;
+            }
+            else if(event.button() == MouseEvent::Button::WheelDown)
+            {
+                arcBall->zoom(0.1 * arcBall->viewDistance());
+                redraw();
+                return;
+            }
+        }
 
+        if(arcBallActive)
+        {
+            stopArcBall();
+        }
+
+        if(imgui.handleMouseReleaseEvent(event)) return;
     }
 
     void mouseMoveEvent(MouseMoveEvent& event)
     {
-        if(!event.buttons()) return;
+        if(arcBallActive)
+        {
+            Vector2i pos{(Vector2{event.position()} - arcBallOffset) / arcBallScale};
+            if(event.buttons() & InputEvent::Button::Middle)
+                arcBall->translate(pos);
+            else
+                arcBall->rotate(pos);
+            redraw();
+            return;
+        }
 
-        if(event.modifiers() & MouseMoveEvent::Modifier::Shift)
-            arcBall->translate(event.position());
-        else
-            arcBall->rotate(event.position());
+        if(imgui.handleMouseMoveEvent(event)) return;
+    }
 
-        event.setAccepted();
-        redraw(); /* camera has changed, redraw! */
+    void keyPressEvent(KeyEvent& event)
+    {
+    }
+    void keyReleaseEvent(KeyEvent& event)
+    {
+    }
+
+    void setCursor([[maybe_unused]] Cursor cursor)
+    {
+#if HAVE_XCURSOR
+        XDefineCursor(display, window, cursors[(int)cursor]);
+#endif
+    }
+
+    void startArcBall(const Vector2& offset, float scale)
+    {
+        arcBallActive = true;
+        arcBallOffset = offset;
+        arcBallScale = scale;
+
+        Vector2i pos{(Vector2{ImGui::GetMousePos()} - offset) / scale};
+        arcBall->initTransformation(pos);
+
+        XGrabPointer(display, window, False, PointerMotionMask | ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync, window, 0, CurrentTime);
+    }
+
+    void stopArcBall()
+    {
+        XUngrabPointer(display, CurrentTime);
+        arcBallActive = false;
     }
 
     std::shared_ptr<Context> ctx;
@@ -114,6 +188,14 @@ public:
     Magnum::ImGuiIntegration::Context imgui{Magnum::NoCreate};
 
     std::unique_ptr<sl::utils::ArcBall> arcBall;
+    bool arcBallActive = false;
+    Vector2 arcBallOffset;
+    float arcBallScale;
+    bool arcBallHovered = false;
+
+#if HAVE_XCURSOR
+    Corrade::Containers::StaticArray<static_cast<unsigned int>(Cursor::NumCursors), ::Cursor> cursors;
+#endif
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -238,8 +320,41 @@ void Viewer::setup()
     Magnum::Deg fov = 2.0f * Math::atan(1.0f / m_d->scene->camera().projectionMatrix()[0][0]);
     m_d->arcBall = std::make_unique<utils::ArcBall>(
         camPosition, viewCenter, upDir, fov,
-        m_d->windowSize
+        m_d->scene->viewport()
     );
+
+#if HAVE_XCURSOR
+    // Load cursors
+    for(int i = 0; i < static_cast<int>(Private::Cursor::NumCursors); ++i)
+    {
+        switch(static_cast<Private::Cursor>(i))
+        {
+            case Private::Cursor::Arrow:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "arrow");
+                break;
+            case Private::Cursor::TextInput:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "text");
+                break;
+            case Private::Cursor::Hand:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "openhand");
+                break;
+            case Private::Cursor::ResizeNS:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "size_ver");
+                break;
+            case Private::Cursor::ResizeWE:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "size_hor");
+                break;
+            case Private::Cursor::ResizeNESW:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "size_bdiag");
+                break;
+            case Private::Cursor::ResizeNWSE:
+                m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "size_fdiag");
+                break;
+            case Private::Cursor::NumCursors:
+                break;
+        }
+    }
+#endif
 
     m_d->flags |= Private::Flag::Redraw;
 }
@@ -269,6 +384,9 @@ void Viewer::draw()
 
     Vector2 srcSize{m_d->scene->viewport()};
     Vector2 qSize = Vector2{(m_d->windowSize / 2)};
+    qSize.x() -= 100;
+
+    m_d->arcBallHovered = false;
 
     auto fitImage = [&](Magnum::GL::Texture2D& tex){
         auto available = Vector2{ImGui::GetWindowContentRegionMax()} - Vector2{ImGui::GetWindowContentRegionMin()};
@@ -276,20 +394,53 @@ void Viewer::draw()
         float scale = (available / srcSize).min();
         Vector2 imgSize = scale * srcSize;
 
-        Magnum::ImGuiIntegration::image(tex, imgSize, {{0.0, 1.0}, {1.0, 0.0}});
+        auto loc = Vector2{ImGui::GetCursorScreenPos()};
+        Magnum::ImGuiIntegration::imageButton(tex, imgSize, {{0.0, 1.0}, {1.0, 0.0}}, 0);
+        if(ImGui::IsItemClicked(0) || ImGui::IsItemClicked(1) || ImGui::IsItemClicked(2))
+        {
+            m_d->startArcBall(loc, scale);
+        }
+        if(ImGui::IsItemHovered())
+            m_d->arcBallHovered = true;
     };
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2(0.5f, 0.5f));
 
     {
         ImGui::SetNextWindowPos(ImVec2{0,0});
         ImGui::SetNextWindowSize(ImVec2{qSize});
-        ImGui::Begin("RGB");
+        ImGui::Begin("RGB", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        fitImage(m_d->textureRGB);
+        ImGui::End();
+    }
+    {
+        ImGui::SetNextWindowPos(ImVec2{qSize.x(),0});
+        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::Begin("Normals", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        fitImage(m_d->textureRGB);
+        ImGui::End();
+    }
+    {
+        ImGui::SetNextWindowPos(ImVec2{0,qSize.y()});
+        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::Begin("Segmentation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        fitImage(m_d->textureRGB);
+        ImGui::End();
+    }
+    {
+        ImGui::SetNextWindowPos(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::Begin("Coordinates", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureRGB);
         ImGui::End();
     }
 
     ImGui::PopStyleVar();
+    ImGui::PopStyleVar();
+
+    // Update cursor
+    m_d->imgui.updateApplicationCursor(*m_d);
 
     /* Set appropriate states. If you only draw ImGui, it is sufficient to
        just enable blending and scissor test in the constructor. */
@@ -350,8 +501,8 @@ bool Viewer::mainLoopIteration()
             /* Key/mouse events */
             case KeyPress:
             case KeyRelease: {
-//                 KeyEvent e(static_cast<KeyEvent::Key>(XLookupKeysym(&event.xkey, 0)), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xkey.x, event.xkey.y});
-//                 event.type == KeyPress ? keyPressEvent(e) : keyReleaseEvent(e);
+                KeyEvent e(static_cast<KeyEvent::Key>(XLookupKeysym(&event.xkey, 0)), static_cast<InputEvent::Modifier>(event.xkey.state), {event.xkey.x, event.xkey.y});
+                event.type == KeyPress ? m_d->keyPressEvent(e) : m_d->keyReleaseEvent(e);
             } break;
             case ButtonPress:
             case ButtonRelease: {
