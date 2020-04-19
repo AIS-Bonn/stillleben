@@ -6,6 +6,7 @@ layout(binding = 3) uniform highp usampler2DRect instanceIndex;
 layout(binding = 4) uniform highp usampler2DRect classIndex;
 
 layout(location = 0) uniform vec3 bbox[MAX_CLASS+1];
+layout(location = MAX_CLASS+1) uniform vec4 instanceColors[MAX_INSTANCE+1];
 
 // Inputs
 in highp vec2 textureCoords;
@@ -34,8 +35,7 @@ void main()
     objectCoordinatesOut.rgb = clamp(objectCoordinatesVec.rgb / objBBox + 0.5, 0, 1);
     objectCoordinatesOut.a = 1.0;
 
-    segmentationOut.rgb = vec3(clamp(float(instanceIndexVal) / 10.0, 0, 1));
-    segmentationOut.a = 1.0;
+    segmentationOut = instanceColors[instanceIndexVal];
 
     normalOut.rgb = normalVec.xyz / 2.0 + 0.5;
     normalOut.a = 1.0;

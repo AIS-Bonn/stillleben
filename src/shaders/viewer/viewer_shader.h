@@ -61,8 +61,10 @@ public:
     ViewerShader& bindNormals(Magnum::GL::RectangleTexture& texture);
 
     ViewerShader& setObjectBBoxes(const Corrade::Containers::Array<Magnum::Vector3>& bboxes);
+    ViewerShader& setInstanceColors(const Corrade::Containers::ArrayView<Magnum::Color4>& colors);
 private:
     Magnum::Int m_uniform_bbox{0};
+    Magnum::Int m_uniform_instanceColors{0};
 };
 
 }

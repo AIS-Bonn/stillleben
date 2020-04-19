@@ -4,6 +4,7 @@
 #include "viewer_shader.h"
 
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/FormatStl.h>
 #include <Corrade/Utility/Resource.h>
@@ -14,6 +15,7 @@
 #include <Magnum/GL/Texture.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Extensions.h>
+#include <Magnum/Math/Color.h>
 
 using namespace Magnum;
 
@@ -79,12 +81,8 @@ ViewerShader::ViewerShader(Magnum::UnsignedInt maxClass, Magnum::UnsignedInt max
         bindAttributeLocation(Position::Location, "position");
     }
 
-    #ifndef MAGNUM_TARGET_GLES
-    if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::explicit_uniform_location>(version))
-    #endif
-    {
-        m_uniform_bbox = uniformLocation("bbox");
-    }
+    m_uniform_bbox = 0;
+    m_uniform_instanceColors = maxClass+1;
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 }
@@ -122,6 +120,12 @@ sl::ViewerShader& ViewerShader::bindNormals(GL::RectangleTexture& texture)
 sl::ViewerShader& ViewerShader::setObjectBBoxes(const Corrade::Containers::Array<Magnum::Vector3>& bboxes)
 {
     setUniform(m_uniform_bbox, bboxes);
+    return *this;
+}
+
+sl::ViewerShader& ViewerShader::setInstanceColors(const Corrade::Containers::ArrayView<Magnum::Color4>& colors)
+{
+    setUniform(m_uniform_instanceColors, colors);
     return *this;
 }
 

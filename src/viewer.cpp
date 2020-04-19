@@ -337,6 +337,17 @@ void Viewer::setup()
             meshes[obj->mesh()->classIndex()] = obj->mesh().get();
         }
 
+        Corrade::Containers::Array<Magnum::Color4> instanceColors(maxInstance+1);
+        for(const auto& obj : m_d->scene->objects())
+        {
+            instanceColors[obj->instanceIndex()] =
+                Magnum::Color4::fromHsv(Magnum::ColorHsv{
+                    Magnum::Deg(360.0) / (maxInstance+1) * obj->instanceIndex(),
+                    1.0,
+                    1.0
+                });
+        }
+
         Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
         for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
         {
@@ -346,6 +357,7 @@ void Viewer::setup()
 
         m_d->shader = ViewerShader{maxClass, maxInstance};
         m_d->shader.setObjectBBoxes(bboxes);
+        m_d->shader.setInstanceColors(instanceColors);
     }
 
     // Compute camPosition, viewCenter & FoV from pose + projection matrix
