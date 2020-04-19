@@ -6,9 +6,12 @@
 #include <stillleben/context.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
+#include <stillleben/mesh.h>
 
 #include "utils/arc_ball.h"
 #include "utils/x11_events.h"
+
+#include "shaders/viewer/viewer_shader.h"
 
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/System.h>
@@ -19,6 +22,10 @@
 #include <Magnum/GL/DefaultFramebuffer.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/TextureFormat.h>
+
+#include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Primitives/Square.h>
+#include <Magnum/Trade/MeshData.h>
 
 #include <Magnum/ImGuiIntegration/Context.h>
 #include <Magnum/ImGuiIntegration/Context.hpp>
@@ -183,6 +190,9 @@ public:
 
     Magnum::GL::Framebuffer framebuffer{Magnum::NoCreate};
     Magnum::GL::Texture2D textureRGB{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureNormal{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureSegmentation{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureCoordinates{Magnum::NoCreate};
     Magnum::Vector2i windowSize{};
 
     Magnum::ImGuiIntegration::Context imgui{Magnum::NoCreate};
@@ -196,6 +206,9 @@ public:
 #if HAVE_XCURSOR
     Corrade::Containers::StaticArray<static_cast<unsigned int>(Cursor::NumCursors), ::Cursor> cursors;
 #endif
+
+    Magnum::GL::Mesh quad{Magnum::NoCreate};
+    ViewerShader shader{Magnum::NoCreate};
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -293,14 +306,47 @@ void Viewer::setup()
     // Setup our intermediate framebuffer
     auto size = m_d->scene->viewport();
     m_d->framebuffer = Magnum::GL::Framebuffer{{{}, size}};
-    m_d->textureRGB = Magnum::GL::Texture2D{};
-    m_d->textureRGB
-        .setMagnificationFilter(GL::SamplerFilter::Linear)
-        .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
-        .setWrapping(GL::SamplerWrapping::ClampToEdge)
-        .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
-        .setStorage(Math::log2(size.max())+1, GL::TextureFormat::RGBA8, size)
-    ;
+    for(auto* tex : {&m_d->textureRGB, &m_d->textureNormal, &m_d->textureSegmentation, &m_d->textureCoordinates})
+    {
+        *tex = Magnum::GL::Texture2D{};
+        (*tex)
+            .setMagnificationFilter(GL::SamplerFilter::Linear)
+            .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Linear)
+            .setWrapping(GL::SamplerWrapping::ClampToEdge)
+            .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+            .setStorage(Math::log2(size.max())+1, GL::TextureFormat::RGBA8, size);
+    }
+
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->textureRGB, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{1}, m_d->textureNormal, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{2}, m_d->textureSegmentation, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{3}, m_d->textureCoordinates, 0);
+
+    m_d->quad = Magnum::MeshTools::compile(Magnum::Primitives::squareSolid());
+
+    {
+        Magnum::UnsignedInt maxClass = 0;
+        Magnum::UnsignedInt maxInstance = 0;
+        std::vector<sl::Mesh*> meshes;
+
+        for(const auto& obj : m_d->scene->objects())
+        {
+            maxClass = std::max(maxClass, obj->mesh()->classIndex());
+            maxInstance = std::max(maxInstance, obj->instanceIndex());
+            meshes.resize(maxClass+1);
+            meshes[obj->mesh()->classIndex()] = obj->mesh().get();
+        }
+
+        Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
+        for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
+        {
+            if(meshes[i])
+                bboxes[i] = meshes[i]->bbox().size();
+        }
+
+        m_d->shader = ViewerShader{maxClass, maxInstance};
+        m_d->shader.setObjectBBoxes(bboxes);
+    }
 
     // Compute camPosition, viewCenter & FoV from pose + projection matrix
     // We will position the "ball" at the mean position of the objects in
@@ -366,12 +412,27 @@ void Viewer::draw()
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
-    // Get the result into a Texture2D
-    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->result->rgb);
-    m_d->framebuffer.mapForRead(GL::Framebuffer::ColorAttachment{0});
+    // Run the viewer shader to visualize results
+    m_d->framebuffer.bind();
+    m_d->framebuffer.mapForDraw({
+        {ViewerShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
+        {ViewerShader::NormalOutput, GL::Framebuffer::ColorAttachment{1}},
+        {ViewerShader::SegmentationOutput, GL::Framebuffer::ColorAttachment{2}},
+        {ViewerShader::CoordinateOutput, GL::Framebuffer::ColorAttachment{3}}
+    });
 
-    m_d->framebuffer.copySubImage({{}, m_d->scene->viewport()}, m_d->textureRGB, 0, {});
+    m_d->shader.bindRGB(m_d->result->rgb);
+    m_d->shader.bindNormals(m_d->result->normals);
+    m_d->shader.bindInstanceIndex(m_d->result->instanceIndex);
+    m_d->shader.bindClassIndex(m_d->result->classIndex);
+    m_d->shader.bindObjectCoordinates(m_d->result->objectCoordinates);
+
+    m_d->shader.draw(m_d->quad);
+
     m_d->textureRGB.generateMipmap();
+    m_d->textureNormal.generateMipmap();
+    m_d->textureSegmentation.generateMipmap();
+    m_d->textureCoordinates.generateMipmap();
 
     Magnum::GL::defaultFramebuffer.bind();
     Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
@@ -418,21 +479,21 @@ void Viewer::draw()
         ImGui::SetNextWindowPos(ImVec2{qSize.x(),0});
         ImGui::SetNextWindowSize(ImVec2{qSize});
         ImGui::Begin("Normals", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        fitImage(m_d->textureRGB);
+        fitImage(m_d->textureNormal);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{0,qSize.y()});
         ImGui::SetNextWindowSize(ImVec2{qSize});
         ImGui::Begin("Segmentation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        fitImage(m_d->textureRGB);
+        fitImage(m_d->textureSegmentation);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{qSize});
         ImGui::SetNextWindowSize(ImVec2{qSize});
         ImGui::Begin("Coordinates", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        fitImage(m_d->textureRGB);
+        fitImage(m_d->textureCoordinates);
         ImGui::End();
     }
 

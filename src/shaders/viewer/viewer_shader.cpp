@@ -1,35 +1,35 @@
-// Screen-space Ambient Occlusion shader
+// Visualize normals as RGB
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include "ssao_apply_shader.h"
+#include "viewer_shader.h"
 
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Reference.h>
+#include <Corrade/Utility/FormatStl.h>
 #include <Corrade/Utility/Resource.h>
 
-#include <Magnum/ImageView.h>
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Extensions.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Texture.h>
-#include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Extensions.h>
-#include <Magnum/PixelFormat.h>
 
-#include <random>
+using namespace Magnum;
 
 namespace sl
 {
 
 enum: Int
 {
-    NormalLayer = 0,
-    AOLayer = 1,
-    CoordinateLayer = 2
+    RGBLayer = 0,
+    ObjectCoordinateLayer = 1,
+    NormalLayer = 2,
+    InstanceIndexLayer = 3,
+    ClassIndexLayer = 4
 };
 
-SSAOApplyShader::SSAOApplyShader()
+ViewerShader::ViewerShader(Magnum::UnsignedInt maxClass, Magnum::UnsignedInt maxInstance)
 {
     Utility::Resource rs("stillleben-data");
 
@@ -54,37 +54,74 @@ SSAOApplyShader::SSAOApplyShader()
         frag.addSource("#define DISABLE_GL_ARB_explicit_uniform_location\n");
     }
 
+    frag.addSource(Corrade::Utility::formatString(
+        "#define MAX_CLASS {}\n"
+        "#define MAX_INSTANCE {}\n",
+        maxClass, maxInstance
+    ));
+
     vert.addSource(rs.get("compatibility.glsl"))
         .addSource(rs.get("common.glsl"))
-        .addSource(rs.get("ssao_apply_shader.vert"));
+        .addSource(rs.get("viewer/viewer_shader.vert"));
     frag.addSource(rs.get("compatibility.glsl"))
-        .addSource(rs.get("ssao_apply_shader.frag"));
+        .addSource(rs.get("viewer/viewer_shader.frag"));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));
 
     attachShaders({vert, frag});
 
+    #ifndef MAGNUM_TARGET_GLES
     if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::explicit_attrib_location>(version))
+    #else
+    if(!GL::Context::current().isVersionSupported(GL::Version::GLES300))
+    #endif
+    {
         bindAttributeLocation(Position::Location, "position");
+    }
+
+    #ifndef MAGNUM_TARGET_GLES
+    if(!GL::Context::current().isExtensionSupported<GL::Extensions::ARB::explicit_uniform_location>(version))
+    #endif
+    {
+        m_uniform_bbox = uniformLocation("bbox");
+    }
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 }
 
-SSAOApplyShader& SSAOApplyShader::bindColor(GL::RectangleTexture& texture)
+sl::ViewerShader& ViewerShader::bindRGB(GL::RectangleTexture& texture)
+{
+    texture.bind(RGBLayer);
+    return *this;
+}
+
+sl::ViewerShader& ViewerShader::bindObjectCoordinates(GL::RectangleTexture& texture)
+{
+    texture.bind(ObjectCoordinateLayer);
+    return *this;
+}
+
+sl::ViewerShader& ViewerShader::bindInstanceIndex(GL::RectangleTexture& texture)
+{
+    texture.bind(InstanceIndexLayer);
+    return *this;
+}
+
+sl::ViewerShader& ViewerShader::bindClassIndex(GL::RectangleTexture& texture)
+{
+    texture.bind(ClassIndexLayer);
+    return *this;
+}
+
+sl::ViewerShader& ViewerShader::bindNormals(GL::RectangleTexture& texture)
 {
     texture.bind(NormalLayer);
     return *this;
 }
 
-SSAOApplyShader& SSAOApplyShader::bindAO(GL::RectangleTexture& texture)
+sl::ViewerShader& ViewerShader::setObjectBBoxes(const Corrade::Containers::Array<Magnum::Vector3>& bboxes)
 {
-    texture.bind(AOLayer);
-    return *this;
-}
-
-SSAOApplyShader& SSAOApplyShader::bindCoordinates(GL::RectangleTexture& texture)
-{
-    texture.bind(CoordinateLayer);
+    setUniform(m_uniform_bbox, bboxes);
     return *this;
 }
 
