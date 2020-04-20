@@ -324,43 +324,7 @@ void Viewer::setup()
     m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{3}, m_d->textureCoordinates, 0);
 
     m_d->quad = Magnum::MeshTools::compile(Magnum::Primitives::squareSolid());
-
-    {
-        Magnum::UnsignedInt maxClass = 0;
-        Magnum::UnsignedInt maxInstance = 0;
-        std::vector<sl::Mesh*> meshes;
-
-        for(const auto& obj : m_d->scene->objects())
-        {
-            maxClass = std::max(maxClass, obj->mesh()->classIndex());
-            maxInstance = std::max(maxInstance, obj->instanceIndex());
-            meshes.resize(maxClass+1);
-            meshes[obj->mesh()->classIndex()] = obj->mesh().get();
-        }
-
-        Corrade::Containers::Array<Magnum::Color4> instanceColors(maxInstance+1);
-        instanceColors[0] = 0xffffffff_rgbaf;
-        for(const auto& obj : m_d->scene->objects())
-        {
-            instanceColors[obj->instanceIndex()] =
-                Magnum::Color4::fromHsv(Magnum::ColorHsv{
-                    Magnum::Deg(360.0) / (maxInstance+1) * obj->instanceIndex(),
-                    1.0,
-                    1.0
-                });
-        }
-
-        Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
-        for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
-        {
-            if(meshes[i])
-                bboxes[i] = meshes[i]->bbox().size();
-        }
-
-        m_d->shader = ViewerShader{maxClass, maxInstance};
-        m_d->shader.setObjectBBoxes(bboxes);
-        m_d->shader.setInstanceColors(instanceColors);
-    }
+    m_d->shader = ViewerShader{m_d->scene};
 
     // Compute camPosition, viewCenter & FoV from pose + projection matrix
     // We will position the "ball" at the mean position of the objects in
@@ -435,11 +399,7 @@ void Viewer::draw()
         {ViewerShader::CoordinateOutput, GL::Framebuffer::ColorAttachment{3}}
     });
 
-    m_d->shader.bindRGB(m_d->result->rgb);
-    m_d->shader.bindNormals(m_d->result->normals);
-    m_d->shader.bindInstanceIndex(m_d->result->instanceIndex);
-    m_d->shader.bindClassIndex(m_d->result->classIndex);
-    m_d->shader.bindObjectCoordinates(m_d->result->objectCoordinates);
+    m_d->shader.setData(*m_d->result);
 
     m_d->shader.draw(m_d->quad);
 

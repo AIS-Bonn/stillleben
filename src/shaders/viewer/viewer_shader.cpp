@@ -3,6 +3,10 @@
 
 #include "viewer_shader.h"
 
+#include <stillleben/render_pass.h>
+#include <stillleben/scene.h>
+#include <stillleben/mesh.h>
+
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/Reference.h>
@@ -18,6 +22,7 @@
 #include <Magnum/Math/Color.h>
 
 using namespace Magnum;
+using namespace Magnum::Math::Literals;
 
 namespace sl
 {
@@ -31,8 +36,40 @@ enum: Int
     ClassIndexLayer = 4
 };
 
-ViewerShader::ViewerShader(Magnum::UnsignedInt maxClass, Magnum::UnsignedInt maxInstance)
+ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
+ : m_scene{scene}
 {
+    Magnum::UnsignedInt maxClass = 0;
+    Magnum::UnsignedInt maxInstance = 0;
+    std::vector<sl::Mesh*> meshes;
+
+    for(const auto& obj : scene->objects())
+    {
+        maxClass = std::max(maxClass, obj->mesh()->classIndex());
+        maxInstance = std::max(maxInstance, obj->instanceIndex());
+        meshes.resize(maxClass+1);
+        meshes[obj->mesh()->classIndex()] = obj->mesh().get();
+    }
+
+    Corrade::Containers::Array<Magnum::Color4> instanceColors(maxInstance+1);
+    instanceColors[0] = 0xffffffff_rgbaf;
+    for(const auto& obj : scene->objects())
+    {
+        instanceColors[obj->instanceIndex()] =
+            Magnum::Color4::fromHsv(Magnum::ColorHsv{
+                Magnum::Deg(360.0) / (maxInstance+1) * obj->instanceIndex(),
+                1.0,
+                1.0
+            });
+    }
+
+    Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
+    for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
+    {
+        if(meshes[i])
+            bboxes[i] = meshes[i]->bbox().size();
+    }
+
     Utility::Resource rs("stillleben-data");
 
     const auto version = GL::Version::GL450;
@@ -85,48 +122,22 @@ ViewerShader::ViewerShader(Magnum::UnsignedInt maxClass, Magnum::UnsignedInt max
     m_uniform_instanceColors = maxClass+1;
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
-}
 
-sl::ViewerShader& ViewerShader::bindRGB(GL::RectangleTexture& texture)
-{
-    texture.bind(RGBLayer);
-    return *this;
-}
-
-sl::ViewerShader& ViewerShader::bindObjectCoordinates(GL::RectangleTexture& texture)
-{
-    texture.bind(ObjectCoordinateLayer);
-    return *this;
-}
-
-sl::ViewerShader& ViewerShader::bindInstanceIndex(GL::RectangleTexture& texture)
-{
-    texture.bind(InstanceIndexLayer);
-    return *this;
-}
-
-sl::ViewerShader& ViewerShader::bindClassIndex(GL::RectangleTexture& texture)
-{
-    texture.bind(ClassIndexLayer);
-    return *this;
-}
-
-sl::ViewerShader& ViewerShader::bindNormals(GL::RectangleTexture& texture)
-{
-    texture.bind(NormalLayer);
-    return *this;
-}
-
-sl::ViewerShader& ViewerShader::setObjectBBoxes(const Corrade::Containers::Array<Magnum::Vector3>& bboxes)
-{
     setUniform(m_uniform_bbox, bboxes);
-    return *this;
+    setUniform(m_uniform_instanceColors, instanceColors);
 }
 
-sl::ViewerShader& ViewerShader::setInstanceColors(const Corrade::Containers::ArrayView<Magnum::Color4>& colors)
+ViewerShader::~ViewerShader() = default;
+
+void ViewerShader::setData(sl::RenderPass::Result& result)
 {
-    setUniform(m_uniform_instanceColors, colors);
-    return *this;
+    GL::RectangleTexture::bind(0, {
+        &result.rgb,
+        &result.objectCoordinates,
+        &result.normals,
+        &result.instanceIndex,
+        &result.classIndex
+    });
 }
 
 }

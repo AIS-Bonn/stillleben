@@ -7,6 +7,8 @@
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/Shaders/Generic.h>
 
+#include <stillleben/render_pass.h>
+
 namespace sl
 {
 
@@ -27,7 +29,7 @@ public:
     /**
      * @brief Constructor
      */
-    explicit ViewerShader(Magnum::UnsignedInt maxClass, Magnum::UnsignedInt maxInstance);
+    explicit ViewerShader(const std::shared_ptr<sl::Scene>& scene);
 
     /**
      * @brief Construct without creating the underlying OpenGL object
@@ -42,6 +44,8 @@ public:
     explicit ViewerShader(Magnum::NoCreateT) noexcept
      : Magnum::GL::AbstractShaderProgram{Magnum::NoCreate} {}
 
+    ~ViewerShader();
+
     /** @brief Copying is not allowed */
     ViewerShader(const ViewerShader&) = delete;
 
@@ -54,15 +58,10 @@ public:
     /** @brief Move assignment */
     ViewerShader& operator=(ViewerShader&&) noexcept = default;
 
-    ViewerShader& bindRGB(Magnum::GL::RectangleTexture& texture);
-    ViewerShader& bindObjectCoordinates(Magnum::GL::RectangleTexture& texture);
-    ViewerShader& bindInstanceIndex(Magnum::GL::RectangleTexture& texture);
-    ViewerShader& bindClassIndex(Magnum::GL::RectangleTexture& texture);
-    ViewerShader& bindNormals(Magnum::GL::RectangleTexture& texture);
+    void setData(RenderPass::Result& result);
 
-    ViewerShader& setObjectBBoxes(const Corrade::Containers::Array<Magnum::Vector3>& bboxes);
-    ViewerShader& setInstanceColors(const Corrade::Containers::ArrayView<Magnum::Color4>& colors);
 private:
+    std::shared_ptr<sl::Scene> m_scene;
     Magnum::Int m_uniform_bbox{0};
     Magnum::Int m_uniform_instanceColors{0};
 };
