@@ -56,6 +56,7 @@ typedef EGLInt VisualId;
 #define INPUT_MASK KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|StructureNotifyMask
 
 using namespace Magnum;
+using namespace Magnum::Math::Literals;
 using namespace sl::utils;
 
 namespace sl
@@ -338,6 +339,7 @@ void Viewer::setup()
         }
 
         Corrade::Containers::Array<Magnum::Color4> instanceColors(maxInstance+1);
+        instanceColors[0] = 0xffffffff_rgbaf;
         for(const auto& obj : m_d->scene->objects())
         {
             instanceColors[obj->instanceIndex()] =
@@ -467,6 +469,10 @@ void Viewer::draw()
         float scale = (available / srcSize).min();
         Vector2 imgSize = scale * srcSize;
 
+        // Center
+        Vector2 off = (available - imgSize)/2;
+        ImGui::SetCursorPos(ImVec2{Vector2{ImGui::GetCursorPos()} + off});
+
         auto loc = Vector2{ImGui::GetCursorScreenPos()};
         Magnum::ImGuiIntegration::imageButton(tex, imgSize, {{0.0, 1.0}, {1.0, 0.0}}, 0);
         if(ImGui::IsItemClicked(0) || ImGui::IsItemClicked(1) || ImGui::IsItemClicked(2))
@@ -566,8 +572,8 @@ bool Viewer::mainLoopIteration()
                 {
                     m_d->windowSize = size;
                     Magnum::GL::defaultFramebuffer.setViewport({{}, size});
-                    m_d->framebuffer.setViewport({{}, size});
-                    m_d->flags |= Private::Flag::Redraw;
+                    m_d->imgui.relayout(size);
+                    m_d->redraw();
                 }
             } break;
 
