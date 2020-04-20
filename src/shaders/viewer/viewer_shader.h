@@ -22,8 +22,9 @@ public:
     enum: Magnum::UnsignedInt {
         ColorOutput = 0,
         NormalOutput = 1,
-        SegmentationOutput = 2,
-        CoordinateOutput = 3
+        InstanceIndexOutput = 2,
+        ClassIndexOutput = 3,
+        CoordinateOutput = 4
     };
 
     /**
@@ -64,6 +65,7 @@ private:
     std::shared_ptr<sl::Scene> m_scene;
     Magnum::Int m_uniform_bbox{0};
     Magnum::Int m_uniform_instanceColors{0};
+    Magnum::Int m_uniform_classColors{0};
 };
 
 }

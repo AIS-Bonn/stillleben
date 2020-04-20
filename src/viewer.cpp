@@ -207,7 +207,8 @@ public:
     Magnum::GL::Framebuffer framebuffer{Magnum::NoCreate};
     Magnum::GL::Texture2D textureRGB{Magnum::NoCreate};
     Magnum::GL::Texture2D textureNormal{Magnum::NoCreate};
-    Magnum::GL::Texture2D textureSegmentation{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureInstance{Magnum::NoCreate};
+    Magnum::GL::Texture2D textureClass{Magnum::NoCreate};
     Magnum::GL::Texture2D textureCoordinates{Magnum::NoCreate};
     Magnum::Vector2i windowSize{};
 
@@ -228,6 +229,8 @@ public:
 
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
+
+    bool showInstances = false;
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -325,7 +328,7 @@ void Viewer::setup()
     // Setup our intermediate framebuffer
     auto size = m_d->scene->viewport();
     m_d->framebuffer = Magnum::GL::Framebuffer{{{}, size}};
-    for(auto* tex : {&m_d->textureRGB, &m_d->textureNormal, &m_d->textureSegmentation, &m_d->textureCoordinates})
+    for(auto* tex : {&m_d->textureRGB, &m_d->textureNormal, &m_d->textureInstance, &m_d->textureClass, &m_d->textureCoordinates})
     {
         *tex = Magnum::GL::Texture2D{};
         (*tex)
@@ -338,8 +341,9 @@ void Viewer::setup()
 
     m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, m_d->textureRGB, 0);
     m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{1}, m_d->textureNormal, 0);
-    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{2}, m_d->textureSegmentation, 0);
-    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{3}, m_d->textureCoordinates, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{2}, m_d->textureInstance, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{3}, m_d->textureClass, 0);
+    m_d->framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{4}, m_d->textureCoordinates, 0);
 
     m_d->quad = Magnum::MeshTools::compile(Magnum::Primitives::squareSolid());
     m_d->shader = ViewerShader{m_d->scene};
@@ -418,8 +422,9 @@ void Viewer::draw()
     m_d->framebuffer.mapForDraw({
         {ViewerShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}},
         {ViewerShader::NormalOutput, GL::Framebuffer::ColorAttachment{1}},
-        {ViewerShader::SegmentationOutput, GL::Framebuffer::ColorAttachment{2}},
-        {ViewerShader::CoordinateOutput, GL::Framebuffer::ColorAttachment{3}}
+        {ViewerShader::InstanceIndexOutput, GL::Framebuffer::ColorAttachment{2}},
+        {ViewerShader::ClassIndexOutput, GL::Framebuffer::ColorAttachment{3}},
+        {ViewerShader::CoordinateOutput, GL::Framebuffer::ColorAttachment{4}}
     });
 
     m_d->shader.setData(*m_d->result);
@@ -428,7 +433,8 @@ void Viewer::draw()
 
     m_d->textureRGB.generateMipmap();
     m_d->textureNormal.generateMipmap();
-    m_d->textureSegmentation.generateMipmap();
+    m_d->textureInstance.generateMipmap();
+    m_d->textureClass.generateMipmap();
     m_d->textureCoordinates.generateMipmap();
 
     Magnum::GL::defaultFramebuffer.bind();
@@ -487,7 +493,21 @@ void Viewer::draw()
         ImGui::SetNextWindowPos(ImVec2{0,qSize.y()});
         ImGui::SetNextWindowSize(ImVec2{qSize});
         ImGui::Begin("Segmentation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        fitImage(m_d->textureSegmentation);
+
+        {
+            auto loc = ImGui::GetCursorPos();
+
+            ImGui::PushClipRect(ImVec2{0,0}, ImVec2{Vector2{m_d->windowSize}}, false);
+            ImGui::SetCursorScreenPos(ImVec2{10, qSize.y()});
+            ImGui::Checkbox("Instances", &m_d->showInstances);
+            ImGui::SetCursorPos(loc);
+            ImGui::PopClipRect();
+        }
+
+        if(m_d->showInstances)
+            fitImage(m_d->textureInstance);
+        else
+            fitImage(m_d->textureClass);
         ImGui::End();
     }
     {

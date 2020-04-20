@@ -64,10 +64,21 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
     }
 
     Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
+    Corrade::Containers::Array<Magnum::Color4> classColors(meshes.size());
+    classColors[0] = 0xffffffff_rgbaf;
+
     for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
     {
         if(meshes[i])
+        {
             bboxes[i] = meshes[i]->bbox().size();
+            classColors[meshes[i]->classIndex()] =
+                Magnum::Color4::fromHsv(Magnum::ColorHsv{
+                    Magnum::Deg(360.0) / (maxClass+1) * meshes[i]->classIndex(),
+                    1.0,
+                    1.0
+                });
+        }
     }
 
     Utility::Resource rs("stillleben-data");
@@ -120,11 +131,13 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
 
     m_uniform_bbox = 0;
     m_uniform_instanceColors = maxClass+1;
+    m_uniform_classColors = m_uniform_instanceColors + maxInstance+1;
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
     setUniform(m_uniform_bbox, bboxes);
     setUniform(m_uniform_instanceColors, instanceColors);
+    setUniform(m_uniform_classColors, classColors);
 }
 
 ViewerShader::~ViewerShader() = default;
