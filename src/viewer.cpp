@@ -59,6 +59,21 @@ using namespace Magnum;
 using namespace Magnum::Math::Literals;
 using namespace sl::utils;
 
+namespace
+{
+    constexpr const char* renderTypeLabel(sl::RenderPass::Type type)
+    {
+        using namespace sl;
+        switch(type)
+        {
+            case RenderPass::Type::PBR: return "PBR";
+            case RenderPass::Type::Phong: return "Phong";
+            case RenderPass::Type::Flat: return "Flat";
+        }
+        return {};
+    }
+}
+
 namespace sl
 {
 
@@ -210,6 +225,9 @@ public:
 
     Magnum::GL::Mesh quad{Magnum::NoCreate};
     ViewerShader shader{Magnum::NoCreate};
+
+    RenderPass::Type renderType = RenderPass::Type::PBR;
+    bool enableSSAO = true;
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -388,6 +406,11 @@ void Viewer::draw()
     m_d->arcBall->updateTransformation();
     m_d->scene->setCameraPose(m_d->arcBall->transformationMatrix());
 
+    if(m_d->renderer->type() != m_d->renderType)
+        m_d->renderer = std::make_unique<RenderPass>(m_d->renderType, false);
+
+    m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
+
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
     // Run the viewer shader to visualize results
@@ -418,8 +441,8 @@ void Viewer::draw()
     m_d->imgui.newFrame();
 
     Vector2 srcSize{m_d->scene->viewport()};
-    Vector2 qSize = Vector2{(m_d->windowSize / 2)};
-    qSize.x() -= 100;
+    const int MENU_BAR_WIDTH = 200;
+    Vector2 qSize = Vector2{(m_d->windowSize - Vector2i{MENU_BAR_WIDTH, 0})/ 2};
 
     m_d->arcBallHovered = false;
 
@@ -443,8 +466,8 @@ void Viewer::draw()
             m_d->arcBallHovered = true;
     };
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2(0.5f, 0.5f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
 
     {
         ImGui::SetNextWindowPos(ImVec2{0,0});
@@ -475,7 +498,33 @@ void Viewer::draw()
         ImGui::End();
     }
 
+    // Enable padding again
     ImGui::PopStyleVar();
+
+    {
+        ImGui::SetNextWindowPos(ImVec2{2*qSize.x(), 0});
+        ImGui::SetNextWindowSize(ImVec2(MENU_BAR_WIDTH, m_d->windowSize.y()));
+        ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+        ImGui::Text("Shading:"); ImGui::SameLine();
+        if(ImGui::BeginCombo("Shading model", renderTypeLabel(m_d->renderType)))
+        {
+            for(auto type : {RenderPass::Type::PBR, RenderPass::Type::Phong, RenderPass::Type::Flat})
+            {
+                bool selected = (m_d->renderType == type);
+                if(ImGui::Selectable(renderTypeLabel(type), selected))
+                    m_d->renderType = type;
+                if(selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+
+            ImGui::EndCombo();
+        }
+
+        ImGui::Checkbox("SSAO", &m_d->enableSSAO);
+        ImGui::End();
+    }
+
     ImGui::PopStyleVar();
 
     // Update cursor

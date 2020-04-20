@@ -51,10 +51,10 @@ constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
         case RenderPass::Type::Flat:
             return RenderShader::Flag::Flat;
         case RenderPass::Type::Phong:
-            return {};
-        default:
+        case RenderPass::Type::PBR:
             return {};
     }
+    return {};
 }
 
 }
@@ -96,6 +96,7 @@ void RenderPass::Result::unmapCUDA()
 
 RenderPass::RenderPass(Type type, bool cuda)
  : m_cuda{cuda}
+ , m_type{type}
  , m_framebuffer{Magnum::NoCreate}
  , m_ssaoFramebuffer{Magnum::NoCreate}
  , m_ssaoApplyFramebuffer{Magnum::NoCreate}
@@ -399,7 +400,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             if(object->stickerTexture())
                 shader.get()->bindStickerTexture(*object->stickerTexture());
 
-            if(scene.lightMap())
+            if(scene.lightMap() && m_type == Type::PBR)
                 shader.get()->bindLightMap(*scene.lightMap());
             else
                 shader.get()->disableLightMap();

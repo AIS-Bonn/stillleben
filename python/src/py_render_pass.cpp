@@ -217,7 +217,11 @@ void init(py::module& m)
         )EOS")
 
         .def(py::init([](const std::string& shading){
-                if(shading == "phong")
+                if(shading == "pbr")
+                    return ContextSharedPtr<sl::RenderPass>(
+                        new sl::RenderPass(sl::RenderPass::Type::PBR, sl::python::Context::cudaEnabled())
+                    );
+                else if(shading == "phong")
                     return ContextSharedPtr<sl::RenderPass>(
                         new sl::RenderPass(sl::RenderPass::Type::Phong, sl::python::Context::cudaEnabled())
                     );
@@ -231,9 +235,10 @@ void init(py::module& m)
             Constructor.
 
             Args:
-                shading (str): Shading type ("phong" or "flat"). Defaults to
-                    Phong shading.
-         )EOS", py::arg("shading")="phong")
+                shading (str): Shading type ("pbr", "phong", or "flat"). Defaults to
+                    PBR shading. Note: PBR shading falls back to Phong shading
+                    if no light map is specified in the scene.
+         )EOS", py::arg("shading")="pbr")
 
         .def("render",
             [](const ContextSharedPtr<sl::RenderPass>& pass,
