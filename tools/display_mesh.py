@@ -306,8 +306,8 @@ if __name__ == "__main__":
 
     if args.out:
         img.save(args.out)
-    else:
-        img.show()
+    #else:
+        #img.show()
 
     if args.debug:
         dbg_rgb = sl.render_debug_image(scene)
@@ -339,3 +339,8 @@ if __name__ == "__main__":
     if args.serialize:
         print('Serialized scene description:\n')
         print(scene.serialize())
+
+    viewer = sl.Viewer()
+    viewer.scene = scene
+    viewer.run()
+

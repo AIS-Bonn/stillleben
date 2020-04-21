@@ -24,7 +24,7 @@ namespace sl
 
 enum: Int
 {
-    RGBLayer = 0,
+    NormalLayer = 0,
     AOLayer = 1,
     CoordinateLayer = 2
 };
@@ -72,7 +72,7 @@ SSAOApplyShader::SSAOApplyShader()
 
 SSAOApplyShader& SSAOApplyShader::bindColor(GL::RectangleTexture& texture)
 {
-    texture.bind(RGBLayer);
+    texture.bind(NormalLayer);
     return *this;
 }
 

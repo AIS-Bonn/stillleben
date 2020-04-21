@@ -62,6 +62,10 @@ public:
     physx::PxCooking& physxCooking();
 
     Magnum::DebugTools::ResourceManager& debugResourceManager();
+
+
+    int visualID() const;
+    void* eglConfig() const;
 private:
     class Private;
 

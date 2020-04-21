@@ -29,11 +29,12 @@ class RenderPass
 public:
     enum class Type
     {
+        PBR,
         Phong,
         Flat
     };
 
-    explicit RenderPass(Type type = Type::Phong, bool cuda = false);
+    explicit RenderPass(Type type = Type::PBR, bool cuda = false);
     ~RenderPass();
 
     struct Result
@@ -73,9 +74,14 @@ public:
     { return m_ssaoEnabled; }
 
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
+
+    Type type() const
+    { return m_type; }
 private:
     bool m_initialized = false;
     bool m_cuda;
+
+    Type m_type;
 
     Magnum::GL::Framebuffer m_framebuffer;
     Magnum::GL::Renderbuffer m_depthbuffer;

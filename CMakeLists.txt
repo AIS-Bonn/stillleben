@@ -17,6 +17,15 @@ else()
     set(MAGNUM_GL_APP WindowlessGlxApplication)
 endif()
 
+# Viewer wants Xcursor
+# TODO: move into own file
+add_library(Xcursor INTERFACE)
+if(X11_Xcursor_INCLUDE_PATH AND X11_Xcursor_LIB)
+    target_include_directories(Xcursor INTERFACE ${X11_Xcursor_INCLUDE_PATH})
+    target_link_libraries(Xcursor INTERFACE ${X11_Xcursor_LIB})
+    target_compile_definitions(Xcursor INTERFACE HAVE_XCURSOR=1)
+endif()
+
 option(WITH_ALIGN_MESH "Build the align_mesh tool" OFF)
 option(USE_RELATIVE_RPATH "Set rpath for standalone python installation" OFF)
 
@@ -84,6 +93,7 @@ add_library(stillleben SHARED
     src/render_pass.cpp
     src/scene.cpp
     src/stillleben.cpp
+    src/viewer.cpp
     src/shaders/background_shader.cpp
     src/shaders/background_cube_shader.cpp
     src/shaders/brdf_shader.cpp
@@ -92,8 +102,10 @@ add_library(stillleben SHARED
     src/shaders/render_shader.cpp
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
+    src/shaders/viewer/viewer_shader.cpp
     src/mesh_tools/pbr_material_data.cpp
     src/mesh_tools/tangents.cpp
+    src/utils/arc_ball.cpp
     src/utils/os.cpp
     ${stillleben_RESOURCES}
 )
@@ -112,8 +124,11 @@ target_link_libraries(stillleben PUBLIC
     Magnum::MeshTools
     Magnum::Primitives
     Magnum::DebugTools
-    Magnum::${MAGNUM_GL_APP}
+    Magnum::XEglApplication
+    MagnumIntegration::ImGui
+    MagnumPlatformPrivate
     PhysX
+    Xcursor
 )
 
 if(CUDA_FOUND)

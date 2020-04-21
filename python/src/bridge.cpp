@@ -12,6 +12,7 @@
 #include "py_image_loader.h"
 #include "py_light_map.h"
 #include "py_animator.h"
+#include "py_viewer.h"
 
 using namespace sl::python;
 using namespace sl::python::magnum;
@@ -27,4 +28,5 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::ImageLoader::init(m);
     sl::python::LightMap::init(m);
     sl::python::Animator::init(m);
+    sl::python::Viewer::init(m);
 }

@@ -59,6 +59,7 @@ add_library(stillleben_python MODULE
     src/py_image_loader.cpp
     src/py_light_map.cpp
     src/py_animator.cpp
+    src/py_viewer.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC
