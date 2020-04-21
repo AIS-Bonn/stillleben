@@ -6,5 +6,6 @@ build_only/
 build-ros/
 __pycache__
 doc/_*
+doc/output
 .vscode/*
 *.mesh0
