@@ -17,11 +17,13 @@ __all__ = [
     'render_debug_image',
     'Scene',
     'Mesh',
+    'MeshCache',
     'Object',
     'Range3D',
     'RenderPass',
     'RenderPassResult',
     'Texture',
+    'Texture2D',
 
     'camera_model',
     'diff',
