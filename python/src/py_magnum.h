@@ -7,6 +7,7 @@
 #include <torch/extension.h>
 
 #include <Corrade/Containers/Array.h>
+#include <Corrade/Containers/StridedArrayView.h>
 
 #include <Magnum/ImageView.h>
 #include <Magnum/GL/RectangleTexture.h>
@@ -128,6 +129,22 @@ struct toTorch<Corrade::Containers::Array<Magnum::Vector3>>
     }
 };
 
+// FIXME: Add tests for the strided array view stuff
+template<>
+struct toTorch<Corrade::Containers::StridedArrayView1D<Magnum::Vector3>>
+{
+    using Result = at::Tensor;
+    static at::Tensor convert(const Corrade::Containers::StridedArrayView1D<Magnum::Vector3>& view)
+    {
+        return torch::from_blob(
+            const_cast<float*>(reinterpret_cast<const float*>(view.data())),
+            {static_cast<long int>(view.size()), 3},
+            {static_cast<long int>(view.stride() / sizeof(float))},
+            at::kFloat
+        ).clone();
+    }
+};
+
 template<>
 struct toTorch<Corrade::Containers::Array<Magnum::Color4>>
 {
@@ -136,7 +153,22 @@ struct toTorch<Corrade::Containers::Array<Magnum::Color4>>
     {
         return torch::from_blob(
             const_cast<float*>(reinterpret_cast<const float*>(vec.data())),
-            {static_cast<long int>(vec.size()) * 4},
+            {static_cast<long int>(vec.size()), 4},
+            at::kFloat
+        ).clone();
+    }
+};
+
+template<>
+struct toTorch<Corrade::Containers::StridedArrayView1D<Magnum::Color4>>
+{
+    using Result = at::Tensor;
+    static at::Tensor convert(const Corrade::Containers::StridedArrayView1D<Magnum::Color4>& view)
+    {
+        return torch::from_blob(
+            const_cast<float*>(reinterpret_cast<const float*>(view.data())),
+            {static_cast<long int>(view.size()), 4},
+            {static_cast<long int>(view.stride() / sizeof(float))},
             at::kFloat
         ).clone();
     }
@@ -154,6 +186,21 @@ struct toTorch<Corrade::Containers::Array<Magnum::UnsignedInt>>
             const_cast<int*>(reinterpret_cast<const int*>(vec.data())),
             {static_cast<int>(vec.size())},
             at::kInt
+        ).clone();
+    }
+};
+
+template<>
+struct toTorch<Corrade::Containers::StridedArrayView1D<Magnum::UnsignedInt>>
+{
+    using Result = at::Tensor;
+    static at::Tensor convert(const Corrade::Containers::StridedArrayView1D<Magnum::UnsignedInt>& view)
+    {
+        return torch::from_blob(
+            const_cast<int*>(reinterpret_cast<const int*>(view.data())),
+            {static_cast<long int>(view.size())},
+            {static_cast<long int>(view.stride() / sizeof(Magnum::UnsignedInt))},
+            at::kFloat
         ).clone();
     }
 };

@@ -7,5 +7,6 @@ build-ros/
 __pycache__
 doc/_*
 doc/output
+doc/m.math.cache
 .vscode/*
 *.mesh0
