@@ -406,6 +406,9 @@ void init(py::module& m)
 
     py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
         Caches Mesh instances.
+
+        This is mainly useful together with :ref:`Scene.deserialize`, look there
+        for more information.
     )EOS")
 
         .def(py::init([](){ return new sl::MeshCache(sl::python::Context::instance()); }))
