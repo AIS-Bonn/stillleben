@@ -80,7 +80,7 @@ void init(py::module& m)
 
         .def_property("instance_index", &sl::Object::instanceIndex, &sl::Object::setInstanceIndex, R"EOS(
             Instance index for training semantic segmentation. This is
-            automatically set by :ref:`Scene.addObject` but can also be
+            automatically set by :ref:`Scene.add_object` but can also be
             set manually. A manual assignment always takes precedence.
         )EOS")
 
