@@ -76,6 +76,7 @@ void init(py::module& m)
                 obj = Object(Mesh("mesh.gltf"))
                 p = obj.pose()
                 p[:3,3] = torch.tensor([0, 1, 0])
+                obj.set_pose(p)
         )EOS", py::arg("pose"))
 
         .def_property("instance_index", &sl::Object::instanceIndex, &sl::Object::setInstanceIndex, R"EOS(

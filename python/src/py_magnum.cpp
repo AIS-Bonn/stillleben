@@ -94,10 +94,8 @@ void init(py::module& m)
         R"EOS(
             Convert a quaternion into a 3x3 rotation matrix.
 
-            Args:
-                quat (tensor): Should be a size 4 tensor with elements [x y z w]
-            Returns:
-                tensor: 3x3 rotation matrix
+            :param quat: Should be a size 4 tensor with elements [x y z w]
+            :return: 3x3 rotation matrix
         )EOS");
     m.def("matrix_to_quat",
         [](torch::Tensor& matrix){
@@ -110,10 +108,8 @@ void init(py::module& m)
         R"EOS(
             Convert a 3x3 rotation matrix into a quaternion.
 
-            Args:
-                matrix (tensor): 3x3 rotation matrix
-            Returns:
-                tensor: Quaternion [x y z w]
+            :param matrix: 3x3 rotation matrix
+            :return: Quaternion [x y z w]
         )EOS");
 
     py::class_<Magnum::GL::RectangleTexture, std::shared_ptr<Magnum::GL::RectangleTexture>>(

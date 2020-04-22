@@ -17,6 +17,15 @@ void init(py::module& m)
 {
     py::class_<sl::ImageLoader>(m, "ImageLoader", R"EOS(
             Multi-threaded image loader.
+
+            This class can be used to quickly load images from a specified
+            directory - in random order. Note: the directory should only
+            contain images.
+
+            It currently supports all image file formats supported by
+            Magnum's `AnyImageImporter`_.
+
+            .. _AnyImageImporter: https://doc.magnum.graphics/magnum/classMagnum_1_1Trade_1_1AnyImageImporter.html
         )EOS")
 
         .def(py::init([](const std::string& path){
@@ -24,8 +33,7 @@ void init(py::module& m)
             }), R"EOS(
             Constructor.
 
-            Args:
-                path: Path to the image directory
+            :param path: Path to the image directory
             )EOS", py::arg("path")
         )
 
