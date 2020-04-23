@@ -33,10 +33,8 @@ void init(py::module& m)
         .def("load", &sl::LightMap::load, R"EOS(
             Opens an .ibl file.
 
-            Args:
-                path (str): Path to .ibl file
-            Returns:
-                bool: True if successful
+            :param path: Path to .ibl file
+            :return: True if successful
         )EOS")
     ;
 }

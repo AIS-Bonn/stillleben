@@ -21,9 +21,9 @@ namespace Object
 void init(py::module& m)
 {
     py::class_<sl::Object, std::shared_ptr<sl::Object>>(m, "Object", R"EOS(
-            An instantiated mesh with associated pose and other instance
-            properties.
-        )EOS")
+        An instantiated mesh with associated pose and other instance
+        properties.
+    )EOS")
 
         .def(py::init([](const std::shared_ptr<sl::Mesh>& mesh, const py::dict& options){
                 sl::InstantiationOptions opts;
@@ -46,13 +46,15 @@ void init(py::module& m)
             }), R"EOS(
             Constructor
 
-            Args:
-                mesh (Mesh): Mesh to instantiate
-                options (dict): Dictionary of options. Supported keys:
-                    * color (tensor): RGBA color used if no color information is
-                      present in the mesh. Defaults to white.
-                    * force_color (bool): If true, the color specified in
-                      `color` is used even if the mesh is colored.
+            :param mesh: Mesh to instantiate
+            :param options: Dictionary of instantiation options (see below)
+
+            .. block-info:: Instantiation options
+
+                :color: RGBA color used if no color information is
+                  present in the mesh. Defaults to white.
+                :force_color: If true, the color specified in
+                  `color` is used even if the mesh is colored.
         )EOS", py::arg("mesh"), py::arg("options")=py::dict())
 
         .def("pose", wrapShared(&sl::Object::pose), R"EOS(
@@ -61,10 +63,6 @@ void init(py::module& m)
 
             Note: This is implemented as separate getter/setter methods since
             in-place operations on the returned pose do not work.
-
-            Examples:
-                >>> obj = Object(Mesh("mesh.gltf"))
-                >>> obj.pose()
         )EOS")
         .def("set_pose", wrapShared(&sl::Object::setPose), R"EOS(
             Pose matrix. This 4x4 matrix transforms object points to global
@@ -73,20 +71,22 @@ void init(py::module& m)
             Note: This is implemented as separate getter/setter methods since
             in-place operations on the returned pose do not work.
 
-            Examples:
-                >>> obj = Object(Mesh("mesh.gltf"))
-                >>> p = obj.pose()
-                >>> p[:3,3] = torch.tensor([0, 1, 0])
+            .. code:: python
+
+                obj = Object(Mesh("mesh.gltf"))
+                p = obj.pose()
+                p[:3,3] = torch.tensor([0, 1, 0])
+                obj.set_pose(p)
         )EOS", py::arg("pose"))
 
         .def_property("instance_index", &sl::Object::instanceIndex, &sl::Object::setInstanceIndex, R"EOS(
             Instance index for training semantic segmentation. This is
-            automatically set by :func:`Scene.addObject` but can also be
+            automatically set by :ref:`Scene.add_object` but can also be
             set manually. A manual assignment always takes precedence.
         )EOS")
 
         .def_property_readonly("mesh", &sl::Object::mesh, R"EOS(
-            The associated :class:`Mesh` instance.
+            The associated :ref:`Mesh` instance.
         )EOS")
 
         .def_property("specular_color", wrapShared(&sl::Object::specularColor), wrapShared(&sl::Object::setSpecularColor), R"EOS(

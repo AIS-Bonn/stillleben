@@ -43,56 +43,64 @@ namespace Scene
 void init(py::module& m)
 {
     py::class_<sl::Scene, std::shared_ptr<sl::Scene>>(m, "Scene", R"EOS(
-            Represents a scene with multiple objects.
-        )EOS")
+        Represents a scene with multiple objects.
+
+        Typical usage
+        -------------
+
+        .. code:: python
+
+            import stillleben as sl
+            sl.init()
+
+            # Load & instantiate meshes
+            mesh = sl.Mesh('my_mesh.gltf')
+            objectA = sl.Object(mesh)
+            objectB = sl.Object(mesh)
+
+            # Setup the scene
+            scene = sl.Scene((1920,1080))
+            scene.add_object(objectA)
+            scene.add_object(objectB)
+    )EOS")
 
         .def(py::init(&Scene_factory), R"EOS(
             Constructor
 
-            Args:
-                viewport_size (int,int): Size of the rendered image (W,H)
+            :param viewport_size: Size of the rendered image (W,H)
         )EOS", py::arg("viewport_size"))
 
         .def("camera_pose", wrapShared(&sl::Scene::cameraPose), R"EOS(
-            Retrieve current camera pose (see :func:`setCameraPose`).
+            Retrieve current camera pose (see :ref:`set_camera_pose`).
         )EOS")
         .def("set_camera_pose", wrapShared(&sl::Scene::setCameraPose), R"EOS(
-            Set the camera pose within the scene. For most applications, leaving
-            this at identity is a good idea - that way your object poses are
-            expressed in camera coordinates.
+            Set the camera pose within the scene.
 
-            Args:
-                pose (tensor): 4x4 matrix transforming camera coordinates to
-                    global coordinates.
+            :param pose: 4x4 matrix transforming camera coordinates to
+                global coordinates.
         )EOS", py::arg("pose"))
         .def("set_camera_look_at", wrapShared(&sl::Scene::setCameraLookAt), R"EOS(
             Sets the camera pose within the scene using lookAt parameters.
 
-            Args:
-                position (tensor): 3D position vector
-                look_at (tensor): 3D lookAt vector
-                up (tensor): 3D up vector (defaults to Z axis)
+            :param position: 3D position vector
+            :param look_at: 3D lookAt vector
+            :param up: 3D up vector (defaults to Z axis)
         )EOS", py::arg("position"), py::arg("look_at"), py::arg("up")=torch::tensor({0.0, 0.0, 1.0}))
 
         .def("set_camera_intrinsics", &sl::Scene::setCameraIntrinsics, R"EOS(
             Set the camera intrinsics assuming a pinhole camera with focal
             lengths :math:`f_x`, :math:`f_y`, and projection center :math:`p_x`, :math:`p_y`.
 
-            Note: Magnum may slightly modify the resulting matrix, I have not
-            checked the accuracy of this method.
-
-            Args:
-                fx (float): :math:`f_x`
-                fy (float): :math:`f_y`
-                cx (float): :math:`c_x`
-                cy (float): :math:`c_y`
+            :param fx: :math:`f_x`
+            :param fy: :math:`f_y`
+            :param cx: :math:`c_x`
+            :param cy: :math:`c_y`
         )EOS", py::arg("fx"), py::arg("fy"), py::arg("cx"), py::arg("cy"))
 
         .def("set_camera_projection", wrapShared(&sl::Scene::setCameraProjection), R"EOS(
             Set the camera intrinsics from a 4x4 matrix.
 
-            Args:
-                P (tensor): The matrix.
+            :param P: The projection matrix.
         )EOS", py::arg("P"))
 
         .def("projection_matrix", wrapShared(&sl::Scene::projectionMatrix), R"EOS(
@@ -106,7 +114,7 @@ void init(py::module& m)
         .def_property("background_image",
             &sl::Scene::backgroundImage, &sl::Scene::setBackgroundImage, R"EOS(
             The background image. If None (default), the background color
-            (see `background_color`) is used.
+            (see :ref:`background_color`) is used.
         )EOS")
 
         .def_property("background_color",
@@ -116,46 +124,47 @@ void init(py::module& m)
 
         .def("min_dist_for_object_diameter", &sl::Scene::minimumDistanceForObjectDiameter, R"EOS(
             Calculates the minimum Z distance from the camera to have an object
-            of diameter :attr:`diameter` fully visible in the camera frustrum.
+            of diameter :p:`diameter` fully visible in the camera frustrum.
 
-            Args:
-                diameter (float): Diameter of the object.
+            :param diameter: Diameter of the object.
         )EOS", py::arg("diameter"))
 
         .def("place_object_randomly", wrapShared(&sl::Scene::placeObjectRandomly), R"EOS(
                 Generates a random pose for an object of given diameter.
 
+                :param diameter: Object diameter
+                :param min_size_factor: The object will occupy at least this
+                    much of the screen space.
+                :return: Object pose (4x4 tensor)
+
                 The pose obeys the following constraints (relative to the camera
                 coordinate system):
-                * :math:`z` is between `0.8*min_dist_for_object_diameter()` and
-                `2.0*min_dist_for_object_diameter()`, and
+
+                * :math:`z` is between :code:`1.2*min_dist_for_object_diameter()`
+                  and :code:`(1.0/min_size_factor) * min_dist_for_object_diameter()`, and
                 * :math:`x` and :math:`y` are choosen such that the object center is
-                inside 80% of the camera frustrum in each axis.
+                  inside 80% of the camera frustrum in each axis.
             )EOS",
             py::arg("diameter"),
             py::arg("min_size_factor")=sl::pose::DEFAULT_MIN_SIZE_FACTOR
         )
 
         .def("camera_to_world", wrapShared(&sl::Scene::cameraToWorld), R"EOS(
-                Transform a pose from camera coordinates to world coordinates.
+            Transform a pose from camera coordinates to world coordinates.
 
-                Args:
-                    poseInCamera (tensor): 4x4 float pose
-            )EOS", py::arg("poseInCamera")
-        )
+            :param poseInCamera: 4x4 float pose
+        )EOS", py::arg("poseInCamera"))
 
         .def("add_object", &sl::Scene::addObject, R"EOS(
             Adds an object to the scene.
 
-            Args:
-                object (Object): Object to be added.
+            :param object: Object to be added
         )EOS", py::arg("object"))
 
         .def_property_readonly("objects", &sl::Scene::objects, R"EOS(
-            Contains all objects added to the scene. See add_object()
+            All objects added to the scene.
 
-            Returns:
-                list: List of sl::Object
+            This is a list of :ref:`Object`. See :ref:`add_object`.
         )EOS")
 
         .def("find_noncolliding_pose", [](
@@ -213,19 +222,17 @@ void init(py::module& m)
             Finds a non-colliding random pose for an object. The object should
             already have been added using add_object().
 
-            Args:
-                object (stillleben.object): The object to place
-                sampler (str): "random" for fully random pose, "viewpoint"
-                    for a pose that ensures we look from a certain viewpoint
-                    onto the object, or "view_corrected" for a perspective-
-                    corrected constant orientation.
-                max_iterations (int): Maximum number of attempts
-                viewpoint (tensor): 3D view point for "viewpoint" sampler
-                orientation (tensor): 3x3 orientation matrix for
-                    "view_corrected" sampler
-
-            Returns:
-                bool: True if a non-colliding pose was found.
+            :param object: The object to place. It should already be added to
+                the scene.
+            :param sampler: "random" for fully random pose, "viewpoint"
+                for a pose that ensures we look from a certain viewpoint
+                onto the object, or "view_corrected" for a perspective-
+                corrected constant orientation.
+            :param max_iterations: Maximum number of attempts
+            :param viewpoint: 3D view point for "viewpoint" sampler
+            :param orientation: 3x3 orientation matrix for "view_corrected"
+                sampler
+            :return: True if a non-colliding pose was found.
         )EOS", py::arg("object"), py::arg("sampler") = "random", py::arg("max_iterations")=10)
 
         .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
@@ -235,28 +242,31 @@ void init(py::module& m)
         .def_property("light_position",
             wrapShared(&sl::Scene::lightPosition),
             wrapShared(&sl::Scene::setLightPosition),
-            R"EOS(
-                The light position in world coordinates. This is a float tensor
-                of size 3.
-            )EOS"
-        )
+        R"EOS(
+            The light position in world coordinates. This is a float tensor
+            of size 3.
+        )EOS")
 
         .def_property("ambient_light",
             wrapShared(&sl::Scene::ambientLight),
             wrapShared(&sl::Scene::setAmbientLight),
-            R"EOS(
-                The color & intensity of the ambient light. This is a float
-                tensor of size 3 (RGB, range 0-1). This color is multiplied
-                with the object color / texture during rendering.
-            )EOS"
-        )
+        R"EOS(
+            The color & intensity of the ambient light. This is a float
+            tensor of size 3 (RGB, range 0-1). This color is multiplied
+            with the object color / texture during rendering.
+        )EOS")
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
             Arrange the objects as if they were standing on a supporting surface.
+
+            :param vis_cb: This callback is called after each physics simulation
+                timestep.
         )EOS", py::arg("vis_cb")=std::function<void()>{})
 
         .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
-            Choose a random light position under the following constraints:
+            Choose a random light position.
+
+            The position obeys the following constraints:
 
             * The light comes from above (negative Y direction)
             * The light never comes from behind the objects.

@@ -240,40 +240,49 @@ namespace Mesh
 void init(py::module& m)
 {
     py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
-            Represents a loaded mesh file. A Mesh can be seen as an object template.
-            In order to be rendered, you need to instantiate it
-            (see :func:`Object.instantiate`).
-        )EOS")
+        Represents a mesh shape.
+
+        Represents a loaded mesh file. A mesh can be seen as an object template.
+        In order to be rendered, you need to instantiate it (see :ref:`Object`).
+
+        Typical usage
+        -------------
+
+        .. code:: python
+
+            import stillleben as sl
+
+            sl.init()
+
+            # Load a mesh
+            mesh = sl.Mesh('my_meshfile.gltf')
+
+            # Add an object referencing the mesh to the scene
+            obj = sl.Object(mesh)
+            scene = sl.Scene((1920, 1080))
+            scene.add_object(obj)
+    )EOS")
 
         .def(py::init(&Mesh_factory), R"EOS(
             Constructor
 
-            Args:
-                filename (str): Mesh filename
-                max_physics_triangles (int): Maximum number of triangles for
-                     collision shape. If the mesh is more complex than this,
-                     it is simplified using quadric edge decimation.
-                     You can view the collision mesh using
-                     :func:`render_physics_debug_image`.
-                visual (bool): Should we load visual components?
-                physics (bool): Should we load collision meshes?
-
-            Examples:
-                >>> m = Mesh("path/to/my/mesh.gltf")
+            :param filename: Mesh filename
+            :param max_physics_triangles: Maximum number of triangles for
+                collision shape. If the mesh is more complex than this, it is
+                simplified using quadric edge decimation.
+            :param visual: Should we load visual components?
+            :param physics: Should we load collision meshes?
         )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("visual")=true, py::arg("physics")=true)
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
 
-            Args:
-                filenames (list): List of file names to load
-                visual (bool): Should we load visual components?
-                physics (bool): Should we load collision meshes?
-                max_physics_triangles (int): Maximum number of triangles for
-                    collision shape (see :func:`Mesh`).
-
-            Returns:
-                list: List of mesh instances
+            :param filenames: List of file names to load
+            :param visual: Should we load visual components?
+            :param physics: Should we load collision meshes?
+            :param max_physics_triangles: Maximum number of triangles for
+                    collision shape (see :ref:`__init__`).
+            :return: List of mesh instances
         )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
@@ -281,118 +290,133 @@ void init(py::module& m)
         )EOS")
 
         .def("center_bbox", &sl::Mesh::centerBBox, R"EOS(
+            Center mesh.
+
             Modifies the pretransform such that the bounding box
-            (see `bbox`) is centered at the origin.
+            (see :ref:`bbox`) is centered at the origin.
         )EOS")
 
         .def("scale_to_bbox_diagonal", &Mesh_scaleToBBoxDiagonal, R"EOS(
-            Modifies the pretransform such that the bounding box diagonal
-            (see `bbox`) is equal to :attr:`target_diagonal`.
+            Rescale mesh.
 
-            Args:
-                target_diagonal (float): Target diagonal
-                mode (str): Scaling mode (default 'exact').
-                    If 'order_of_magnitude', the resulting scale factor is the
-                    nearest power of 10 that fits. This is useful for detecting
-                    the scale of arbitrary mesh files.
+            :param target_diagonal: Target diagonal
+            :param mode: Scaling mode (default 'exact').
+                If 'order_of_magnitude', the resulting scale factor is the
+                nearest power of 10 that fits. This is useful for detecting
+                the scale of arbitrary mesh files.
+
+            Modifies the pretransform such that the bounding box diagonal (see :ref:`bbox`) is equal to `target_diagonal`.
         )EOS", py::arg("target_diagonal"), py::arg("mode")="exact")
 
         .def("update_positions", &Mesh_updatePositions, R"EOS(
             Updates the mesh vertex positions.
 
-            Args:
-                vertex_indices (tensor): N (dim=1)
-                position_update (tensor): NX3
+            :param vertex_indices: N (dim=1)
+            :param position_update: Nx3
         )EOS", py::arg("vertex_indices"), py::arg("position_update"))
 
         .def("update_colors", &Mesh_updateColors, R"EOS(
             Updates the mesh vertex colors.
 
-            Args:
-                vertex_indices (tensor): N (dim=1)
-                color_update (tensor): NX4
+            :param vertex_indices: N (dim=1)
+            :param color_update: Nx4
         )EOS", py::arg("vertex_indices"), py::arg("color_update"))
 
         .def("update_positions_and_colors", &Mesh_updatePositionsAndColors, R"EOS(
             Updates the mesh verticex positions and vertex colors.
 
-            Args:
-                vertex_indices (tensor): N (dim=1)
-                position_update (tensor): NX3
-                color_update (tensor): NX4
+            :param vertex_indices: N (dim=1)
+            :param position_update: Nx3
+            :param color_update: Nx4
         )EOS", py::arg("vertex_indices"), py::arg("position_update"), py::arg("color_update"))
 
         .def("set_new_positions", &Mesh_setNewPositions, R"EOS(
             Set new vertex positions.
 
-            Args:
-                new_positions (tensor): NX3
+            :param new_positions: Nx3
         )EOS", py::arg("new_positions"))
 
         .def("set_new_colors", &Mesh_setNewColors, R"EOS(
             Set new vertex colors.
 
-            Args:
-                new_colors (tensor): NX4
+            :param new_colors: Nx4
         )EOS", py::arg("new_colors"))
 
         .def_property("pretransform", wrapShared(&sl::Mesh::pretransform), wrapShared(&sl::Mesh::setPretransform), R"EOS(
-            The current pretransform matrix. Initialized to identity and
-            modified by :func:`center_bbox` and :func:`scale_to_bbox_diagonal`.
+            The current pretransform matrix.
+
+            This is initialized to identity and can be set directly or through
+            :ref:`center_bbox` and :ref:`scale_to_bbox_diagonal`.
         )EOS")
 
         .def_property("class_index",
             &sl::Mesh::classIndex, &sl::Mesh::setClassIndex, R"EOS(
             Class index for training semantic segmentation.
+
+            Zero is usually reserved for the background class.
+            Unlike :ref:`Object.instance_index`, this property is not set
+            automatically.
         )EOS")
 
         .def_property_readonly("points", wrapShared(&sl::Mesh::meshPoints),
         R"EOS(
             The mesh vertices as (Nx3) float tensor.
 
-            WARNING: This can only be used on single-submesh meshes for now.
-            On meshes with multiple submeshes this will raise a RuntimeError.
+            .. block-warning:: Multiple sub meshes
+
+                This can only be used on single-submesh meshes for now.
+                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("normals", wrapShared(&sl::Mesh::meshNormals),
         R"EOS(
             The mesh normals as (Nx3) float tensor.
 
-            WARNING: This can only be used on single-submesh meshes for now.
-            On meshes with multiple submeshes this will raise a RuntimeError.
+            .. block-warning:: Multiple sub meshes
+
+                This can only be used on single-submesh meshes for now.
+                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("faces", wrapShared(&sl::Mesh::meshFaces),
         R"EOS(
             The mesh faces as (N*3) int32 tensor.
 
-            NOTE: Because PyTorch does not support unsigned ints, the indices
-            will wrap around at 2**31.
+            .. block-info:: Note
 
-            WARNING: This can only be used on single-submesh meshes for now.
-            On meshes with multiple submeshes this will raise a RuntimeError.
+                Because PyTorch does not support unsigned ints, the indices
+                will wrap around at :math:`2^{31}`.
+
+            .. block-warning:: Multiple sub meshes
+
+                This can only be used on single-submesh meshes for now.
+                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
         .def_property_readonly("colors", wrapShared(&sl::Mesh::meshColors),
         R"EOS(
             The mesh normals as (Nx4) float tensor.
 
-            WARNING: This can only be used on single-submesh meshes for now.
-            On meshes with multiple submeshes this will raise a RuntimeError.
+            .. block-warning:: Multiple sub meshes
+
+                This can only be used on single-submesh meshes for now.
+                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
     ;
 
     py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
-            Caches Mesh instances.
-        )EOS")
+        Caches Mesh instances.
+
+        This is mainly useful together with :ref:`Scene.deserialize`, look there
+        for more information.
+    )EOS")
 
         .def(py::init([](){ return new sl::MeshCache(sl::python::Context::instance()); }))
 
         .def("add", &sl::MeshCache::add, R"EOS(
             Add a list of meshes to the cache.
 
-            Args:
-                meshes (list): list of :class:`Mesh` instances
+            :param meshes: list of :ref:`Mesh` instances
         )EOS", py::arg("meshes"))
     ;
 }

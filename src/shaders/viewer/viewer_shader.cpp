@@ -66,6 +66,7 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
     Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
     Corrade::Containers::Array<Magnum::Color4> classColors(meshes.size());
     classColors[0] = 0xffffffff_rgbaf;
+    bboxes[0] = {scene->backgroundPlaneSize(), 1.0f};
 
     for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
     {

@@ -79,13 +79,24 @@ namespace Context
 
 void init(py::module& m)
 {
-    m.def("init", &::init, "Init without CUDA support");
-    m.def("init_cuda", &initCUDA, R"EOS(
-        Init with CUDA support.
+    m.def("init", &::init, R"EOS(
+        Initialize without CUDA support
 
-        Args:
-            device_index (int): Index of CUDA device to use for rendering
-            use_cuda (bool): If false, return results on CPU
+        Creates the OpenGL context on the first available EGL device.
+    )EOS");
+    m.def("init_cuda", &initCUDA, R"EOS(
+        Initialize with CUDA support.
+
+        :param device_index: Index of CUDA device to use for rendering
+        :param use_cuda: If False, return RenderPass results on CPU
+
+        This initialization function chooses an EGL device that corresponds
+        to a given CUDA device (as specified by :p:`device_index`). If there
+        is no such device, initialization will abort.
+
+        Setting :p:`use_cuda` to False can help in situations where it is
+        desirable to use `CUDA_VISIBLE_DEVICES` or :p:`device_index` to choose
+        the GPU, but CUDA is not actually used.
     )EOS", py::arg("device_index") = 0, py::arg("use_cuda")=true);
 
     m.def("_set_install_prefix", &setInstallPrefix, "set Magnum install prefix");

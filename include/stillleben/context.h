@@ -66,6 +66,8 @@ public:
 
     int visualID() const;
     void* eglConfig() const;
+
+    void* x11Display() const;
 private:
     class Private;
 

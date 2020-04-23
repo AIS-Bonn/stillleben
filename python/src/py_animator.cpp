@@ -19,6 +19,25 @@ void init(py::module& m)
 {
     py::class_<sl::Animator>(m, "Animator", R"EOS(
             Generates interpolated object poses.
+
+            Typical usage
+            -------------
+
+            .. code:: python
+
+                import stillleben as sl
+
+                # First pose
+                p1 = torch.eye(4)
+
+                # Translated second pose
+                p2 = p1.clone()
+                p2[:3, 3] = torch.tensor([0.0, 1.0, 0.0])
+
+                # Animate for 100 ticks
+                anim = sl.Animator([p1, p2], 100)
+                for pose in anim:
+                    print(pose)
         )EOS")
 
         .def(py::init([](const std::vector<at::Tensor>& poses, unsigned int ticks){
@@ -35,9 +54,13 @@ void init(py::module& m)
                 throw py::stop_iteration{};
 
             return toTorch<Magnum::Matrix4>::convert(s());
-        })
+        }, R"EOS(
+            Return next pose.
+        )EOS")
 
-        .def("__len__", [](sl::Animator& s){ return s.totalTicks(); })
+        .def("__len__", [](sl::Animator& s){ return s.totalTicks(); }, R"EOS(
+            Number of ticks.
+        )EOS")
     ;
 }
 

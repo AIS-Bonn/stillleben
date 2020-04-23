@@ -77,7 +77,14 @@ namespace RenderPass
 void init(py::module& m)
 {
     py::class_<sl::RenderPass::Result, ContextSharedPtr<sl::RenderPass::Result>>(m, "RenderPassResult", R"EOS(
-            Result of a :class:`RenderPass` run.
+            Result of a :ref:`RenderPass` run.
+
+            CUDA support
+            ------------
+
+            All accessor methods defined in this class will return a PyTorch
+            Tensor residing on the GPU which was used during rendering - as long
+            as CUDA support is enabled (see :ref:`init_cuda`).
         )EOS")
 
         .def(py::init([](){
@@ -96,61 +103,60 @@ void init(py::module& m)
             }, R"EOS(
                 Read RGBA tensor.
 
+                :return: (H x W x 4) byte tensor with R,G,B,A values.
+
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W x 4) byte tensor with R,G,B,A values.
             )EOS")
 
         .def("class_index", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readShortTensor(result->classIndex);
             }, R"EOS(
-                Read class index map.
+                Read class index map (see :ref:`Mesh.class_index`).
+
+                :return: (H x W) short tensor with class values.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering. The background index is 0.
-
-                Returns:
-                    tensor: (H x W) short tensor with class values.
             )EOS")
 
         .def("instance_index", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readShortTensor(result->instanceIndex);
             }, R"EOS(
-                Read class index map.
+                Read instance index map (see :ref:`Object.instance_index`).
+
+                :return: (H x W) short tensor with instance values.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering. The background index is 0.
-
-                Returns:
-                    tensor: (H x W) short tensor with instance values.
             )EOS")
 
         .def("coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readCoordTensor(result->objectCoordinates);
             }, R"EOS(
-                Read object coordinates map. Each pixel specifies the XYZ
+                Read object coordinates map.
+
+                :return: (H x W x 3) float tensor with coordinates.
+
+                Each pixel specifies the XYZ
                 coordinate of the point in the respective object coordinate
                 system.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W x 3) float tensor with coordinates.
             )EOS")
 
         .def("depth", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readDepthTensor(result->objectCoordinates);
             }, R"EOS(
-                Read depth map. Each pixel specifies Z depth in camera frame.
+                Read depth map.
+
+                :return: (H x W) float tensor with depth values.
+
+                Each pixel specifies Z depth in camera frame.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W) float tensor with depth values.
             )EOS")
 
         .def("coordDepth", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
@@ -158,62 +164,65 @@ void init(py::module& m)
             }, R"EOS(
                 Read combined coordinate + depth map.
 
-                This is the concatenation of the `coordinates` and `depth`
-                fields. Using this avoids a copy.
+                :return: (H x W x 4) float tensor with coordinate and depth
+                    values.
 
-                Returns:
-                    tensor: (H x W x 4) float tensor with coordinate and depth
-                        values.
+                This is the concatenation of the `coordinates` and `depth`
+                fields. Using this avoids a copy, since this is the packed
+                format used in the shaders.
             )EOS")
 
         .def("normals", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readXYZWTensor(result->normals);
             }, R"EOS(
-                Read normal map. Each pixel (XYZW) specifies the normal
-                direction in the camera frame (XYZ) and, in the W component,
-                the dot product with the camera direction.
+                Read normal map.
+
+                :return: (H x W x 4) float tensor with normals.
+
+                Each pixel (XYZW) specifies the normal direction in the camera
+                frame (XYZ) and, in the W component, the dot product with the
+                camera direction.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W x 4) float tensor with normals.
             )EOS")
 
         .def("vertex_indices", [](const std::shared_ptr<sl::RenderPass::Result>& result){
                 return readVertexIndicesTensor(result->vertexIndex);
             }, R"EOS(
                 Read vertex indices map.
+
+                :return: (H x W x 4) float tensor with normals.
+
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W x 3) int tensor with vertex indices.
             )EOS")
 
         .def("barycentric_coeffs", [](const std::shared_ptr<sl::RenderPass::Result>& result){
                 return readBaryCentricCoeffsTensor(result->barycentricCoeffs);
             }, R"EOS(
                 Read barycentric coefficients map.
-                    tensor: (H x W x 3) float tensor with barycentric coefficients.
+
+                :return: (H x W x 3) float tensor with barycentric coefficients.
             )EOS")
 
         .def("cam_coordinates", [](const ContextSharedPtr<sl::RenderPass::Result>& result){
                 return readXYZWTensor(result->camCoordinates);
             }, R"EOS(
-                Read dense coordinate map. Each pixel contains the coordinates
+                Read dense coordinate map.
+
+                :return: (H x W x 4) float tensor (x, y, z, 1)
+
+                Each pixel contains the coordinates
                 of the 3D point in camera space as 4D homogenous coordinates.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.
-
-                Returns:
-                    tensor: (H x W x 4) float tensor (x, y, z, 1)
             )EOS")
     ;
 
     py::class_<sl::RenderPass, ContextSharedPtr<sl::RenderPass>>(m, "RenderPass", R"EOS(
-            Renders a :class:`Scene`.
+            Renders a :ref:`Scene`.
         )EOS")
 
         .def(py::init([](const std::string& shading){
@@ -234,10 +243,8 @@ void init(py::module& m)
             }), R"EOS(
             Constructor.
 
-            Args:
-                shading (str): Shading type ("pbr", "phong", or "flat"). Defaults to
-                    PBR shading. Note: PBR shading falls back to Phong shading
-                    if no light map is specified in the scene.
+            :param shading: "pbr", "phong", or "flat". PBR shading falls back to
+                Phong shading if no light map is specified in the scene.
          )EOS", py::arg("shading")="pbr")
 
         .def("render",
@@ -249,19 +256,19 @@ void init(py::module& m)
             }, R"EOS(
             Render a scene.
 
-            Args:
-                scene (Scene): The scene to render.
-                result (RenderPassResult): The caller can pass in a result
-                    instance to be filled. If this is None, the internal result
-                    instance of the RenderPass object will be used.
+            :param scene: The scene to render.
+            :param result: The caller can pass in a result
+                instance to be filled. If this is None, the internal result
+                instance of the RenderPass object will be used.
+            :param depth_peel: If you want to retrieve the layer behind the last
+                rendered one, pass in the result of the previous render here
+                (depth peeling).
+            :return: A RenderPassResult instance with the resulting data.
 
-                    NOTE: A second render with `result=None` will overwrite
-                    the results of the first render.
-                depth_peel (RenderPassResult): If you want to retrieve the
-                    layer behind the last rendered one, pass in the result of
-                    the previous render here (depth peeling).
-            Returns:
-                RenderPassResult
+            .. block-info :: Internal result instance
+
+                A second render with `result=None` will overwrite
+                the results of the first render.
         )EOS", py::arg("scene"), py::arg("result")=nullptr, py::arg("depth_peel")=nullptr)
 
         .def_property("ssao_enabled", &sl::RenderPass::ssaoEnabled, &sl::RenderPass::setSSAOEnabled, "SSAO enable")

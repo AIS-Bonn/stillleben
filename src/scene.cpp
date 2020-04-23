@@ -536,6 +536,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
 void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
 {
+    group.setValue("viewport", m_camera->viewport());
     group.setValue("projection", m_camera->projectionMatrix());
 
     auto cameraPose = m_cameraObject.transformationMatrix();
@@ -565,6 +566,9 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
 
 void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
 {
+    if(group.hasValue("viewport"))
+        m_camera->setViewport(group.value<Magnum::Vector2i>("viewport"));
+
     if(group.hasValue("projection"))
         m_camera->setProjectionMatrix(group.value<Magnum::Matrix4>("projection"));
 

@@ -1,10 +1,30 @@
 
 """
-Introduces camera noise effects
+Introduces camera noise effects.
 
-Largely after:
-A. Carlson et al.: Modeling Camera Effects to Improve Visual Learning from
-Synthetic Data (2018)
+This module systematically models the different noise sources present in modern
+digital cameras.
+
+The implementation largely follows the work of
+A. Carlson et al.: *Modeling Camera Effects to Improve Visual Learning from
+Synthetic Data* (2018), `arXiv <https://arxiv.org/abs/1803.07721>`_
+
+Typical usage
+-------------
+
+.. code:: python
+
+    import stillleben as sl
+    import torch
+
+    # Input image (CHW)
+    img = torch.rand(3, 1080, 1920)
+
+    # Everything is much faster on GPU!
+    img = img.cuda()
+
+    # Apply noise
+    img_with_noise = sl.camera_model.process_image(img)
 """
 
 import torch
@@ -13,18 +33,25 @@ import random
 
 from . import profiling
 
+__all__ = [
+    'chromatic_aberration',
+    'blur',
+    'exposure',
+    'noise',
+    'color_jitter',
+    'process_deterministic',
+    'process_image',
+]
+
 @profiling.Timer('chromatic_aberration')
 def chromatic_aberration(rgb, translations, scaling):
     """
     Introduces chromatic aberration effects.
 
-    Args:
-        rgb (tensor): 3xHxW input RGB image
-        translation (tensor): 3x2 translation tensor (tx, ty) for each of R, G, B
-        scaling (tensor): [sr, sg, sb] scaling factor for each of R, G, B
-
-    Returns:
-        tensor: 3xHxW output tensor
+    :param rgb: 3xHxW input RGB image
+    :param translation: 3x2 translation tensor (tx, ty) for each of R, G, B
+    :param scaling: [sr, sg, sb] scaling factor for each of R, G, B
+    :return: 3xHxW output tensor
     """
 
     assert rgb.dim() == 3, "input tensor has invalid size {}".format(rgb.size())
@@ -80,12 +107,9 @@ def blur(rgb, sigma):
     """
     Applies Gaussian blur
 
-    Args:
-        rgb (tensor): 3xHxW input RGB image
-        sigma (float): Standard deviation of the Gaussian
-
-    Returns:
-        tensor: 3xHxW output RGB image
+    :param rgb: 3xHxW input RGB image
+    :param sigma: Standard deviation of the Gaussian
+    :return: 3xHxW output RGB image
     """
 
     return torch.nn.functional.conv2d(
@@ -98,12 +122,9 @@ def exposure(rgb, deltaS):
     """
     Re-exposes the image
 
-    Args:
-        rgb (tensor): 3xHxW input RGB image, float [0-1]
-        deltaS (float): exposure shift (usually -1 to 1)
-
-    Returns:
-        tensor: 3xHxW output image
+    :param rgb: 3xHxW input RGB image, float [0-1]
+    :param deltaS: exposure shift (usually -1 to 1)
+    :return: 3xHxW output image
     """
 
     return 1.0 / (1.0 + math.exp(deltaS) * (1.0 / (rgb + 0.0001) - 1.0))
@@ -111,16 +132,17 @@ def exposure(rgb, deltaS):
 @profiling.Timer('noise')
 def noise(rgb, a, b):
     """
-    Applies additional noise, following
+    Applies additional Poissonian-Gaussian noise
 
-    "Practical Poissonian-Gaussian noise modeling and fitting for single-image
-    raw-data."
-    Foi, Alessandro, et al. (2008)
+    :param rgb: 3xHxW input RGB image, float [0-1]
+    :param a: variance factor of the signal-dependant noise (var = a*y(x))
+    :param b: standard deviation of the signal-independant noise
+    :return: modified image
 
-    Args:
-        rgb (tensor): 3xHxW input RGB image, float [0-1]
-        a (float): variance factor of the signal-dependant noise (var = a*y(x))
-        b (float): standard deviation of the signal-independant noise
+    See Foi, Alessandro, et al. (2008):
+    `Practical Poissonian-Gaussian noise modeling and fitting for single-image
+    raw-data`,
+    `PDF <http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.164.1943&rep=rep1&type=pdf>`_
     """
 
     if a > 0.0:
@@ -138,8 +160,11 @@ def noise(rgb, a, b):
 
 def color_jitter(tensor_img, hue_shift):
     """
-    Args:
-      tensor_img: 3xHxW RGB float tensor [0,1]
+    Hue shift.
+
+    :param tensor_img: 3xHxW RGB float tensor [0,1]
+    :param hue_shift: hue shift to apply (-0.5 to 0.5)
+    :return: jittered image
     """
 
     assert tensor_img.size(0) == 3
@@ -200,6 +225,9 @@ def process_deterministic(rgb,
                           exposure_deltaS,
                           do_noise, noise_a, noise_b,
                           hue_shift):
+    """
+    Process image with given noise model parameters.
+    """
 
     assert rgb.dim() == 3
     assert rgb.size(0) == 3
@@ -229,10 +257,11 @@ def process_deterministic(rgb,
 
     return rgb
 
-NEW_NOISE_MODEL_PRINTED = False
-
 @profiling.Timer('camera_model.process_image')
 def process_image(rgb):
+    """
+    Process image with random noise parameters.
+    """
 
     assert rgb.dim() == 3
     assert rgb.size(0) == 3

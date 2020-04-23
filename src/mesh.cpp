@@ -158,6 +158,10 @@ Mesh::~Mesh()
 
 void Mesh::load(std::size_t maxPhysicsTriangles, bool visual, bool physics)
 {
+    // If we don't load the visuals, hide Magnum importer warnings
+    std::stringstream warnings;
+    Warning redirect(visual ? &std::cerr : &warnings);
+
     openFile();
 
     if(physics)
@@ -727,9 +731,13 @@ namespace
     std::shared_ptr<Mesh> loadHelper(
         const std::shared_ptr<Context>& ctx,
         const std::string& filename,
-        bool physics,
+        bool visual, bool physics,
         std::size_t maxPhysicsTriangles)
     {
+        // If we don't load the visuals, hide Magnum importer warnings
+        std::stringstream warnings;
+        Warning redirect(visual ? &std::cerr : &warnings);
+
         auto mesh = std::make_shared<Mesh>(filename, ctx);
 
         mesh->openFile();
@@ -755,7 +763,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     for(const auto& filename : filenames)
     {
         results.push_back(pool.push(std::bind(&loadHelper,
-            ctx, filename, physics, maxPhysicsTriangles
+            ctx, filename, visual, physics, maxPhysicsTriangles
         )));
     }
 
