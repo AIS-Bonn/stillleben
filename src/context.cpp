@@ -31,6 +31,8 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#include <cuda_gl_interop.h>
+
 template<class T>
 T getExtension(const char* name)
 {
@@ -233,6 +235,99 @@ public:
         ));
     }
 
+    bool initWithDisplay(DisplayConfig displayConfig)
+    {
+        egl_display = displayConfig.display;
+
+        EGLint major, minor;
+        if(!eglInitialize(egl_display, &major, &minor))
+        {
+            Error() << "Could not initialize EGL display";
+            return false;
+        }
+
+        if constexpr(false)
+        {
+            Debug{} << "Display initialized for EGL " << major << "." << minor;
+
+            const char* vendor = eglQueryString(egl_display, EGL_VENDOR);
+            if(vendor)
+                Debug{} << "EGL vendor:" << vendor;
+        }
+
+        if(!eglBindAPI(EGL_OPENGL_API))
+        {
+            Error() << "Could not bind OpenGL API";
+            return false;
+        }
+
+        EGLint surfaceType = EGL_PBUFFER_BIT;
+        if(displayConfig.useX11)
+            surfaceType |= EGL_WINDOW_BIT;
+
+        EGLint numberConfigs;
+        EGLConfig eglConfig;
+        EGLint configAttribs[] = {
+            EGL_SURFACE_TYPE, surfaceType,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+
+            EGL_NONE
+        };
+        if(!eglChooseConfig(egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
+        {
+            Error() << "Could not call eglChooseConfig";
+            return false;
+        }
+
+        if(!numberConfigs)
+        {
+            Error() << "Could not find any matching EGL config :-(";
+            return false;
+        }
+
+        EGLint contextAttribs[]{
+    //         EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+            EGL_CONTEXT_MAJOR_VERSION, 4,
+            EGL_CONTEXT_MINOR_VERSION, 5,
+
+            EGL_NONE
+        };
+
+        egl_context = eglCreateContext(egl_display, eglConfig, EGL_NO_CONTEXT, contextAttribs);
+        if(!egl_context)
+        {
+            Error() << "Could not create EGL context:" << eglErrorString(eglGetError());
+            return false;
+        }
+
+        egl_config = eglConfig;
+
+        if(!makeCurrent())
+        {
+            Error() << "Cannot make context current";
+            return false;
+        }
+
+        if(!gl_context->tryCreate())
+        {
+            Error() << "Could not create Platform::GLContext";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool makeCurrent()
+    {
+        if(!eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, egl_context))
+        {
+            Error() << "Cannot make context current";
+            return false;
+        }
+
+        return true;
+    }
+
     ~Private()
     {
         eglMakeCurrent(egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -280,88 +375,66 @@ Context::Ptr Context::Create(const std::string& installPrefix)
         return {};
     }
 
-    context->m_d->egl_display = display;
-
-    EGLint major, minor;
-    if(!eglInitialize(context->m_d->egl_display, &major, &minor))
-    {
-        Error() << "Could not initialize EGL display";
+    if(!context->m_d->initWithDisplay(displayConfig))
         return {};
-    }
-
-    if constexpr(false)
-    {
-        Debug{} << "Display initialized for EGL " << major << "." << minor;
-
-        const char* vendor = eglQueryString(display, EGL_VENDOR);
-        if(vendor)
-            Debug{} << "EGL vendor:" << vendor;
-    }
-
-    if(!eglBindAPI(EGL_OPENGL_API))
-    {
-        Error() << "Could not bind OpenGL API";
-        return {};
-    }
-
-    EGLint surfaceType = EGL_PBUFFER_BIT;
-    if(displayConfig.useX11)
-        surfaceType |= EGL_WINDOW_BIT;
-
-    EGLint numberConfigs;
-    EGLConfig eglConfig;
-    EGLint configAttribs[] = {
-        EGL_SURFACE_TYPE, surfaceType,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-
-        EGL_NONE
-    };
-    if(!eglChooseConfig(context->m_d->egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
-    {
-        Error() << "Could not call eglChooseConfig";
-        return {};
-    }
-
-    if(!numberConfigs)
-    {
-        Error() << "Could not find any matching EGL config :-(";
-        return {};
-    }
-
-    EGLint contextAttribs[]{
-//         EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-        EGL_CONTEXT_MAJOR_VERSION, 4,
-        EGL_CONTEXT_MINOR_VERSION, 5,
-
-        EGL_NONE
-    };
-
-    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, contextAttribs);
-    if(!context->m_d->egl_context)
-    {
-        Error() << "Could not create EGL context:" << eglErrorString(eglGetError());
-        return {};
-    }
-
-    context->m_d->egl_config = eglConfig;
-
-    if(!context->makeCurrent())
-    {
-        Error() << "Cannot make context current";
-        return {};
-    }
-
-    if(!context->m_d->gl_context->tryCreate())
-    {
-        Error() << "Could not create Platform::GLContext";
-        return {};
-    }
 
     return context;
 }
 
 Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& installPrefix)
 {
+    auto eglGetPlatformDisplayEXT = getExtension<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
+    if(!eglGetPlatformDisplayEXT)
+    {
+        Error() << "Could not find required eglGetPlatformDisplayEXT";
+        return {};
+    }
+
+    const char* extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
+    if(!extensions)
+    {
+        Error() << "Could not query EGL extensions";
+        return {};
+    }
+
+    auto initWithX11 = [&]() -> Context::Ptr {
+        if(!getenv("DISPLAY"))
+            return {};
+
+        if(!strstr(extensions, "EGL_EXT_platform_x11"))
+            return {};
+
+        auto display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
+        if(!display)
+            return {};
+
+        Context::Ptr context(new Context(installPrefix));
+
+        DisplayConfig cfg{display, true};
+
+        if(!context->m_d->initWithDisplay(cfg))
+            return {};
+
+        // NOW we can finally check if this context is usable with the CUDA
+        // device...
+        unsigned int count = 0;
+        std::array<int, 10> devices;
+        if(cudaGLGetDevices(&count, devices.data(), devices.size(), cudaGLDeviceListAll) != cudaSuccess)
+            return {};
+
+        auto it = std::find(devices.begin(), devices.end(), device);
+        if(it == devices.end())
+            return {};
+
+        return context;
+    };
+
+    if(auto ctx = initWithX11())
+        return ctx;
+
+    // It seems either X11 is not available or the X server is running on a
+    // different device. In that case, we will bind to our target device
+    // without X11 support.
     std::shared_ptr<Context> context(new Context(installPrefix));
 
     if(context->m_d->cudaDebug)
@@ -382,12 +455,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
-    auto eglGetPlatformDisplayEXT = getExtension<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
-    if(!eglGetPlatformDisplayEXT)
-    {
-        Error() << "Could not find required eglGetPlatformDisplayEXT";
-        return {};
-    }
+    auto eglQueryDeviceStringEXT = getExtension<PFNEGLQUERYDEVICESTRINGEXTPROC>("eglQueryDeviceStringEXT");
 
     // Enumerate devices
     std::vector<EGLDeviceEXT> devices(64);
@@ -413,10 +481,13 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         for(auto& dev : devices)
         {
             EGLAttrib devCudaIndex;
-            if(!eglQueryDeviceAttribEXT(dev, EGL_CUDA_DEVICE_NV, &devCudaIndex))
-                Debug{} << " - non-CUDA device";
-            else
+            if(eglQueryDeviceAttribEXT(dev, EGL_CUDA_DEVICE_NV, &devCudaIndex))
                 Debug{} << " - CUDA device" << devCudaIndex;
+            else if(eglQueryDeviceStringEXT)
+            {
+                const char* extension = eglQueryDeviceStringEXT(dev, EGL_EXTENSIONS);
+                Debug{} << " - non-CUDA device:" << extension;
+            }
         }
     }
 
@@ -436,80 +507,23 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
-    context->m_d->egl_display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, *it, nullptr);
-    if(!context->m_d->egl_display)
+    auto display = eglGetPlatformDisplayEXT(EGL_PLATFORM_DEVICE_EXT, *it, nullptr);
+    if(!display)
     {
         Error() << "Could not get display for CUDA device";
         return {};
     }
 
-    EGLint major, minor;
-    if(!eglInitialize(context->m_d->egl_display, &major, &minor))
-    {
-        Error() << "Could not initialize EGL display";
+    DisplayConfig cfg{display, false};
+    if(!context->m_d->initWithDisplay(cfg))
         return {};
-    }
-
-    Debug{} << "Display initialized for EGL " << major << "." << minor;
-
-    if(!eglBindAPI(EGL_OPENGL_API))
-    {
-        Error() << "Could not bind OpenGL API";
-        return {};
-    }
-
-    EGLint numberConfigs;
-    EGLConfig eglConfig;
-    EGLint configAttribs[] = {
-        EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_NONE
-    };
-    if(!eglChooseConfig(context->m_d->egl_display, configAttribs, &eglConfig, 1, &numberConfigs))
-    {
-        Error() << "Could not call eglChooseConfig";
-        return {};
-    }
-
-    if(!numberConfigs)
-    {
-        Error() << "Could not find any matching EGL config :-(";
-        return {};
-    }
-
-    context->m_d->egl_context = eglCreateContext(context->m_d->egl_display, eglConfig, EGL_NO_CONTEXT, nullptr);
-    if(!context->m_d->egl_context)
-    {
-        Error() << "Could not create EGL context";
-        return {};
-    }
-
-    context->m_d->egl_config = eglConfig;
-
-    if(!context->makeCurrent())
-    {
-        Error() << "Cannot make context current";
-        return {};
-    }
-
-    if(!context->m_d->gl_context->tryCreate())
-    {
-        Error() << "Could not create Platform::GLContext";
-        return {};
-    }
 
     return context;
 }
 
 bool Context::makeCurrent()
 {
-    if(!eglMakeCurrent(m_d->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_d->egl_context))
-    {
-        Error() << "Cannot make context current";
-        return false;
-    }
-
-    return true;
+    return m_d->makeCurrent();
 }
 
 Magnum::GL::RectangleTexture Context::loadTexture(const std::string& path)
@@ -626,8 +640,6 @@ int Context::visualID() const
     EGLint id;
     if(!eglGetConfigAttrib(m_d->egl_display, m_d->egl_config, EGL_NATIVE_VISUAL_ID, &id))
         throw std::runtime_error{"Could not query visual ID"};
-
-    Debug{} << "Context: got EGL visual ID" << id;
 
     return id;
 }
