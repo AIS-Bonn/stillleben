@@ -503,7 +503,6 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
 
 bool Context::makeCurrent()
 {
-    Debug{} << "Context::makeCurrent()";
     if(!eglMakeCurrent(m_d->egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, m_d->egl_context))
     {
         Error() << "Cannot make context current";
