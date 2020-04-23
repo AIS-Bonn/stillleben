@@ -245,9 +245,6 @@ Viewer::~Viewer()
 
     if(m_d->window)
         XDestroyWindow(m_d->display, m_d->window);
-
-    if(m_d->display)
-        XCloseDisplay(m_d->display);
 }
 
 void Viewer::setScene(const std::shared_ptr<Scene>& scene)
@@ -268,7 +265,7 @@ void Viewer::setup()
     m_d->windowSize = {1280, 720};
 
     // Get default X display
-    m_d->display = XOpenDisplay(nullptr);
+    m_d->display = reinterpret_cast<Display*>(m_d->ctx->x11Display());
 
     VisualId visualId = m_d->ctx->visualID();
 
@@ -579,6 +576,9 @@ void Viewer::run()
     XMapWindow(m_d->display, m_d->window);
 
     while(mainLoopIteration()) {}
+
+    // Switch back to headless EGL state
+    eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, eglGetCurrentContext());
 }
 
 bool Viewer::mainLoopIteration()

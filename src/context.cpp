@@ -83,8 +83,11 @@ namespace
 
     struct DisplayConfig
     {
+        DisplayConfig(DisplayConfig&) = delete;
+        DisplayConfig& operator=(const DisplayConfig&) = delete;
+
         EGLDisplay display{};
-        bool useX11 = false;
+        Display* x11 = nullptr;
     };
 
     DisplayConfig getEglDisplay()
@@ -109,9 +112,11 @@ namespace
         // the same device as X11 is running on...
         if(getenv("DISPLAY") && strstr(extensions, "EGL_EXT_platform_x11"))
         {
-            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
+            auto x11Display = XOpenDisplay(nullptr);
+
+            display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, x11Display, nullptr);
             if(display)
-                return {display, true};
+                return {display, x11Display};
             else
                 Debug() << "X11 failed";
         }
@@ -176,7 +181,7 @@ namespace
             }
         }
 
-        return {display, false};
+        return {display, nullptr};
     }
 }
 
@@ -235,7 +240,7 @@ public:
         ));
     }
 
-    bool initWithDisplay(DisplayConfig displayConfig)
+    bool initWithDisplay(const DisplayConfig& displayConfig)
     {
         egl_display = displayConfig.display;
 
@@ -262,7 +267,7 @@ public:
         }
 
         EGLint surfaceType = EGL_PBUFFER_BIT;
-        if(displayConfig.useX11)
+        if(displayConfig.x11)
             surfaceType |= EGL_WINDOW_BIT;
 
         EGLint numberConfigs;
@@ -314,6 +319,8 @@ public:
             return false;
         }
 
+        x11_display = displayConfig.x11;
+
         return true;
     }
 
@@ -338,6 +345,8 @@ public:
     void* egl_display = nullptr;
     void* egl_context = nullptr;
     EGLConfig egl_config{};
+
+    Display* x11_display = nullptr;
 
     std::unique_ptr<Platform::GLContext> gl_context;
 
@@ -404,16 +413,23 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         if(!strstr(extensions, "EGL_EXT_platform_x11"))
             return {};
 
-        auto display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, EGL_DEFAULT_DISPLAY, nullptr);
+        auto x11Display = XOpenDisplay(nullptr);
+        if(!x11Display)
+            return {};
+
+        auto display = eglGetPlatformDisplayEXT(EGL_PLATFORM_X11_EXT, x11Display, nullptr);
         if(!display)
             return {};
 
         Context::Ptr context(new Context(installPrefix));
 
-        DisplayConfig cfg{display, true};
+        DisplayConfig cfg{display, x11Display};
 
         if(!context->m_d->initWithDisplay(cfg))
+        {
+            XCloseDisplay(x11Display);
             return {};
+        }
 
         // NOW we can finally check if this context is usable with the CUDA
         // device...
@@ -514,7 +530,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
-    DisplayConfig cfg{display, false};
+    DisplayConfig cfg{display, nullptr};
     if(!context->m_d->initWithDisplay(cfg))
         return {};
 
@@ -647,6 +663,11 @@ int Context::visualID() const
 void* Context::eglConfig() const
 {
     return m_d->egl_config;
+}
+
+void *Context::x11Display() const
+{
+    return m_d->x11_display;
 }
 
 }
