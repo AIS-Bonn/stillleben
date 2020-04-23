@@ -45,8 +45,6 @@ void init(py::module& m)
     py::class_<sl::Scene, std::shared_ptr<sl::Scene>>(m, "Scene", R"EOS(
         Represents a scene with multiple objects.
 
-        abc
-
         Typical usage
         -------------
 
