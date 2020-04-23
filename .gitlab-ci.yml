@@ -36,9 +36,10 @@ pages:
   stage: pages
   script:
     - pip install dist/stillleben-*.whl
-    - make -C doc html
+    - git clone --depth https://github.com/xqms/m.css.git contrib/m.css
+    - python contrib/m.css/documentation/python.py doc/mcss.conf.py
     - mkdir public
-    - cp -R doc/_build/html/* public/
+    - cp -R doc/output/* public/
   artifacts:
     paths:
       - public
