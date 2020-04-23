@@ -31,7 +31,9 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#if HAVE_CUDA
 #include <cuda_gl_interop.h>
+#endif
 
 template<class T>
 T getExtension(const char* name)
@@ -406,6 +408,9 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
         return {};
     }
 
+#if HAVE_CUDA
+    // First attempt: Just use the standard X11 context. But we have to make
+    // sure that this context is connected to the right GPU...
     auto initWithX11 = [&]() -> Context::Ptr {
         if(!getenv("DISPLAY"))
             return {};
@@ -447,6 +452,7 @@ Context::Ptr Context::CreateCUDA(unsigned int device, const std::string& install
 
     if(auto ctx = initWithX11())
         return ctx;
+#endif
 
     // It seems either X11 is not available or the X server is running on a
     // different device. In that case, we will bind to our target device
