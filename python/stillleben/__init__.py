@@ -26,6 +26,7 @@ __all__ = [
     'Scene',
     'Texture',
     'Texture2D',
+    'Viewer',
 
     'camera_model',
     'diff',
