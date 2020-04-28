@@ -19,6 +19,10 @@ using namespace sl::python::magnum;
 
 PYBIND11_MODULE(libstillleben_python, m)
 {
+    m.doc() = R"EOS(
+        The main stillleben module.
+    )EOS";
+
     sl::python::Context::init(m);
     sl::python::magnum::init(m);
     sl::python::Mesh::init(m);
