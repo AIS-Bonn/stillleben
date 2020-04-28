@@ -297,7 +297,7 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("specularColor", m_specularColor);
     group.setValue("shininess", m_shininess);
     group.setValue("roughness", m_roughness);
-    group.setValue("metalness", m_metalness);
+    group.setValue("metallic", m_metallic);
 
     // FIXME: What about stickerTexture?
     group.setValue("stickerRange", m_stickerRange);
@@ -330,8 +330,8 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
     if(group.hasValue("roughness"))
         setRoughness(group.value<float>("roughness"));
 
-    if(group.hasValue("metalness"))
-        setMetalness(group.value<float>("metalness"));
+    if(group.hasValue("metallic"))
+        setMetallic(group.value<float>("metallic"));
 
     if(group.hasValue("stickerRange"))
         setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
@@ -354,9 +354,9 @@ void Object::setRoughness(float roughness)
     m_roughness = roughness;
 }
 
-void Object::setMetalness(float metalness)
+void Object::setMetallic(float metalness)
 {
-    m_metalness = metalness;
+    m_metallic = metalness;
 }
 
 void Object::setStickerTexture(const std::shared_ptr<Magnum::GL::RectangleTexture>& texture)

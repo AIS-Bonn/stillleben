@@ -157,9 +157,9 @@ public:
     constexpr float roughness() const
     { return m_roughness; }
 
-    void setMetalness(float metalness);
-    constexpr float metalness() const
-    { return m_metalness; }
+    void setMetallic(float metalness);
+    constexpr float metallic() const
+    { return m_metallic; }
 
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
@@ -224,8 +224,8 @@ private:
     float m_shininess = 80.0f;
 
     // These are factors onto the individual drawables
-    float m_roughness = 1.0f;
-    float m_metalness = 1.0f;
+    float m_roughness = -1.0f;
+    float m_metallic = -1.0f;
 
     // Sticker simulation
     std::shared_ptr<Magnum::GL::RectangleTexture> m_stickerTexture{};

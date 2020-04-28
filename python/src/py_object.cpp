@@ -101,12 +101,18 @@ void init(py::module& m)
             highlights. Default value is 80 (pretty sharp).
         )EOS")
 
-        .def_property("metalness", &sl::Object::metalness, &sl::Object::setMetalness, R"EOS(
-            Metalness parameter for PBR shading (0-1).
+        .def_property("metallic", &sl::Object::metallic, &sl::Object::setMetallic, R"EOS(
+            Metallic parameter for PBR shading (0-1).
+
+            A negative value (default) means that the metallic parameter of the
+            mesh is used.
         )EOS")
 
         .def_property("roughness", &sl::Object::roughness, &sl::Object::setRoughness, R"EOS(
             Roughness parameter for PBR shading (0-1).
+
+            A negative value (default) means that the roughness parameter of the
+            mesh is used.
         )EOS")
 
 

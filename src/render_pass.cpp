@@ -409,13 +409,16 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         object->draw(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
             Matrix4 meshToObject = objectToCamInv * meshToCam;
 
+            double metalness = (object->metallic() >= 0) ? object->metallic() : drawable->metallic();
+            double roughness = (object->roughness() >= 0) ? object->roughness() : drawable->roughness();
+
             if(drawable->texture())
             {
                 (*m_shaderTextured)
                     .setMeshToObjectMatrix(meshToObject)
                     .bindDiffuseTexture(*drawable->texture())
-                    .setMetalness(object->metalness() * drawable->metallic())
-                    .setRoughness(object->roughness() * drawable->roughness())
+                    .setMetalness(metalness)
+                    .setRoughness(roughness)
                     .draw(drawable->mesh())
                 ;
             }
@@ -424,8 +427,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 (*m_shaderVertexColors)
                     .setMeshToObjectMatrix(meshToObject)
                     .setDiffuseColor(drawable->color())
-                    .setMetalness(object->metalness() * drawable->metallic())
-                    .setRoughness(object->roughness() * drawable->roughness())
+                    .setMetalness(metalness)
+                    .setRoughness(roughness)
                     .draw(drawable->mesh())
                 ;
             }
@@ -434,8 +437,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 (*m_shaderUniform)
                     .setMeshToObjectMatrix(meshToObject)
                     .setDiffuseColor(drawable->color())
-                    .setMetalness(object->metalness() * drawable->metallic())
-                    .setRoughness(object->roughness() * drawable->roughness())
+                    .setMetalness(metalness)
+                    .setRoughness(roughness)
                     .draw(drawable->mesh())
                 ;
             }
