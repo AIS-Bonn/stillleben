@@ -114,23 +114,25 @@ public:
 
     void mousePressEvent(MouseEvent& event)
     {
+        redraw();
+
         if(imgui.handleMousePressEvent(event)) return;
     }
 
     void mouseReleaseEvent(MouseEvent& event)
     {
+        redraw();
+
         if(arcBallHovered)
         {
             if(event.button() == MouseEvent::Button::WheelUp)
             {
                 arcBall->zoom(-0.1 * arcBall->viewDistance());
-                redraw();
                 return;
             }
             else if(event.button() == MouseEvent::Button::WheelDown)
             {
                 arcBall->zoom(0.1 * arcBall->viewDistance());
-                redraw();
                 return;
             }
         }
@@ -145,6 +147,8 @@ public:
 
     void mouseMoveEvent(MouseMoveEvent& event)
     {
+        redraw();
+
         if(arcBallActive)
         {
             Vector2i pos{(Vector2{event.position()} - arcBallOffset) / arcBallScale};
@@ -152,7 +156,6 @@ public:
                 arcBall->translate(pos);
             else
                 arcBall->rotate(pos);
-            redraw();
             return;
         }
 
@@ -576,8 +579,6 @@ void Viewer::draw()
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     eglSwapBuffers(eglGetCurrentDisplay(), m_d->surface);
-
-    m_d->flags |= Private::Flag::Redraw;
 }
 
 void Viewer::run()
