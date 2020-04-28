@@ -232,6 +232,7 @@ public:
 
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
+    bool drawPhysics = false;
 
     bool showInstances = true;
 };
@@ -426,6 +427,7 @@ void Viewer::draw()
         m_d->renderer = std::make_unique<RenderPass>(m_d->renderType, false);
 
     m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
+    m_d->renderer->setDrawPhysicsEnabled(m_d->drawPhysics);
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
@@ -554,6 +556,7 @@ void Viewer::draw()
         }
 
         ImGui::Checkbox("SSAO", &m_d->enableSSAO);
+        ImGui::Checkbox("Draw physics", &m_d->drawPhysics);
         ImGui::End();
     }
 

@@ -107,6 +107,7 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
+ , m_meshShader{std::make_unique<Magnum::Shaders::MeshVisualizer3D>(Shaders::MeshVisualizer3D::Flag::Wireframe)}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid());
     m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
@@ -122,6 +123,15 @@ RenderPass::~RenderPass()
 std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::shared_ptr<Result>& preAllocatedResult, RenderPass::Result* depthBufferResult)
 {
     scene.loadVisual();
+
+    if(m_drawPhysics)
+    {
+        for(auto& obj : scene.objects())
+            obj->loadPhysicsVisualization();
+    }
+
+    // At the moment, SSAO + physics are not compatible, needs some work below
+    bool ssaoEnabled = m_ssaoEnabled && !m_drawPhysics;
 
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
 
@@ -209,7 +219,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            m_ssaoEnabled ? m_ssaoRGBInputTexture : result->rgb
+            ssaoEnabled ? m_ssaoRGBInputTexture : result->rgb
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{1},
@@ -445,9 +455,35 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         });
     }
 
+    if(m_drawPhysics)
+    {
+        m_framebuffer.mapForDraw({
+            {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+        });
+
+        GL::Renderer::enable(GL::Renderer::Feature::Blending);
+        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+            GL::Renderer::BlendEquation::Max);
+        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
+        for(auto& object : scene.objects())
+        {
+            object->drawPhysics(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
+                (*m_meshShader)
+                    .setColor(0x2f83cc80_rgbaf)
+                    .setWireframeColor(0xdcdcdc_rgbf)
+                    .setViewportSize(Vector2{scene.viewport()})
+                    .setTransformationMatrix(meshToCam)
+                    .setProjectionMatrix(cam.projectionMatrix())
+                    .draw(drawable->mesh());
+            });
+        }
+    }
+
     GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
 
-    if(m_ssaoEnabled)
+    if(ssaoEnabled)
     {
         m_ssaoFramebuffer
             .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_ssaoTexture)
@@ -490,6 +526,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 void RenderPass::setSSAOEnabled(bool enabled)
 {
     m_ssaoEnabled = enabled;
+}
+
+void RenderPass::setDrawPhysicsEnabled(bool enabled)
+{
+    m_drawPhysics = enabled;
 }
 
 }

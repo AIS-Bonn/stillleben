@@ -440,6 +440,39 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
     m_physicsLoaded = true;
 }
 
+void Mesh::loadPhysicsVisualization()
+{
+    if(m_physicsVisLoaded)
+        return;
+
+    loadPhysics();
+
+    m_physXVisMeshes = MeshArray{m_physXMeshes.size()};
+    for(std::size_t i = 0; i < m_physXMeshes.size(); ++i)
+    {
+        if(!m_physXMeshes[i])
+            continue;
+
+        auto& physXMesh = *m_physXMeshes[i];
+
+        auto physXVertices = Corrade::Containers::arrayView(physXMesh->getVertices(), physXMesh->getNbVertices());
+        auto vertices = Corrade::Containers::arrayCast<const Magnum::Vector3>(physXVertices);
+
+        auto indices = Corrade::Containers::arrayView(physXMesh->getIndexBuffer(), physXMesh->getNbPolygons()*3);
+
+        Trade::MeshData meshData{MeshPrimitive::Triangles,
+            Trade::DataFlags{}, indices, Trade::MeshIndexData{indices},
+            Trade::DataFlags{}, vertices, {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+                Containers::StridedArrayView1D<const Vector3>{
+                    vertices, &vertices[0],
+                    vertices.size(), sizeof(Magnum::Vector3)}}
+        }};
+
+        m_physXVisMeshes[i] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
+    }
+}
+
 void Mesh::loadVisual()
 {
     if(m_visualLoaded)

@@ -221,6 +221,31 @@ void Object::loadPhysics()
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
 }
 
+void Object::loadPhysicsVisualization()
+{
+    if(m_physicsVisLoaded)
+        return;
+
+    m_mesh->loadPhysicsVisualization();
+
+    populateParts();
+
+    for(auto part : m_parts)
+    {
+        const auto& objectData = m_mesh->objects()[part->index()];
+
+        // Add a drawable if the object has a mesh and the mesh is loaded
+        if(objectData->instance() != -1 && m_mesh->physXVisualizationMeshes()[objectData->instance()])
+        {
+            auto mesh = m_mesh->physXVisualizationMeshes()[objectData->instance()];
+
+            new Drawable{*part, m_physXDrawables, mesh, &m_cb};
+        }
+    }
+
+    m_physicsVisLoaded = true;
+}
+
 void Object::addPart(Object3D& parent, UnsignedInt i)
 {
     const auto& objectData = m_mesh->objects()[i];
@@ -245,6 +270,12 @@ void Object::draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb)
 {
     m_cb = cb;
     camera.draw(m_drawables);
+}
+
+void Object::drawPhysics(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb)
+{
+    m_cb = cb;
+    camera.draw(m_physXDrawables);
 }
 
 void Object::setParentSceneObject(Object3D* parent)

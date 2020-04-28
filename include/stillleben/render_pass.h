@@ -9,6 +9,7 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
+#include <Magnum/Shaders/MeshVisualizer.h>
 
 #include <stillleben/cuda_interop.h>
 
@@ -73,6 +74,10 @@ public:
     constexpr bool ssaoEnabled() const
     { return m_ssaoEnabled; }
 
+    void setDrawPhysicsEnabled(bool enabled);
+    constexpr bool drawPhysicsEnabled() const
+    { return m_drawPhysics; }
+
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 
     Type type() const
@@ -102,6 +107,8 @@ private:
     std::unique_ptr<SSAOShader> m_ssaoShader;
     std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
 
+    std::unique_ptr<Magnum::Shaders::MeshVisualizer3D> m_meshShader;
+
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;
     Magnum::GL::Mesh m_backgroundPlaneMesh;
@@ -111,6 +118,7 @@ private:
     Magnum::GL::RectangleTexture m_zeroMinDepth;
 
     bool m_ssaoEnabled = true;
+    bool m_drawPhysics = false;
 };
 
 }

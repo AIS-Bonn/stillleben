@@ -128,6 +128,7 @@ public:
 
     void loadVisual();
     void loadPhysics();
+    void loadPhysicsVisualization();
 
     void serialize(Corrade::Utility::ConfigurationGroup& group);
     void deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& meshCache);
@@ -140,6 +141,8 @@ public:
     void setPhysicsScene(physx::PxScene* scene);
 
     void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
+
+    void drawPhysics(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
     void setInstanceIndex(unsigned int instanceIndex);
     unsigned int instanceIndex() const
@@ -205,6 +208,7 @@ private:
 
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
     Magnum::SceneGraph::DrawableGroup3D m_debugDrawables;
+    Magnum::SceneGraph::DrawableGroup3D m_physXDrawables;
 
     DrawCallback m_cb;
 
@@ -216,6 +220,7 @@ private:
     PhysXHolder<physx::PxRigidDynamic> m_rigidBody;
 
     bool m_visualLoaded = false;
+    bool m_physicsVisLoaded = false;
 
     // By default, we have a fully specular object
     Magnum::Color4 m_specularColor{1.0f};

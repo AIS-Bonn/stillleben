@@ -137,6 +137,11 @@ public:
     void loadPhysics(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
 
     /**
+     * @brief Load physics visualization meshes
+     **/
+    void loadPhysicsVisualization();
+
+    /**
      * @brief Update vertex positions
      **/
     void updateVertexPositions(
@@ -260,6 +265,9 @@ public:
     const PhysXMeshArray& physXMeshes() const
     { return m_physXMeshes; }
 
+    const MeshArray& physXVisualizationMeshes() const
+    { return m_physXVisMeshes; }
+
     // TextureArray can't be const because texture binding needs non-const reference.
     TextureArray& textures()
     { return m_textures; }
@@ -297,6 +305,7 @@ private:
     bool m_opened = false;
     bool m_visualLoaded = false;
     bool m_physicsLoaded = false;
+    bool m_physicsVisLoaded = false;
 
     Optional<Magnum::Trade::SceneData> m_sceneData;
     ObjectDataArray m_objectData;
@@ -309,6 +318,7 @@ private:
     MaterialArray m_materials;
     CookedPhysXMeshArray m_physXBuffers;
     PhysXMeshArray m_physXMeshes;
+    MeshArray m_physXVisMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),
