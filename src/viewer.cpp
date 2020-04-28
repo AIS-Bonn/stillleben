@@ -264,40 +264,43 @@ void Viewer::setup()
 
     m_d->windowSize = {1280, 720};
 
-    // Get default X display
-    m_d->display = reinterpret_cast<Display*>(m_d->ctx->x11Display());
-
-    VisualId visualId = m_d->ctx->visualID();
-
-    /* Get visual info */
-    XVisualInfo *visInfo, visTemplate;
-    int visualCount;
-    visTemplate.visualid = visualId;
-    visInfo = XGetVisualInfo(m_d->display, VisualIDMask, &visTemplate, &visualCount);
-    if(!visInfo)
+    // X11 stuff for creating a new window
     {
-        throw std::runtime_error{
-            Corrade::Utility::formatString("Viewer: cannot get X visual using visualid {}", visualId)
-        };
+        // Get default X display
+        m_d->display = reinterpret_cast<Display*>(m_d->ctx->x11Display());
+
+        VisualId visualId = m_d->ctx->visualID();
+
+        /* Get visual info */
+        XVisualInfo *visInfo, visTemplate;
+        int visualCount;
+        visTemplate.visualid = visualId;
+        visInfo = XGetVisualInfo(m_d->display, VisualIDMask, &visTemplate, &visualCount);
+        if(!visInfo)
+        {
+            throw std::runtime_error{
+                Corrade::Utility::formatString("Viewer: cannot get X visual using visualid {}", visualId)
+            };
+        }
+
+        /* Create X Window */
+        Window root = RootWindow(m_d->display, DefaultScreen(m_d->display));
+        XSetWindowAttributes attr;
+        attr.background_pixel = 0;
+        attr.border_pixel = 0;
+        attr.colormap = XCreateColormap(m_d->display, root, visInfo->visual, AllocNone);
+        attr.event_mask = 0;
+        unsigned long mask = CWBackPixel|CWBorderPixel|CWColormap|CWEventMask;
+        m_d->window = XCreateWindow(m_d->display, root, 20, 20, m_d->windowSize.x(), m_d->windowSize.y(), 0, visInfo->depth, InputOutput, visInfo->visual, mask, &attr);
+        XSetStandardProperties(m_d->display, m_d->window, "stillleben", nullptr, 0, nullptr, 0, nullptr);
+        XFree(visInfo);
+
+        /* Be notified about closing the window */
+        m_d->deleteWindow = XInternAtom(m_d->display, "WM_DELETE_WINDOW", True);
+        XSetWMProtocols(m_d->display, m_d->window, &m_d->deleteWindow, 1);
     }
 
-    /* Create X Window */
-    Window root = RootWindow(m_d->display, DefaultScreen(m_d->display));
-    XSetWindowAttributes attr;
-    attr.background_pixel = 0;
-    attr.border_pixel = 0;
-    attr.colormap = XCreateColormap(m_d->display, root, visInfo->visual, AllocNone);
-    attr.event_mask = 0;
-    unsigned long mask = CWBackPixel|CWBorderPixel|CWColormap|CWEventMask;
-    m_d->window = XCreateWindow(m_d->display, root, 20, 20, m_d->windowSize.x(), m_d->windowSize.y(), 0, visInfo->depth, InputOutput, visInfo->visual, mask, &attr);
-    XSetStandardProperties(m_d->display, m_d->window, "stillleben", nullptr, 0, nullptr, 0, nullptr);
-    XFree(visInfo);
-
-    /* Be notified about closing the window */
-    m_d->deleteWindow = XInternAtom(m_d->display, "WM_DELETE_WINDOW", True);
-    XSetWMProtocols(m_d->display, m_d->window, &m_d->deleteWindow, 1);
-
-    // Create the EGL surface
+    // Create the EGL surface connected to the window
     m_d->surface = eglCreateWindowSurface(
         eglGetCurrentDisplay(), m_d->ctx->eglConfig(), m_d->window, nullptr
     );
@@ -346,18 +349,26 @@ void Viewer::setup()
     m_d->shader = ViewerShader{m_d->scene};
 
     // Compute camPosition, viewCenter & FoV from pose + projection matrix
-    // We will position the "ball" at the mean position of the objects in
+    // We will position the "ball" at the mean depth of the objects in
     // the scene.
-
     Vector3 camPosition = m_d->scene->cameraPose().translation();
 
-    Vector3 viewCenter{};
+    Vector3 meanPosition{};
     if(!m_d->scene->objects().empty())
     {
         for(auto& obj : m_d->scene->objects())
-            viewCenter += obj->pose().translation();
-        viewCenter /= m_d->scene->objects().size();
+            meanPosition += obj->pose().translation();
+        meanPosition /= m_d->scene->objects().size();
     }
+
+    // to camera space
+    meanPosition = m_d->scene->cameraPose().invertedRigid().transformPoint(meanPosition);
+
+    // in camera space
+    Vector3 viewCenter{0.0f, 0.0f, meanPosition.z()};
+
+    // to world
+    viewCenter = m_d->scene->cameraPose().transformPoint(viewCenter);
 
     Vector3 upDir = m_d->scene->cameraPose().rotation() * Vector3{0.0f, -1.0f, 0.0f};
     Magnum::Deg fov = 2.0f * Math::atan(1.0f / m_d->scene->camera().projectionMatrix()[0][0]);
@@ -368,6 +379,7 @@ void Viewer::setup()
 
 #if HAVE_XCURSOR
     // Load cursors
+    // Why yes, I quite like pain.
     for(int i = 0; i < static_cast<int>(Private::Cursor::NumCursors); ++i)
     {
         switch(static_cast<Private::Cursor>(i))
