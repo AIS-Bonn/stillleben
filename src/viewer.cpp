@@ -230,7 +230,7 @@ public:
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
 
-    bool showInstances = false;
+    bool showInstances = true;
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -644,6 +644,13 @@ bool Viewer::mainLoopIteration()
     } else Corrade::Utility::System::sleep(5);
 
     return !(m_d->flags & Private::Flag::Exit);
+}
+
+void Viewer::view(const std::shared_ptr<Context>& ctx, const std::shared_ptr<sl::Scene>& scene)
+{
+    Viewer viewer{ctx};
+    viewer.setScene(scene);
+    viewer.run();
 }
 
 }

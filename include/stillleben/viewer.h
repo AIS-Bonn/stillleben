@@ -29,6 +29,8 @@ public:
 
     void run();
 
+    static void view(const std::shared_ptr<Context>& ctx, const std::shared_ptr<Scene>& scene);
+
 private:
     class Private;
 
