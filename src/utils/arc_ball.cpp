@@ -69,8 +69,7 @@ void ArcBall::setViewParameters(const Vector3& eye, const Vector3& viewCenter,
     const Vector3 dir = viewCenter - eye;
     Vector3 zAxis = dir.normalized();
     Vector3 xAxis = (Math::cross(zAxis, upDir.normalized())).normalized();
-    Vector3 yAxis = (Math::cross(xAxis, zAxis)).normalized();
-    xAxis = (Math::cross(zAxis, yAxis)).normalized();
+    Vector3 yAxis = -(Math::cross(xAxis, zAxis)).normalized();
 
     _targetPosition = -viewCenter;
     _targetZooming = dir.length();
