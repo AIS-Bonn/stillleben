@@ -81,8 +81,7 @@ class Viewer::Private
 {
 public:
     enum class Flag: unsigned int {
-        Redraw = 1 << 0,
-        Exit = 1 << 1
+        Exit = 1 << 0
     };
 
     typedef Containers::EnumSet<Flag> Flags;
@@ -107,21 +106,21 @@ public:
      , renderer{std::make_unique<RenderPass>(RenderPass::Type::Phong, false)}
     {}
 
-    void redraw()
+    void redraw(Magnum::UnsignedInt cnt = 1)
     {
-        flags |= Flag::Redraw;
+        redrawCount = std::max(redrawCount, cnt);
     }
 
     void mousePressEvent(MouseEvent& event)
     {
-        redraw();
+        redraw(5);
 
         if(imgui.handleMousePressEvent(event)) return;
     }
 
     void mouseReleaseEvent(MouseEvent& event)
     {
-        redraw();
+        redraw(5);
 
         if(arcBallHovered)
         {
@@ -206,6 +205,7 @@ public:
     EGLSurface surface{};
 
     Flags flags{};
+    Magnum::UnsignedInt redrawCount = 0;
 
     Magnum::GL::Framebuffer framebuffer{Magnum::NoCreate};
     Magnum::GL::Texture2D textureRGB{Magnum::NoCreate};
@@ -414,7 +414,7 @@ void Viewer::setup()
     }
 #endif
 
-    m_d->flags |= Private::Flag::Redraw;
+    m_d->redraw();
 }
 
 void Viewer::draw()
@@ -639,10 +639,12 @@ bool Viewer::mainLoopIteration()
         }
     }
 
-    if(m_d->flags & Private::Flag::Redraw) {
-        m_d->flags &= ~Private::Flag::Redraw;
+    if(m_d->redrawCount > 0)
+    {
+        m_d->redrawCount--;
         draw();
-    } else Corrade::Utility::System::sleep(5);
+    }
+    else Corrade::Utility::System::sleep(5);
 
     return !(m_d->flags & Private::Flag::Exit);
 }
