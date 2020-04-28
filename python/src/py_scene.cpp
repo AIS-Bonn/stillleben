@@ -88,14 +88,28 @@ void init(py::module& m)
         )EOS", py::arg("position"), py::arg("look_at"), py::arg("up")=torch::tensor({0.0, 0.0, 1.0}))
 
         .def("set_camera_intrinsics", &sl::Scene::setCameraIntrinsics, R"EOS(
-            Set the camera intrinsics assuming a pinhole camera with focal
-            lengths :math:`f_x`, :math:`f_y`, and projection center :math:`p_x`, :math:`p_y`.
+            Set camera intrinsics directly.
 
             :param fx: :math:`f_x`
             :param fy: :math:`f_y`
             :param cx: :math:`c_x`
             :param cy: :math:`c_y`
+
+            Set the camera intrinsics assuming a pinhole camera with focal
+            lengths :math:`f_x`, :math:`f_y`, and projection center :math:`p_x`, :math:`p_y`.
         )EOS", py::arg("fx"), py::arg("fy"), py::arg("cx"), py::arg("cy"))
+
+        .def("set_camera_hfov", [](const std::shared_ptr<sl::Scene>& scene, float hfov){
+            scene->setCameraFromFOV(Magnum::Rad{hfov});
+        }, R"EOS(
+            Set camera intrinsics from horizontal FOV.
+
+            :param hfov: Horizontal FOV in radians
+
+            This assumes a pinhole camera with centered principal point
+            and horizontal FOV :p:`hfov`. The vertical FOV is set such that
+            the pixel size is 1:1 (in other words, :math:`f_x=f_y`).
+        )EOS", py::arg("hfov"))
 
         .def("set_camera_projection", wrapShared(&sl::Scene::setCameraProjection), R"EOS(
             Set the camera intrinsics from a 4x4 matrix.
