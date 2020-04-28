@@ -34,12 +34,21 @@ void main()
 
     rgbOut = rgbVec;
 
-    objectCoordinatesOut.rgb = clamp(objectCoordinatesVec.rgb / objBBox + 0.5, 0, 1);
-    objectCoordinatesOut.a = 1.0;
+    // no object -> bg color
+    if(objectCoordinatesVec.w > 2000.0)
+    {
+        objectCoordinatesOut = instanceColors[0];
+        normalOut = instanceColors[0];
+    }
+    else
+    {
+        objectCoordinatesOut.rgb = clamp(objectCoordinatesVec.xyz / objBBox + 0.5, 0, 1);
+        objectCoordinatesOut.a = 1.0;
+
+        normalOut.rgb = normalVec.xyz / 2.0 + 0.5;
+        normalOut.a = 1.0;
+    }
 
     instanceIndexOut = instanceColors[instanceIndexVal];
     classIndexOut = classColors[classIndexVal];
-
-    normalOut.rgb = normalVec.xyz / 2.0 + 0.5;
-    normalOut.a = 1.0;
 }

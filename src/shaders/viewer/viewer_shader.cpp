@@ -42,6 +42,7 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
     Magnum::UnsignedInt maxClass = 0;
     Magnum::UnsignedInt maxInstance = 0;
     std::vector<sl::Mesh*> meshes;
+    const Magnum::Color4 BG_COLOR{0x2f363fff_rgbaf};
 
     for(const auto& obj : scene->objects())
     {
@@ -52,7 +53,7 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
     }
 
     Corrade::Containers::Array<Magnum::Color4> instanceColors(maxInstance+1);
-    instanceColors[0] = 0xffffffff_rgbaf;
+    instanceColors[0] = BG_COLOR;
     for(const auto& obj : scene->objects())
     {
         instanceColors[obj->instanceIndex()] =
@@ -65,7 +66,7 @@ ViewerShader::ViewerShader(const std::shared_ptr<sl::Scene>& scene)
 
     Corrade::Containers::Array<Magnum::Vector3> bboxes(meshes.size());
     Corrade::Containers::Array<Magnum::Color4> classColors(meshes.size());
-    classColors[0] = 0xffffffff_rgbaf;
+    classColors[0] = BG_COLOR;
     bboxes[0] = {scene->backgroundPlaneSize(), 1.0f};
 
     for(Magnum::UnsignedInt i = 0; i < meshes.size(); ++i)
