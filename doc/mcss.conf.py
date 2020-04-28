@@ -1,5 +1,7 @@
 
 PROJECT_TITLE = "stillleben"
+PROJECT_SUBTITLE = 'Python'
+
 INPUT_MODULES = ["stillleben"]
 
 PLUGINS = [
@@ -9,6 +11,11 @@ PLUGINS = [
     "m.math",
     "m.code",
     "m.sphinx",
+]
+
+INPUT_PAGES = [
+    'index.rst',
+    'installation.rst',
 ]
 
 PYBIND11_COMPATIBILITY = True
