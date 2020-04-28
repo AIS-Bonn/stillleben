@@ -154,7 +154,7 @@ void Scene::setCameraFromFOV(Magnum::Rad fov)
     const float cx = W/2;
     const float cy = H/2;
     const float fx = W / (2.0 * Magnum::Math::tan(fov/2.0));
-    const float fy = H / (2.0 * Magnum::Math::tan(fov/2.0));
+    const float fy = fx;
 
     setCameraIntrinsics(fx, fy, cx, cy);
 }
