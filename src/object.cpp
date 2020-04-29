@@ -177,23 +177,8 @@ void Object::loadPhysics()
         if(objectData->instance() == -1)
             continue;
 
-        auto physxMesh = m_mesh->physXMeshes()[objectData->instance()];
-
-        if(!physxMesh)
-            continue;
-
+        auto& physxMeshes = m_mesh->physXMeshes()[objectData->instance()];
         auto& physics = m_mesh->context()->physxPhysics();
-
-        PhysXHolder<physx::PxMaterial> material{
-            physics.createMaterial(0.5f, 0.5f, 0.0f)
-        };
-        physx::PxMeshScale meshScale(m_mesh->pretransformScale());
-
-        physx::PxConvexMeshGeometry geometry(physxMesh->get(), meshScale);
-
-        PhysXHolder<physx::PxShape> shape{
-            physics.createShape(geometry, *material, true)
-        };
 
         // Where are we relative to m_meshObject?
         Matrix4 poseInMeshObject = m_meshObject.absoluteTransformationMatrix().inverted() * part->absoluteTransformationMatrix();
@@ -212,9 +197,24 @@ void Object::loadPhysics()
             m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
         );
 
-        shape->setLocalPose(physx::PxTransform{pose});
+        for(auto& physxMesh : physxMeshes)
+        {
+            PhysXHolder<physx::PxMaterial> material{
+                physics.createMaterial(0.5f, 0.5f, 0.0f)
+            };
+            physx::PxMeshScale meshScale(m_mesh->pretransformScale());
 
-        m_rigidBody->attachShape(*shape);
+            // FIXME: Ugly const_cast
+            physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
+
+            PhysXHolder<physx::PxShape> shape{
+                physics.createShape(geometry, *material, true)
+            };
+
+            shape->setLocalPose(physx::PxTransform{pose});
+
+            m_rigidBody->attachShape(*shape);
+        }
     }
 
     // Calculate mass & inertia
@@ -237,9 +237,10 @@ void Object::loadPhysicsVisualization()
         // Add a drawable if the object has a mesh and the mesh is loaded
         if(objectData->instance() != -1 && m_mesh->physXVisualizationMeshes()[objectData->instance()])
         {
-            auto mesh = m_mesh->physXVisualizationMeshes()[objectData->instance()];
+            auto& meshes = m_mesh->physXVisualizationMeshes()[objectData->instance()];
 
-            new Drawable{*part, m_physXDrawables, mesh, &m_cb};
+            for(auto mesh : meshes)
+                new Drawable{*part, m_physXDrawables, mesh, &m_cb};
         }
     }
 

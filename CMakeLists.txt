@@ -129,6 +129,7 @@ target_link_libraries(stillleben PUBLIC
     MagnumPlatformPrivate
     PhysX
     Xcursor
+    VHACD
 )
 
 if(CUDA_FOUND)
