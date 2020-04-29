@@ -43,6 +43,8 @@
 #include <Magnum/Trade/TextureData.h>
 #include <Magnum/Image.h>
 
+#include <VHACD.h>
+
 #include <sstream>
 #include <fstream>
 
@@ -58,14 +60,12 @@ namespace sl
 namespace
 {
     /**
-     * @brief Create PhysX collision shape from Trade::MeshData3D
+     * @brief Create PhysX collision shape convex hull
      * */
-    Corrade::Containers::Optional<PhysXOutputBuffer> cookForPhysX(physx::PxCooking& cooking, const Containers::Array<Vector3>& vertices, const Containers::Array<UnsignedInt>& indices)
+    bool cookForPhysX(physx::PxCooking& cooking,
+        const Containers::ArrayView<Vector3>& vertices,
+        PhysXOutputBuffer& buffer)
     {
-        Corrade::Containers::Optional<PhysXOutputBuffer> out;
-
-        out.emplace();
-
         static_assert(sizeof(decltype(*vertices.data())) == sizeof(physx::PxVec3));
 
         physx::PxConvexMeshDesc meshDesc;
@@ -75,17 +75,18 @@ namespace
         meshDesc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
 
         physx::PxConvexMeshCookingResult::Enum result;
-        bool status = cooking.cookConvexMesh(meshDesc, *out, &result);
+        bool status = cooking.cookConvexMesh(meshDesc, buffer, &result);
         if(!status)
         {
             Error{} << "PhysX cooking failed, ignoring mesh";
-            return {};
+            return false;
         }
 
-        return out;
+        return true;
     }
 
     using MeshHash = Corrade::Utility::MurmurHash2;
+    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 1;
 
     template<class T>
     MeshHash::Digest hashArray(const Corrade::Containers::Array<T>& vec)
@@ -105,6 +106,13 @@ namespace
 
             return MeshHash::Digest::fromByteArray(hashBytes.data());
         };
+        auto readVersion = [](std::istream& stream) -> Magnum::UnsignedInt {
+            Magnum::UnsignedInt version;
+            stream.read(reinterpret_cast<char*>(&version), sizeof(version));
+            if(stream.gcount() != sizeof(version))
+                return 0;
+            return version;
+        };
 
         if(!Corrade::Utility::Directory::exists(cacheFile))
             return {};
@@ -117,6 +125,10 @@ namespace
 
         std::ifstream stream(cacheFile, std::ios::binary);
         if(!stream)
+            return {};
+
+        auto version = readVersion(stream);
+        if(version != FILE_FORMAT_VERSION)
             return {};
 
         auto cacheVertexHash = readHash(stream);
@@ -384,7 +396,7 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             continue;
         }
 
-        Corrade::Containers::Optional<PhysXOutputBuffer> buf;
+        PhysXOutputBuffer buf;
 
         // We want to cache the simplified & cooked PhysX mesh.
         std::string cacheFile = Corrade::Utility::formatString("{}.mesh{}", m_filename, i);
@@ -411,9 +423,55 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
                 simplification.simplify(maxPhysicsTriangles);
             }
 
-            buf = cookForPhysX(m_ctx->physxCooking(), vertices, indices);
+            // Call V-HACD for convex decomposition
+            VHACD::IVHACD::Parameters params;
+            params.m_concavity = 0.05;
+
+            auto vhacd = VHACD::CreateVHACD();
+            vhacd->Compute(
+                reinterpret_cast<const float*>(vertices.data()),
+                vertices.size(),
+                indices.data(),
+                indices.size()/3,
+                params
+            );
+
+            Magnum::UnsignedInt n = vhacd->GetNConvexHulls();
+            buf.write(&n, sizeof(n));
+
+            bool allOK = true;
+            for(Magnum::UnsignedInt j = 0; j < n; ++j)
+            {
+                VHACD::IVHACD::ConvexHull hull;
+                vhacd->GetConvexHull(j, hull);
+                auto hullVerticesD = Containers::arrayView(
+                    reinterpret_cast<const Vector3d*>(hull.m_points),
+                    hull.m_nPoints
+                );
+                Array<Vector3> hullVertices{hullVerticesD.size()};
+                for(std::size_t k = 0; k < hullVertices.size(); ++k)
+                    hullVertices[k] = Vector3{hullVerticesD[k]};
+
+                bool ok = cookForPhysX(
+                    m_ctx->physxCooking(),
+                    hullVertices,
+                    buf
+                );
+
+                if(!ok)
+                {
+                    allOK = false;
+                    break;
+                }
+            }
+
+            if(!allOK)
+                continue;
 
             os::AtomicFileStream ostream(cacheFile);
+
+            // Write version
+            ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
 
             // Write hashes
             MeshHash::Digest vertexHash = hashArray(meshData->positions3DAsArray());
@@ -423,13 +481,22 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             MeshHash::Digest indicesHash = hashArray(meshData->indicesAsArray());
             ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
 
-            ostream.write(reinterpret_cast<char*>(buf->data()), buf->size());
+            // Write buf data
+            ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
         }
 
-        if(buf)
+        physx::PxDefaultMemoryInputData stream(buf.data(), buf.size());
+        Magnum::UnsignedInt n;
+        if(stream.read(&n, sizeof(n)) != sizeof(n))
         {
-            physx::PxDefaultMemoryInputData stream(buf->data(), buf->size());
-            m_physXMeshes[i] = PhysXHolder<physx::PxConvexMesh>{
+            Error{} << "Invalid buffer, could not read number of convex hulls";
+            continue;
+        }
+
+        m_physXMeshes[i] = Array<PhysXHolder<physx::PxConvexMesh>>{n};
+        for(Magnum::UnsignedInt j = 0; j < n; ++j)
+        {
+            m_physXMeshes[i][j] = PhysXHolder<physx::PxConvexMesh>{
                 m_ctx->physxPhysics().createConvexMesh(stream)
             };
         }
@@ -447,29 +514,31 @@ void Mesh::loadPhysicsVisualization()
 
     loadPhysics();
 
-    m_physXVisMeshes = MeshArray{m_physXMeshes.size()};
+    m_physXVisMeshes = PhysXVisArray{m_physXMeshes.size()};
     for(std::size_t i = 0; i < m_physXMeshes.size(); ++i)
     {
-        if(!m_physXMeshes[i])
-            continue;
+        m_physXVisMeshes[i] = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes[i].size()};
 
-        auto& physXMesh = *m_physXMeshes[i];
+        for(std::size_t j = 0; j < m_physXMeshes[i].size(); ++j)
+        {
+            auto& physXMesh = m_physXMeshes[i][j];
 
-        auto physXVertices = Corrade::Containers::arrayView(physXMesh->getVertices(), physXMesh->getNbVertices());
-        auto vertices = Corrade::Containers::arrayCast<const Magnum::Vector3>(physXVertices);
+            auto physXVertices = Corrade::Containers::arrayView(physXMesh->getVertices(), physXMesh->getNbVertices());
+            auto vertices = Corrade::Containers::arrayCast<const Magnum::Vector3>(physXVertices);
 
-        auto indices = Corrade::Containers::arrayView(physXMesh->getIndexBuffer(), physXMesh->getNbPolygons()*3);
+            auto indices = Corrade::Containers::arrayView(physXMesh->getIndexBuffer(), physXMesh->getNbPolygons()*3);
 
-        Trade::MeshData meshData{MeshPrimitive::Triangles,
-            Trade::DataFlags{}, indices, Trade::MeshIndexData{indices},
-            Trade::DataFlags{}, vertices, {
-            Trade::MeshAttributeData{Trade::MeshAttribute::Position,
-                Containers::StridedArrayView1D<const Vector3>{
-                    vertices, &vertices[0],
-                    vertices.size(), sizeof(Magnum::Vector3)}}
-        }};
+            Trade::MeshData meshData{MeshPrimitive::Triangles,
+                Trade::DataFlags{}, indices, Trade::MeshIndexData{indices},
+                Trade::DataFlags{}, vertices, {
+                Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+                    Containers::StridedArrayView1D<const Vector3>{
+                        vertices, &vertices[0],
+                        vertices.size(), sizeof(Magnum::Vector3)}}
+            }};
 
-        m_physXVisMeshes[i] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
+            m_physXVisMeshes[i][j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
+        }
     }
 }
 

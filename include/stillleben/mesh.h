@@ -76,7 +76,8 @@ public:
     using MaterialArray = Array<Optional<PBRMaterialData>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
-    using PhysXMeshArray = Array<Optional<PhysXHolder<physx::PxConvexMesh>>>;
+    using PhysXMeshArray = Array<Array<PhysXHolder<physx::PxConvexMesh>>>;
+    using PhysXVisArray = Array<Array<std::shared_ptr<Magnum::GL::Mesh>>>;
 
     static constexpr std::size_t DefaultPhysicsTriangles = 2000;
 
@@ -265,7 +266,7 @@ public:
     const PhysXMeshArray& physXMeshes() const
     { return m_physXMeshes; }
 
-    const MeshArray& physXVisualizationMeshes() const
+    const PhysXVisArray& physXVisualizationMeshes() const
     { return m_physXVisMeshes; }
 
     // TextureArray can't be const because texture binding needs non-const reference.
@@ -318,7 +319,7 @@ private:
     MaterialArray m_materials;
     CookedPhysXMeshArray m_physXBuffers;
     PhysXMeshArray m_physXMeshes;
-    MeshArray m_physXVisMeshes;
+    PhysXVisArray m_physXVisMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),

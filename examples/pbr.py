@@ -19,6 +19,7 @@ if not (SL_PATH / 'examples' / 'Circus_Backstage').exists():
 import stillleben as sl
 import torch
 import random
+import time
 
 sl.init() # use sl.init_cuda() for CUDA interop
 
@@ -40,7 +41,10 @@ for i in range(20):
     scene.add_object(obj)
 
 # Let them fall in a heap
+t = time.time()
 scene.simulate_tabletop_scene()
+t2 = time.time()
+print(f'Took {t2-t}s for physics simulation')
 
 # Setup lighting
 scene.light_map = sl.LightMap(str(SL_PATH / 'examples' / 'Circus_Backstage' / 'Circus_Backstage.ibl'))
