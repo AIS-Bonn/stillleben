@@ -27,6 +27,7 @@ add_subdirectory(magnum)
 add_subdirectory(magnum-plugins)
 add_subdirectory(magnum-integration)
 add_subdirectory(physx)
+add_subdirectory(v-hacd)
 
 # hackery.
 add_library(MagnumPlatformPrivate INTERFACE)
