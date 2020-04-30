@@ -9,6 +9,7 @@
 #include <stillleben/physx.h>
 
 #include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/ScopeGuard.h>
 
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/DebugStl.h>
@@ -428,6 +429,10 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             params.m_concavity = 0.05;
 
             auto vhacd = VHACD::CreateVHACD();
+            Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
+                vhacd->Release();
+            }};
+
             vhacd->Compute(
                 reinterpret_cast<const float*>(vertices.data()),
                 vertices.size(),
