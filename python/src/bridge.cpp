@@ -27,10 +27,10 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::magnum::init(m);
     sl::python::Mesh::init(m);
     sl::python::Object::init(m);
+    sl::python::LightMap::init(m);
     sl::python::Scene::init(m);
     sl::python::RenderPass::init(m);
     sl::python::ImageLoader::init(m);
-    sl::python::LightMap::init(m);
     sl::python::Animator::init(m);
     sl::python::Viewer::init(m);
 }

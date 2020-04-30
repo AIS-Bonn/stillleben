@@ -13,28 +13,32 @@ using namespace sl::python::magnum;
 namespace
 {
     std::shared_ptr<sl::Mesh> Mesh_factory(
-        const std::string& filename,
+        const py::object& filename,
         std::size_t maxPhysicsTriangles,
         bool visual, bool physics)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
 
-        auto mesh = std::make_shared<sl::Mesh>(filename, sl::python::Context::instance());
+        auto mesh = std::make_shared<sl::Mesh>(py::str(filename), sl::python::Context::instance());
         mesh->load(maxPhysicsTriangles, visual, physics);
 
         return mesh;
     }
 
     std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
-        const std::vector<std::string>& filenames,
+        const std::vector<py::object>& filenames,
         bool visual, bool physics,
         std::size_t maxPhysicsTriangles)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
 
-        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenames, visual, physics, maxPhysicsTriangles);
+        std::vector<std::string> filenameStrings{filenames.size()};
+        for(std::size_t i = 0; i < filenames.size(); ++i)
+            filenameStrings[i] = py::str(filenames[i]);
+
+        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, maxPhysicsTriangles);
     }
 
     void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)

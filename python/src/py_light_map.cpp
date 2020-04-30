@@ -18,24 +18,38 @@ void init(py::module& m)
 {
     py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
             An .ibl light map for image-based lighting.
+
+            The file is expected to be in `sIBL format`_. The `sIBL Archive`_
+            is a wonderful repository of IBL light maps.
+
+            The light map can be used during rendering by setting
+            :ref:`Scene.light_map`.
+
+            For an example, see :ref:`std:doc:examples/pbr`.
+
+            .. _`sIBL format`: http://www.hdrlabs.com/sibl/index.html
+            .. _`sIBL Archive`: http://www.hdrlabs.com/sibl/archive.html
         )EOS")
 
         .def(py::init(), "Constructor")
 
-        .def(py::init([](const std::string& path){
-                return std::make_shared<sl::LightMap>(path, sl::python::Context::instance());
+        .def(py::init([](const py::object& path){
+                return std::make_shared<sl::LightMap>(py::str(path), sl::python::Context::instance());
             }),
             R"EOS(
                 Constructs and calls load().
-            )EOS"
+            )EOS",
+            py::arg("path")
         )
 
-        .def("load", &sl::LightMap::load, R"EOS(
+        .def("load", [](sl::LightMap& map, const py::object& path){
+            return map.load(py::str(path), sl::python::Context::instance());
+        }, R"EOS(
             Opens an .ibl file.
 
             :param path: Path to .ibl file
             :return: True if successful
-        )EOS")
+        )EOS", py::arg("path"))
     ;
 }
 

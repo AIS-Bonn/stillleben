@@ -23,8 +23,8 @@ import time
 
 sl.init() # use sl.init_cuda() for CUDA interop
 
-# Load a mesh
-mesh = sl.Mesh(str(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf'))
+# Load a mesh (the constructor accepts pathlib paths)
+mesh = sl.Mesh(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf')
 
 # Meshes can come in strange dimensions - rescale to something reasonable
 mesh.scale_to_bbox_diagonal(0.5)
@@ -47,11 +47,11 @@ t2 = time.time()
 print(f'Took {t2-t}s for physics simulation')
 
 # Setup lighting
-scene.light_map = sl.LightMap(str(SL_PATH / 'examples' / 'Circus_Backstage' / 'Circus_Backstage.ibl'))
+scene.light_map = sl.LightMap(SL_PATH / 'examples' / 'Circus_Backstage' / 'Circus_Backstage.ibl')
 
 # Display a plane & set background color
 scene.background_plane_size = torch.tensor([3.0, 3.0])
-scene.background_plane_texture = sl.Texture2D(str(SL_PATH / 'tests' / 'texture.jpg'))
+scene.background_plane_texture = sl.Texture2D(SL_PATH / 'tests' / 'texture.jpg')
 scene.background_color = torch.tensor([0.1, 0.1, 0.1, 1.0])
 
 # Render a frame

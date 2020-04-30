@@ -28,8 +28,8 @@ void init(py::module& m)
             .. _AnyImageImporter: https://doc.magnum.graphics/magnum/classMagnum_1_1Trade_1_1AnyImageImporter.html
         )EOS")
 
-        .def(py::init([](const std::string& path){
-                return new sl::ImageLoader(path, sl::python::Context::instance());
+        .def(py::init([](const py::object& path){
+                return new sl::ImageLoader(py::str(path), sl::python::Context::instance());
             }), R"EOS(
             Constructor.
 

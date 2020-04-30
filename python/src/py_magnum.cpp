@@ -117,15 +117,15 @@ void init(py::module& m)
             An RGBA texture.
         )EOS")
 
-        .def(py::init([](const std::string& path){
+        .def(py::init([](const py::object& path){
             if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             return std::make_shared<Magnum::GL::RectangleTexture>(
-                sl::python::Context::instance()->loadTexture(path)
+                sl::python::Context::instance()->loadTexture(py::str(path))
             );
         }), R"EOS(
-            Load the texture from the specified path.
+            Load the texture from the specified :p:`path`.
         )EOS", py::arg("path"))
 
         .def(py::init([](torch::Tensor tensor){
@@ -159,15 +159,15 @@ void init(py::module& m)
             An RGBA texture.
         )EOS")
 
-        .def(py::init([](const std::string& path){
+        .def(py::init([](const py::object& path){
             if(!sl::python::Context::instance())
                 throw std::logic_error("Create a context object before");
 
             return std::make_shared<Magnum::GL::Texture2D>(
-                sl::python::Context::instance()->loadTexture2D(path)
+                sl::python::Context::instance()->loadTexture2D(py::str(path))
             );
         }), R"EOS(
-            Load the texture from the specified path.
+            Load the texture from the specified :p:`path`.
         )EOS", py::arg("path"))
 
         .def(py::init([](torch::Tensor tensor){
