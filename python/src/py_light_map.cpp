@@ -19,8 +19,8 @@ void init(py::module& m)
     py::class_<sl::LightMap, std::shared_ptr<sl::LightMap>>(m, "LightMap", R"EOS(
             An .ibl light map for image-based lighting.
 
-            The file is expected to be in `sIBL format`_. The `sIBL Archive`_
-            is a wonderful repository of IBL light maps.
+            The file is expected to be in `sIBL format`_.
+            For a wonderful repository of light maps, see the `sIBL Archive`_.
 
             The light map can be used during rendering by setting
             :ref:`Scene.light_map`.
