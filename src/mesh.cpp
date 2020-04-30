@@ -430,6 +430,7 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
             auto vhacd = VHACD::CreateVHACD();
             Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
+                vhacd->Clean();
                 vhacd->Release();
             }};
 
