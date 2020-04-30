@@ -1,6 +1,7 @@
 
 """
 Differentiation package for stillleben
+
 Author: Arul Periyasamy <arul.periyasamy@ais.uni-bonn.de>
 """
 
@@ -12,6 +13,8 @@ import types
 
 import cv2
 from .profiling import Timer
+
+from .lib.libstillleben_python import Scene, RenderPassResult
 
 DIFF_AVAILABLE = False
 try:
@@ -29,6 +32,12 @@ def _check():
             'was built without CUDA support?\n' +
             'original exception follows:\n' + DIFF_ERROR)
 
+__all__ = [
+    'compute_image_space_gradients',
+    'backpropagate_gradient_to_poses',
+    'apply_pose_delta',
+]
+
 TH_GAUSSIAN_KERNEL = 0
 KS = 0
 
@@ -44,7 +53,19 @@ def _init_diff():
     TH_GAUSSIAN_KERNEL = TH_GAUSSIAN_KERNEL.view(1,1, KS, KS).float()
 _init_diff()
 
-def compute_image_space_gradients(scene, render_result):
+def compute_image_space_gradients(scene : Scene, render_result : RenderPassResult):
+    """
+    Gradient of intensity w.r.t. 2D pixel positions.
+
+    :param scene: stillleben scene
+    :param render_result: Render result from :ref:`RenderPass`
+    :return: (grad_x, grad_y, valid), where grad_x and grad_y are gradients
+        w.r.t. X and Y pixel position for each pixel (shape HxWxC).
+
+    Basically, this answers the question of how the image will change when we
+    move pixels in 2D.
+    """
+
     rgb = render_result.rgb()
     rgb = rgb[:,:,:3]
 
@@ -314,10 +335,17 @@ def bp_to_vertices_and_colors(scene, render_result, grad_objective_wrt_rnd_img, 
     return vertex_index_2_bp, grad_vertices_2_bp, grad_colors_2_bp
 
 
-def backpropagate_gradient_to_poses(scene, render_result, grad_objective_wrt_rnd_img, visualize_grad=False):
+def backpropagate_gradient_to_poses(scene : Scene, render_result : RenderPassResult, grad_objective_wrt_rnd_img : torch.Tensor, visualize_grad=False):
     r"""
     Performs backpropagation of a gradient on the output image back to the
     object poses used to render the scene.
+
+    :param scene: Scene
+    :param render_result: Rendered frame
+    :param grad_objective_wrt_rnd_img: 3xHxW float tensor with gradient of the
+        objective w.r.t. the image.
+    :param visualize_grad: Display grad visualization using visdom
+    :return: Nx6 float gradient of the objective w.r.t. the N poses.
 
     Note that the orientation part of each pose is locally linearized, i.e.
 
@@ -329,15 +357,6 @@ def backpropagate_gradient_to_poses(scene, render_result, grad_objective_wrt_rnd
             -\beta & \alpha & 1 & c \\
             0 & 0 & 0 & 1 \\
         \end{matrix} \right)
-
-    Args:
-        scene (stillleben.Scene): Scene
-        render_result (stillleben.RenderPassResult): Rendered frame
-        grad_objective_wrt_rnd_img (tensor): 3xHxW float tensor with gradient of the objective
-            w.r.t. the image.
-    Returns:
-        tensor: Nx6 float gradient of the objective w.r.t. the N poses
-        (see above).
     """
 
     _check()
@@ -486,22 +505,19 @@ def backpropagate_gradient_to_poses(scene, render_result, grad_objective_wrt_rnd
 
     return grad_objective_wrt_poses
 
-def apply_pose_delta(pose, delta, orthonormalize=True):
+def apply_pose_delta(pose : torch.Tensor, delta : torch.Tensor, orthonormalize=True):
     r"""
     Applies a pose delta in the form of :math:`(\alpha,\beta,\gamma,a,b,c)` to
     a 4x4 pose matrix.
 
-    See :func:`backpropagate_gradient_to_poses` for the definition of ``delta``.
-
-    Args:
-        pose (tensor): 4x4 pose matrix. May also be batched (Bx4x4).
-        delta (tensor): 6-dim delta vector. May also be batched (Bx6).
-        orthonormalize (bool): If true (default), perform an SVD for
-            orthonormalization of the rotation matrix after the update.
-
-    Returns:
-        tensor: New 4x4 pose matrix. If the inputs are batched, this one is as
+    :param pose: 4x4 pose matrix. May also be batched (Bx4x4).
+    :param delta: 6-dim delta vector. May also be batched (Bx6).
+    :param orthonormalize: If true (default), perform an SVD for
+        orthonormalization of the rotation matrix after the update.
+    :return: New 4x4 pose matrix. If the inputs are batched, this one is as
         well.
+
+    See :ref:`backpropagate_gradient_to_poses` for the definition of :p:`delta`.
     """
 
     _check()
