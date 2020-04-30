@@ -16,7 +16,18 @@ PLUGINS = [
 INPUT_PAGES = [
     'index.rst',
     'installation.rst',
+    'examples/viewer.rst',
+    'examples/pbr.rst',
+    'examples/examples.rst',
 ]
+
+LINKS_NAVBAR1 = [
+    ('Installation', 'installation', []),
+    ('Examples', 'examples', []),
+    ('Modules', 'modules', []),
+    ('Classes', 'classes', []),
+]
+LINKS_NAVBAR2 = []
 
 PYBIND11_COMPATIBILITY = True
 

@@ -19,7 +19,7 @@ if not (SL_PATH / 'examples' / 'Circus_Backstage').exists():
 import stillleben as sl
 import torch
 import random
-import time
+from PIL import Image
 
 sl.init() # use sl.init_cuda() for CUDA interop
 
@@ -41,18 +41,17 @@ for i in range(20):
     scene.add_object(obj)
 
 # Let them fall in a heap
-t = time.time()
 scene.simulate_tabletop_scene()
-t2 = time.time()
-print(f'Took {t2-t}s for physics simulation')
 
 # Setup lighting
 scene.light_map = sl.LightMap(SL_PATH / 'examples' / 'Circus_Backstage' / 'Circus_Backstage.ibl')
 
 # Display a plane & set background color
 scene.background_plane_size = torch.tensor([3.0, 3.0])
-scene.background_plane_texture = sl.Texture2D(SL_PATH / 'tests' / 'texture.jpg')
 scene.background_color = torch.tensor([0.1, 0.1, 0.1, 1.0])
+
+# Display interactive viewer
+sl.view(scene)
 
 # Render a frame
 renderer = sl.RenderPass()
@@ -60,5 +59,5 @@ result = renderer.render(scene)
 print('Resulting RGB frame:', result.rgb().shape)
 print('Resulting segmentation frame:', result.instance_index().shape)
 
-# Display interactive viewer
-sl.view(scene)
+# Save as JPEG
+Image.fromarray(result.rgb()[:,:,:3].cpu().numpy()).save('rgb.jpeg')

@@ -15,4 +15,4 @@ Here is a short API example:
 
 .. include:: ../examples/viewer.py
     :code: python
-    :start-line: 2
+    :start-line: 5

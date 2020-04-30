@@ -26,6 +26,8 @@ Here is a short guide:
     bash Anaconda3-2020.02-Linux-x86_64.sh
 
     # Make sure to enter the Anaconde environment here!
+    # If you chose auto-activation during installation, just open a new shell.
+    # Otherwise, source anaconda/bin/activate.
 
     # Install PyTorch requirements
     conda install numpy ninja pyyaml mkl mkl-include setuptools cmake cffi
