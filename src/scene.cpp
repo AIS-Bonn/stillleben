@@ -422,13 +422,13 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     Matrix3 rot{xAxis, yAxis, zAxis};
 
+    constexpr Magnum::Vector3 BOX_HALF_EXTENTS{30.0, 30.0, 0.04};
+
     Matrix4 T = Matrix4::from(rot, Vector3{});
 
     auto& physics = m_ctx->physxPhysics();
 
-    constexpr Magnum::Vector3 BOX_SIZE{30.0, 30.0, 0.04};
-
-    physx::PxBoxGeometry boxGeom{BOX_SIZE.x(), BOX_SIZE.y(), BOX_SIZE.z()};
+    physx::PxBoxGeometry boxGeom{BOX_HALF_EXTENTS.x(), BOX_HALF_EXTENTS.y(), BOX_HALF_EXTENTS.z()};
     PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
     PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
     PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
@@ -440,7 +440,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         std::uniform_real_distribution<float> planeRotDist(-M_PI, M_PI);
         Magnum::Rad planeRot{planeRotDist(m_randomGenerator)};
 
-        Matrix4 topSidePlanePose = T * Matrix4::rotationZ(planeRot) * Matrix4::translation({0.0, 0.0, BOX_SIZE.z()/2});
+        Matrix4 topSidePlanePose = T * Matrix4::rotationZ(planeRot) * Matrix4::translation({0.0, 0.0, BOX_HALF_EXTENTS.z()});
         setBackgroundPlanePose(topSidePlanePose);
     }
 
