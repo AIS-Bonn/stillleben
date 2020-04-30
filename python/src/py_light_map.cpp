@@ -25,7 +25,7 @@ void init(py::module& m)
             The light map can be used during rendering by setting
             :ref:`Scene.light_map`.
 
-            For an example, see :ref:`std:doc:examples/pbr`.
+            For an example, see :ref:`std:doc:pbr`.
 
             .. _`sIBL format`: http://www.hdrlabs.com/sibl/index.html
             .. _`sIBL Archive`: http://www.hdrlabs.com/sibl/archive.html
