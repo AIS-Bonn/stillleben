@@ -24,11 +24,11 @@ void main()
     ivec2 texSize = textureSize(normal);
     ivec2 texCoord = ivec2(textureCoords * texSize);
 
-    vec4 rgbVec = texture(rgb, texCoord);
-    vec4 objectCoordinatesVec = texture(objectCoordinates, texCoord);
-    uint instanceIndexVal = texture(instanceIndex, texCoord).x;
-    uint classIndexVal = texture(classIndex, texCoord).x;
-    vec4 normalVec = texture(normal, texCoord);
+    vec4 rgbVec = texelFetch(rgb, texCoord);
+    vec4 objectCoordinatesVec = texelFetch(objectCoordinates, texCoord);
+    uint instanceIndexVal = texelFetch(instanceIndex, texCoord).x;
+    uint classIndexVal = texelFetch(classIndex, texCoord).x;
+    vec4 normalVec = texelFetch(normal, texCoord);
 
     vec3 objBBox = bbox[classIndexVal];
 
