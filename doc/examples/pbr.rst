@@ -1,6 +1,6 @@
 
-Physics-based Rendering
-=======================
+Physically-based Rendering
+==========================
 
 .. figure:: pbr.jpeg
     :alt: Screenshot of the interactive viewer
