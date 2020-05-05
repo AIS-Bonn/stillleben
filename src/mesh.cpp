@@ -60,6 +60,8 @@ namespace sl
 
 namespace
 {
+    constexpr bool VISUALIZE_SIMPLIFIED_MESHES = true;
+
     /**
      * @brief Create PhysX collision shape convex hull
      * */
@@ -154,6 +156,32 @@ namespace
         std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(stream), {});
 
         return buffer;
+    }
+
+    bool meshIsWatertight(const Containers::ArrayView<Vector3>& vertices, const Containers::ArrayView<UnsignedInt>& indices)
+    {
+        static_assert(2 * sizeof(UnsignedInt) == sizeof(std::uint64_t));
+        std::unordered_map<std::uint64_t, UnsignedInt> counts;
+
+        // Loop over all edges
+        for(std::size_t i = 0; i < indices.size()/3; ++i)
+        {
+            auto triangle = indices.slice(i*3, i*3+3);
+            for(std::size_t j = 0; j < 3; ++j)
+            {
+                auto v0 = triangle[j];
+                auto v1 = triangle[(j+1)%3];
+
+                if(v0 < v1)
+                    counts[(static_cast<uint64_t>(v0) << 32) | v1]++;
+                else
+                    counts[(static_cast<uint64_t>(v1) << 32) | v0]++;
+            }
+        }
+
+        return std::all_of(counts.begin(), counts.end(), [](auto edge){
+            return edge.second == 2;
+        });
     }
 }
 
@@ -388,6 +416,10 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
     // Simplify meshes if possible
     m_physXBuffers = CookedPhysXMeshArray{m_meshData.size()};
     m_physXMeshes = PhysXMeshArray{m_meshData.size()};
+
+    if constexpr(VISUALIZE_SIMPLIFIED_MESHES)
+        m_simplifiedMeshData = MeshDataArray{m_meshData.size()};
+
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
         auto& meshData = m_meshData[i];
@@ -413,6 +445,9 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             Debug{} << "Simplifying mesh and writing cache file...";
             Array<Vector3> vertices = meshData->positions3DAsArray();
             Array<UnsignedInt> indices = meshData->indicesAsArray();
+
+            if(!meshIsWatertight(vertices, indices))
+                Warning{} << "Mesh is not watertight!";
 
             if(indices.size()/3 > maxPhysicsTriangles)
             {
@@ -474,6 +509,33 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             if(!allOK)
                 continue;
 
+            // We might want to display the simplified mesh later on for
+            // debugging purposes, so save its data.
+            if constexpr(VISUALIZE_SIMPLIFIED_MESHES)
+            {
+                auto vertexDataSrc = Containers::arrayCast<char>(vertices);
+                auto vertexData = Containers::Array<char>(vertexDataSrc.size());
+                std::memcpy(vertexData.data(), vertexDataSrc.data(), vertexData.size());
+
+                auto indexDataSrc = Containers::arrayCast<char>(indices);
+                auto indexData = Containers::Array<char>(indexDataSrc.size());
+                std::memcpy(indexData.data(), indexDataSrc.data(), indexData.size());
+
+                auto verticesNew = Containers::arrayCast<const Vector3>(vertexData);
+                auto indicesNew = Containers::arrayCast<const UnsignedShort>(indexData);
+
+                m_simplifiedMeshData[i] = Trade::MeshData{
+                    MeshPrimitive::Triangles,
+                    std::move(indexData), Trade::MeshIndexData{indicesNew},
+                    std::move(vertexData), {
+                        Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+                            Containers::StridedArrayView1D<const Vector3>{vertexData,
+                            &verticesNew[0], verticesNew.size(), sizeof(Vector3)}
+                        }
+                    }
+                };
+            }
+
             os::AtomicFileStream ostream(cacheFile);
 
             // Write version
@@ -521,6 +583,7 @@ void Mesh::loadPhysicsVisualization()
     loadPhysics();
 
     m_physXVisMeshes = PhysXVisArray{m_physXMeshes.size()};
+    m_simplifiedMeshes = MeshArray{m_physXMeshes.size()};
     for(std::size_t i = 0; i < m_physXMeshes.size(); ++i)
     {
         m_physXVisMeshes[i] = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes[i].size()};
@@ -545,6 +608,9 @@ void Mesh::loadPhysicsVisualization()
 
             m_physXVisMeshes[i][j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
         }
+
+        if(m_simplifiedMeshData[i])
+            m_simplifiedMeshes[i] = std::make_shared<GL::Mesh>(MeshTools::compile(*m_simplifiedMeshData[i]));
     }
 }
 

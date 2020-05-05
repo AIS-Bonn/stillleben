@@ -269,6 +269,9 @@ public:
     const PhysXVisArray& physXVisualizationMeshes() const
     { return m_physXVisMeshes; }
 
+    const MeshArray& simplifiedMeshes() const
+    { return m_simplifiedMeshes; }
+
     // TextureArray can't be const because texture binding needs non-const reference.
     TextureArray& textures()
     { return m_textures; }
@@ -320,6 +323,9 @@ private:
     CookedPhysXMeshArray m_physXBuffers;
     PhysXMeshArray m_physXMeshes;
     PhysXVisArray m_physXVisMeshes;
+
+    MeshDataArray m_simplifiedMeshData;
+    MeshArray m_simplifiedMeshes;
 
     Magnum::Range3D m_bbox{
         Magnum::Vector3(std::numeric_limits<float>::infinity()),

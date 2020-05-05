@@ -233,6 +233,7 @@ public:
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
     bool drawPhysics = false;
+    bool drawSimplified = false;
 
     bool showInstances = true;
 };
@@ -428,6 +429,7 @@ void Viewer::draw()
 
     m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
     m_d->renderer->setDrawPhysicsEnabled(m_d->drawPhysics);
+    m_d->renderer->setDrawSimplifiedEnabled(m_d->drawSimplified);
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
@@ -540,23 +542,32 @@ void Viewer::draw()
         ImGui::SetNextWindowSize(ImVec2(MENU_BAR_WIDTH, m_d->windowSize.y()));
         ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-        ImGui::Text("Shading:"); ImGui::SameLine();
-        if(ImGui::BeginCombo("Shading model", renderTypeLabel(m_d->renderType)))
+        if(ImGui::CollapsingHeader("Rendering"))
         {
-            for(auto type : {RenderPass::Type::PBR, RenderPass::Type::Phong, RenderPass::Type::Flat})
+            ImGui::Text("Shading:"); ImGui::SameLine();
+            if(ImGui::BeginCombo("Shading model", renderTypeLabel(m_d->renderType)))
             {
-                bool selected = (m_d->renderType == type);
-                if(ImGui::Selectable(renderTypeLabel(type), selected))
-                    m_d->renderType = type;
-                if(selected)
-                    ImGui::SetItemDefaultFocus();
+                for(auto type : {RenderPass::Type::PBR, RenderPass::Type::Phong, RenderPass::Type::Flat})
+                {
+                    bool selected = (m_d->renderType == type);
+                    if(ImGui::Selectable(renderTypeLabel(type), selected))
+                        m_d->renderType = type;
+                    if(selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+
+                ImGui::EndCombo();
             }
 
-            ImGui::EndCombo();
+            ImGui::Checkbox("SSAO", &m_d->enableSSAO);
         }
 
-        ImGui::Checkbox("SSAO", &m_d->enableSSAO);
-        ImGui::Checkbox("Draw physics", &m_d->drawPhysics);
+        if(ImGui::CollapsingHeader("Debug"))
+        {
+            ImGui::Checkbox("Draw simplified meshes", &m_d->drawSimplified);
+            ImGui::Checkbox("Draw physics", &m_d->drawPhysics);
+        }
+
         ImGui::End();
     }
 

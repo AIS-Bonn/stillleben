@@ -143,6 +143,7 @@ public:
     void draw(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
     void drawPhysics(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
+    void drawSimplified(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
     void setInstanceIndex(unsigned int instanceIndex);
     unsigned int instanceIndex() const
@@ -209,6 +210,7 @@ private:
     Magnum::SceneGraph::DrawableGroup3D m_drawables;
     Magnum::SceneGraph::DrawableGroup3D m_debugDrawables;
     Magnum::SceneGraph::DrawableGroup3D m_physXDrawables;
+    Magnum::SceneGraph::DrawableGroup3D m_simplifiedDrawables;
 
     DrawCallback m_cb;
 

@@ -78,6 +78,10 @@ public:
     constexpr bool drawPhysicsEnabled() const
     { return m_drawPhysics; }
 
+    void setDrawSimplifiedEnabled(bool enabled);
+    constexpr bool drawSimplifiedEnabled() const
+    { return m_drawSimplified; }
+
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 
     Type type() const
@@ -119,6 +123,7 @@ private:
 
     bool m_ssaoEnabled = true;
     bool m_drawPhysics = false;
+    bool m_drawSimplified = false;
 };
 
 }
