@@ -457,6 +457,7 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             // Call V-HACD for convex decomposition
             VHACD::IVHACD::Parameters params;
             params.m_concavity = 0.005;
+            params.m_asyncACD = false; // hangs sometimes
 
             auto vhacd = VHACD::CreateVHACD();
             Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
