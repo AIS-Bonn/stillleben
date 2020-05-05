@@ -124,14 +124,14 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 {
     scene.loadVisual();
 
-    if(m_drawPhysics || m_drawSimplified)
+    if(m_drawPhysics)
     {
         for(auto& obj : scene.objects())
             obj->loadPhysicsVisualization();
     }
 
     // At the moment, SSAO + physics are not compatible, needs some work below
-    bool ssaoEnabled = m_ssaoEnabled && !(m_drawPhysics || m_drawSimplified);
+    bool ssaoEnabled = m_ssaoEnabled && !m_drawPhysics;
 
     constexpr Color4 invalid{3000.0, 3000.0, 3000.0, 3000.0};
 
@@ -461,35 +461,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         return {scalarGen(seqGen), scalarGen(seqGen), scalarGen(seqGen), 1.0};
     };
 
-    if(m_drawSimplified)
-    {
-        m_framebuffer.mapForDraw({
-            {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
-        });
-
-        // Just draw over everything
-        m_framebuffer.clear(GL::FramebufferClear::Depth);
-
-        GL::Renderer::enable(GL::Renderer::Feature::Blending);
-        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-            GL::Renderer::BlendEquation::Max);
-        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-
-        for(auto& object : scene.objects())
-        {
-            object->drawSimplified(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
-                (*m_meshShader)
-                    .setColor(randomColor())
-                    .setWireframeColor(0xdcdcdc_rgbf)
-                    .setViewportSize(Vector2{scene.viewport()})
-                    .setTransformationMatrix(meshToCam)
-                    .setProjectionMatrix(cam.projectionMatrix())
-                    .draw(drawable->mesh());
-            });
-        }
-    }
-
     if(m_drawPhysics)
     {
         m_framebuffer.mapForDraw({
@@ -569,11 +540,6 @@ void RenderPass::setSSAOEnabled(bool enabled)
 void RenderPass::setDrawPhysicsEnabled(bool enabled)
 {
     m_drawPhysics = enabled;
-}
-
-void RenderPass::setDrawSimplifiedEnabled(bool enabled)
-{
-    m_drawSimplified = enabled;
 }
 
 

@@ -4,11 +4,11 @@
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
 #include <stillleben/contrib/ctpl_stl.h>
-#include <stillleben/mesh_tools/simplify_mesh.h>
 #include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/physx.h>
 
 #include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/ScopeGuard.h>
 
 #include <Corrade/Utility/Configuration.h>
@@ -60,8 +60,6 @@ namespace sl
 
 namespace
 {
-    constexpr bool VISUALIZE_SIMPLIFIED_MESHES = true;
-
     /**
      * @brief Create PhysX collision shape convex hull
      * */
@@ -425,10 +423,6 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
     // Simplify meshes if possible
     m_physXBuffers = CookedPhysXMeshArray{m_meshData.size()};
     m_physXMeshes = PhysXMeshArray{m_meshData.size()};
-
-    if constexpr(VISUALIZE_SIMPLIFIED_MESHES)
-        m_simplifiedMeshData = MeshDataArray{m_meshData.size()};
-
     for(UnsignedInt i = 0; i != m_meshData.size(); ++i)
     {
         auto& meshData = m_meshData[i];
@@ -458,21 +452,9 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
             if(!meshIsWatertight(vertices, indices))
                 Warning{} << "Mesh is not watertight!";
 
-//             if(indices.size()/3 > maxPhysicsTriangles)
-//             {
-//                 // simplify in-place
-//                 mesh_tools::QuadricEdgeSimplification<Magnum::Vector3> simplification{
-//                     indices, vertices
-//                 };
-//
-//                 simplification.simplify(maxPhysicsTriangles);
-//             }
-
             // Call V-HACD for convex decomposition
             VHACD::IVHACD::Parameters params;
             params.m_concavity = 0.005;
-//             params.m_resolution = 100000;
-            params.m_fillMode = VHACD::FillMode::FLOOD_FILL;
 
             auto vhacd = VHACD::CreateVHACD();
             Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
@@ -519,33 +501,6 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
 
             if(!allOK)
                 continue;
-
-            // We might want to display the simplified mesh later on for
-            // debugging purposes, so save its data.
-            if constexpr(VISUALIZE_SIMPLIFIED_MESHES)
-            {
-                auto vertexDataSrc = Containers::arrayCast<char>(vertices);
-                auto vertexData = Containers::Array<char>(vertexDataSrc.size());
-                std::memcpy(vertexData.data(), vertexDataSrc.data(), vertexData.size());
-
-                auto indexDataSrc = Containers::arrayCast<char>(indices);
-                auto indexData = Containers::Array<char>(indexDataSrc.size());
-                std::memcpy(indexData.data(), indexDataSrc.data(), indexData.size());
-
-                auto verticesNew = Containers::arrayCast<const Vector3>(vertexData);
-                auto indicesNew = Containers::arrayCast<const Magnum::UnsignedInt>(indexData);
-
-                m_simplifiedMeshData[i] = Trade::MeshData{
-                    MeshPrimitive::Triangles,
-                    std::move(indexData), Trade::MeshIndexData{indicesNew},
-                    std::move(vertexData), {
-                        Trade::MeshAttributeData{Trade::MeshAttribute::Position,
-                            Containers::StridedArrayView1D<const Vector3>{vertexData,
-                            &verticesNew[0], verticesNew.size(), sizeof(Vector3)}
-                        }
-                    }
-                };
-            }
 
             os::AtomicFileStream ostream(cacheFile);
 
@@ -594,7 +549,6 @@ void Mesh::loadPhysicsVisualization()
     loadPhysics();
 
     m_physXVisMeshes = PhysXVisArray{m_physXMeshes.size()};
-    m_simplifiedMeshes = MeshArray{m_physXMeshes.size()};
     for(std::size_t i = 0; i < m_physXMeshes.size(); ++i)
     {
         m_physXVisMeshes[i] = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes[i].size()};
@@ -649,9 +603,6 @@ void Mesh::loadPhysicsVisualization()
 
             m_physXVisMeshes[i][j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
         }
-
-        if(m_simplifiedMeshData[i])
-            m_simplifiedMeshes[i] = std::make_shared<GL::Mesh>(MeshTools::compile(*m_simplifiedMeshData[i]));
     }
 }
 

@@ -233,7 +233,6 @@ public:
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
     bool drawPhysics = false;
-    bool drawSimplified = false;
 
     bool showInstances = true;
 };
@@ -429,7 +428,6 @@ void Viewer::draw()
 
     m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
     m_d->renderer->setDrawPhysicsEnabled(m_d->drawPhysics);
-    m_d->renderer->setDrawSimplifiedEnabled(m_d->drawSimplified);
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
@@ -564,8 +562,7 @@ void Viewer::draw()
 
         if(ImGui::CollapsingHeader("Debug"))
         {
-            ImGui::Checkbox("Draw simplified meshes", &m_d->drawSimplified);
-            ImGui::Checkbox("Draw physics", &m_d->drawPhysics);
+            ImGui::Checkbox("Draw collision meshes", &m_d->drawPhysics);
         }
 
         ImGui::End();
