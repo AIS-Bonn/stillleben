@@ -3,7 +3,6 @@
 
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
-#include <stillleben/contrib/ctpl_stl.h>
 #include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/physx.h>
 
@@ -48,6 +47,9 @@
 
 #include <sstream>
 #include <fstream>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 #include "shaders/render_shader.h"
 #include "physx_impl.h"
@@ -892,59 +894,78 @@ void Mesh::loadPretransform(const std::string& filename)
     setPretransform(pretransform);
 }
 
-namespace
-{
-    std::shared_ptr<Mesh> loadHelper(
-        const std::shared_ptr<Context>& ctx,
-        const std::string& filename,
-        bool visual, bool physics,
-        std::size_t maxPhysicsTriangles)
-    {
-        // If we don't load the visuals, hide Magnum importer warnings
-        std::stringstream warnings;
-        Warning redirect(visual ? &std::cerr : &warnings);
-
-        auto mesh = std::make_shared<Mesh>(filename, ctx);
-
-        mesh->openFile();
-
-        if(physics)
-            mesh->loadPhysics(maxPhysicsTriangles);
-
-        return mesh;
-    }
-}
-
 std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
     bool visual, bool physics,
     std::size_t maxPhysicsTriangles)
 {
-    using Future = std::future<std::shared_ptr<sl::Mesh>>;
+    std::queue<int> workQueue;
+    std::mutex workQueueMutex;
 
-    ctpl::thread_pool pool(std::thread::hardware_concurrency());
-
-    std::vector<Future> results;
-    for(const auto& filename : filenames)
     {
-        results.push_back(pool.push(std::bind(&loadHelper,
-            ctx, filename, visual, physics, maxPhysicsTriangles
-        )));
+        for(std::size_t i = 0; i < filenames.size(); ++i)
+            workQueue.push(i);
     }
 
-    std::vector<std::shared_ptr<sl::Mesh>> ret;
-    for(auto& future : results)
+    std::vector<std::shared_ptr<Mesh>> meshes{filenames.size()};
+
+    auto worker = [&](){
+        // If we don't load the visuals, hide Magnum importer warnings
+        std::stringstream warnings;
+        Warning redirect(visual ? &std::cerr : &warnings);
+
+        while(1)
+        {
+            int index;
+
+            {
+                std::unique_lock<std::mutex> lock(workQueueMutex);
+                if(workQueue.empty())
+                    return;
+
+                index = workQueue.front();
+                workQueue.pop();
+            }
+
+            std::string filename = filenames[index];
+
+            try
+            {
+                auto mesh = std::make_shared<Mesh>(filename, ctx);
+
+                mesh->openFile();
+
+                if(physics)
+                    mesh->loadPhysics(maxPhysicsTriangles);
+
+                meshes[index] = std::move(mesh);
+            }
+            catch(LoadException& e)
+            {
+                Error{} << "Could not load file" << filename << ":" << e.what();
+            }
+        }
+    };
+
+    Containers::Array<std::thread> workers{Containers::DirectInit,
+        std::thread::hardware_concurrency(),
+        worker
+    };
+
+    for(auto& worker : workers)
+        worker.join();
+
+    for(auto& mesh : meshes)
     {
-        auto mesh = future.get(); // may throw if we had a load error
+        if(!mesh)
+            throw std::runtime_error{"Could not load one of the meshes"};
 
         if(visual)
             mesh->loadVisual();
-
-        ret.push_back(std::move(mesh));
     }
 
-    return ret;
+    return meshes;
 }
 
 void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int meshObjectIdx)
