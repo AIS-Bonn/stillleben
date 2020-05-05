@@ -5,9 +5,9 @@ layout(binding = 2) uniform highp sampler2DRect normal;
 layout(binding = 3) uniform highp usampler2DRect instanceIndex;
 layout(binding = 4) uniform highp usampler2DRect classIndex;
 
-layout(location = 0) uniform vec3 bbox[MAX_CLASS+1];
-layout(location = MAX_CLASS+1) uniform vec4 instanceColors[MAX_INSTANCE+1];
-layout(location = MAX_CLASS+1+MAX_INSTANCE+1) uniform vec4 classColors[MAX_CLASS+1];
+layout(location = 0) uniform vec3 bbox[MAX_INSTANCE+1];
+layout(location = MAX_INSTANCE+1) uniform vec4 instanceColors[MAX_INSTANCE+1];
+layout(location = MAX_INSTANCE+1+MAX_INSTANCE+1) uniform vec4 classColors[MAX_CLASS+1];
 
 // Inputs
 in highp vec2 textureCoords;
@@ -30,7 +30,7 @@ void main()
     uint classIndexVal = texelFetch(classIndex, texCoord).x;
     vec4 normalVec = texelFetch(normal, texCoord);
 
-    vec3 objBBox = bbox[classIndexVal];
+    vec3 objBBox = bbox[instanceIndexVal];
 
     rgbOut = rgbVec;
 
