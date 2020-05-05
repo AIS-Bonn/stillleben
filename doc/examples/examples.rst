@@ -19,3 +19,11 @@ Examples
             :width: 100%
 
         :ref:`Physically-based Rendering <std:doc:pbr>`
+
+    .. container:: m-col-m-4 m-col-s-6 m-text-center
+
+        .. image:: ycb_rgb_crop.jpeg
+            :alt: YCB
+            :width: 100%
+
+        :ref:`YCB-Video synthesis <std:doc:ycb>`

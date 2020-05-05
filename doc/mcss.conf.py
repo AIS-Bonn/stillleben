@@ -18,6 +18,7 @@ INPUT_PAGES = [
     'installation.rst',
     'examples/viewer.rst',
     'examples/pbr.rst',
+    'examples/ycb.rst',
     'examples/examples.rst',
 ]
 
