@@ -1,17 +1,32 @@
 # stillleben
 
-## Installation
+<p align="center">
+  <img src="doc/examples/ycb.jpeg" width="500" alt="YCB-Video example">
+</p>
 
-1. Install Anaconda with Python 3.6 or higher: https://www.anaconda.com/distribution/#linux \
-   I recommend *not* to initialize the Anaconda environment
-2. Install CUDA + CUDNN (if you have an NVIDIA GPU)
-3. Install PyTorch from source: https://github.com/pytorch/pytorch#from-source
-4. Activate your Anaconda environment and install stillleben:
-```bash
-source ~/anaconda3/bin/activate
-python setup.py install
-```
-5. Run the `display_mesh.py` example:
-```bash
-python tools/display_mesh.py tests/stanford_bunny/scene.gltf
-```
+What can it do for me?
+----------------------
+
+stillleben generates realistic arrangements of rigid bodies and provides
+various outputs that can be used to train deep learning models.
+
+For more information, we refer to the project homepage:
+https://AIS-Bonn.github.io/stillleben/
+
+Credits
+-------
+
+stillleben is developed by Max Schwarz <max.schwarz@ais.uni-bonn.de>, with
+differentiation support added by
+Arul Selvam Periyasamy <periyasamy@ais.uni-bonn.de>.
+
+License
+-------
+
+stillleben is licensed under the MIT license (see LICENSE). It is built
+on top of the following third-party modules:
+
+ * [Magnum 3D Engine] (MIT),
+ * [PhysX] physics engine (BSD-3),
+ * [V-HACD] (included in `contrib/v-hacd`, BSD-3)
+ * [imgui] (included in `contrib/imgui`, MIT)
