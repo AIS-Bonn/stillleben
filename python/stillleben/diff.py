@@ -2,6 +2,12 @@
 """
 Differentiation package for stillleben
 
+.. note-warning:: CUDA required!
+
+    At the moment, the :ref:`diff` module is only compiled when CUDA is
+    available. Since CPU implementations are available, this restriction
+    could be lifted in the future.
+
 Author: Arul Periyasamy <arul.periyasamy@ais.uni-bonn.de>
 """
 
