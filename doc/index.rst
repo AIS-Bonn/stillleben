@@ -27,9 +27,9 @@ deep learning framework. It can be used to produce training data on-line to
 save dataset generation time or to train methods that require interaction with
 the scene.
 
-For more interactive methods we provide an approximative differentiation module
-in :ref:`stillleben.diff` which allows backpropagation of image-space gradients
-to object poses and shapes.
+For scene registration and other applications we provide an approximative
+differentiation module in :ref:`stillleben.diff` which allows backpropagation
+of image-space gradients to object poses and shapes.
 
 This page documents the Python API of stillleben. The Python API is a wrapper
 around the C++ core implementation.
