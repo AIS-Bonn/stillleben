@@ -27,3 +27,6 @@ Examples
             :width: 100%
 
         :ref:`YCB-Video synthesis <std:doc:ycb>`
+
+More involved examples including multi-process physics simulation will follow
+soon!
