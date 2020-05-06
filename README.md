@@ -1,8 +1,8 @@
 # stillleben
 
-<p style="text-align: center">
+<center>
   <img src="doc/examples/ycb.jpeg" width="500" alt="YCB-Video example">
-</p>
+</center>
 
 What can it do for me?
 ----------------------
