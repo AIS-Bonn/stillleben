@@ -42,3 +42,8 @@ and for differentiation support:
     Arul Selvam Periyasamy, Max Schwarz, and Sven Behnke:
     Refining 6D Object Pose Predictions using Abstract Render-and-Compare
     IEEE-RAS International Conference on Humanoid Robots (Humanoids), October 2019.
+
+[Magnum 3D Engine]: https://magnum.graphics/
+[PhysX]: https://github.com/NVIDIAGameWorks/PhysX
+[V-HACD]: https://github.com/kmammou/v-hacd
+[imgui]: https://github.com/ocornut/imgui
