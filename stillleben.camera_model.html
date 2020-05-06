@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>stillleben.camera_model | stillleben Python</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">stillleben <span class="m-thin">Python</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-12 m-col-m-none">
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="examples.html">Examples</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="classes.html">Classes</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>camera_model <span class="m-thin">module</span>
+        </h1>
+        <p>Introduces camera noise effects.</p>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#functions">Functions</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+<p>This module systematically models the different noise sources present in modern
+digital cameras.</p>
+<p>The implementation largely follows the work of
+A. Carlson et al.: <em>Modeling Camera Effects to Improve Visual Learning from
+Synthetic Data</em> (2018), <a href="https://arxiv.org/abs/1803.07721">arXiv</a></p>
+<section id="typical-usage">
+<h2>Typical usage</h2>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="c1"># Input image (CHW)</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1080</span><span class="p">,</span> <span class="mi">1920</span><span class="p">)</span>
+
+<span class="c1"># Everything is much faster on GPU!</span>
+<span class="n">img</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+
+<span class="c1"># Apply noise</span>
+<span class="n">img_with_noise</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">camera_model</span><span class="o">.</span><span class="n">process_image</span><span class="p">(</span><span class="n">img</span><span class="p">)</span></pre>
+</section>
+        <section id="functions">
+          <h2><a href="#functions">Functions</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#chromatic_aberration" class="m-doc">chromatic_aberration</a>(</span><span class="m-doc-wrap">rgb, translations, scaling)</span>
+            </dt>
+            <dd>Introduces chromatic aberration effects.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#blur" class="m-doc">blur</a>(</span><span class="m-doc-wrap">rgb, sigma)</span>
+            </dt>
+            <dd>Applies Gaussian blur</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#exposure" class="m-doc">exposure</a>(</span><span class="m-doc-wrap">rgb, deltaS)</span>
+            </dt>
+            <dd>Re-exposes the image</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#noise" class="m-doc">noise</a>(</span><span class="m-doc-wrap">rgb, a, b)</span>
+            </dt>
+            <dd>Applies additional Poissonian-Gaussian noise</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#color_jitter" class="m-doc">color_jitter</a>(</span><span class="m-doc-wrap">tensor_img, hue_shift)</span>
+            </dt>
+            <dd>Hue shift.</dd>
+            <dt id="process_deterministic">
+              <span class="m-doc-wrap-bumper">def <a href="#process_deterministic" class="m-doc-self">process_deterministic</a>(</span><span class="m-doc-wrap">rgb, chromatic_translation, chromatic_scaling, blur_sigma, exposure_deltaS, do_noise, noise_a, noise_b, hue_shift)</span>
+            </dt>
+            <dd>Process image with given noise model parameters.</dd>
+            <dt id="process_image">
+              <span class="m-doc-wrap-bumper">def <a href="#process_image" class="m-doc-self">process_image</a>(</span><span class="m-doc-wrap">rgb)</span>
+            </dt>
+            <dd>Process image with random noise parameters.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Function documentation</h2>
+          <section class="m-doc-details" id="chromatic_aberration"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />camera_model.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#chromatic_aberration" class="m-doc-self">chromatic_aberration</a>(</span><span class="m-doc-wrap">rgb, translations, scaling)</span></span>
+            </h3>
+            <p>Introduces chromatic aberration effects.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">rgb</td>
+                  <td>3xHxW input RGB image</td>
+                </tr>
+                <tr>
+                  <td>translations</td>
+                  <td>3x2 translation tensor (tx, ty) for each of R, G, B</td>
+                </tr>
+                <tr>
+                  <td>scaling</td>
+                  <td>[sr, sg, sb] scaling factor for each of R, G, B</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>3xHxW output tensor</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="blur"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />camera_model.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#blur" class="m-doc-self">blur</a>(</span><span class="m-doc-wrap">rgb, sigma)</span></span>
+            </h3>
+            <p>Applies Gaussian blur</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">rgb</td>
+                  <td>3xHxW input RGB image</td>
+                </tr>
+                <tr>
+                  <td>sigma</td>
+                  <td>Standard deviation of the Gaussian</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>3xHxW output RGB image</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="exposure"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />camera_model.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#exposure" class="m-doc-self">exposure</a>(</span><span class="m-doc-wrap">rgb, deltaS)</span></span>
+            </h3>
+            <p>Re-exposes the image</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">rgb</td>
+                  <td>3xHxW input RGB image, float [0-1]</td>
+                </tr>
+                <tr>
+                  <td>deltaS</td>
+                  <td>exposure shift (usually -1 to 1)</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>3xHxW output image</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="noise"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />camera_model.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#noise" class="m-doc-self">noise</a>(</span><span class="m-doc-wrap">rgb, a, b)</span></span>
+            </h3>
+            <p>Applies additional Poissonian-Gaussian noise</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">rgb</td>
+                  <td>3xHxW input RGB image, float [0-1]</td>
+                </tr>
+                <tr>
+                  <td>a</td>
+                  <td>variance factor of the signal-dependant noise (var = a*y(x))</td>
+                </tr>
+                <tr>
+                  <td>b</td>
+                  <td>standard deviation of the signal-independant noise</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>modified image</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>See Foi, Alessandro, et al. (2008):
+<cite>Practical Poissonian-Gaussian noise modeling and fitting for single-image
+raw-data</cite>,
+<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.164.1943&amp;rep=rep1&amp;type=pdf">PDF</a></p>
+          </div></section>
+          <section class="m-doc-details" id="color_jitter"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />camera_model.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#color_jitter" class="m-doc-self">color_jitter</a>(</span><span class="m-doc-wrap">tensor_img, hue_shift)</span></span>
+            </h3>
+            <p>Hue shift.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">tensor_img</td>
+                  <td>3xHxW RGB float tensor [0,1]</td>
+                </tr>
+                <tr>
+                  <td>hue_shift</td>
+                  <td>hue shift to apply (-0.5 to 0.5)</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>jittered image</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for modules, classes, functions and other
+            symbols. You can omit any prefix from the symbol path; adding a <code>.</code>
+            suffix lists all members of given symbol.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v1.js"></script>
+<script src="searchdata-v1.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>stillleben Python. Created with <a href="https://mcss.mosra.cz/documentation/python/">m.css Python doc generator</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>

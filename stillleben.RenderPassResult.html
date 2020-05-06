@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>stillleben.RenderPassResult | stillleben Python</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">stillleben <span class="m-thin">Python</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-12 m-col-m-none">
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="examples.html">Examples</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="classes.html">Classes</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>RenderPassResult <span class="m-thin">class</span>
+        </h1>
+        <p>Result of a <a class="m-doc" href="stillleben.RenderPass.html">RenderPass</a> run.</p>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#methods">Methods</a></li>
+                <li><a href="#dunder-methods">Special methods</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+<section id="cuda-support">
+<h2>CUDA support</h2>
+<p>All accessor methods defined in this class will return a PyTorch
+Tensor residing on the GPU which was used during rendering - as long
+as CUDA support is enabled (see <a class="m-doc" href="stillleben.html#init_cuda">init_cuda()</a>).</p>
+</section>
+        <section id="methods">
+          <h2><a href="#methods">Methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#barycentric_coeffs" class="m-doc">barycentric_coeffs</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read barycentric coefficients map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#cam_coordinates" class="m-doc">cam_coordinates</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read dense coordinate map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#class_index" class="m-doc">class_index</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read class index map (see <a class="m-doc" href="stillleben.Mesh.html#class_index">Mesh.class_index</a>).</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#coordDepth" class="m-doc">coordDepth</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read combined coordinate + depth map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#coordinates" class="m-doc">coordinates</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read object coordinates map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#depth" class="m-doc">depth</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read depth map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#instance_index" class="m-doc">instance_index</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read instance index map (see <a class="m-doc" href="stillleben.Object.html#instance_index">Object.instance_index</a>).</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#normals" class="m-doc">normals</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read normal map.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#rgb" class="m-doc">rgb</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read RGBA tensor.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#vertex_indices" class="m-doc">vertex_indices</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Read vertex indices map.</dd>
+          </dl>
+        </section>
+        <section id="dunder-methods">
+          <h2><a href="#dunder-methods">Special methods</a></h2>
+          <dl class="m-doc">
+            <dt id="__init__">
+              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Constructor.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Method documentation</h2>
+          <section class="m-doc-details" id="barycentric_coeffs"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#barycentric_coeffs" class="m-doc-self">barycentric_coeffs</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read barycentric coefficients map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 3) float tensor with barycentric coefficients.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="cam_coordinates"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#cam_coordinates" class="m-doc-self">cam_coordinates</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read dense coordinate map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 4) float tensor (x, y, z, 1)</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Each pixel contains the coordinates
+of the 3D point in camera space as 4D homogenous coordinates.</p>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+          <section class="m-doc-details" id="class_index"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#class_index" class="m-doc-self">class_index</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read class index map (see <a class="m-doc" href="stillleben.Mesh.html#class_index">Mesh.class_index</a>).</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W) short tensor with class values.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering. The background index is 0.</p>
+          </div></section>
+          <section class="m-doc-details" id="coordDepth"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#coordDepth" class="m-doc-self">coordDepth</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read combined coordinate + depth map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 4) float tensor with coordinate and depth
+values.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>This is the concatenation of the <cite>coordinates</cite> and <cite>depth</cite>
+fields. Using this avoids a copy, since this is the packed
+format used in the shaders.</p>
+          </div></section>
+          <section class="m-doc-details" id="coordinates"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#coordinates" class="m-doc-self">coordinates</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read object coordinates map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 3) float tensor with coordinates.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Each pixel specifies the XYZ
+coordinate of the point in the respective object coordinate
+system.</p>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+          <section class="m-doc-details" id="depth"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#depth" class="m-doc-self">depth</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read depth map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W) float tensor with depth values.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Each pixel specifies Z depth in camera frame.</p>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+          <section class="m-doc-details" id="instance_index"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#instance_index" class="m-doc-self">instance_index</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read instance index map (see <a class="m-doc" href="stillleben.Object.html#instance_index">Object.instance_index</a>).</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W) short tensor with instance values.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering. The background index is 0.</p>
+          </div></section>
+          <section class="m-doc-details" id="normals"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#normals" class="m-doc-self">normals</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read normal map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 4) float tensor with normals.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>Each pixel (XYZW) specifies the normal direction in the camera
+frame (XYZ) and, in the W component, the dot product with the
+camera direction.</p>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+          <section class="m-doc-details" id="rgb"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#rgb" class="m-doc-self">rgb</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read RGBA tensor.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 4) byte tensor with R,G,B,A values.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+          <section class="m-doc-details" id="vertex_indices"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPassResult.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#vertex_indices" class="m-doc-self">vertex_indices</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Read vertex indices map.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>(H x W x 4) float tensor with normals.</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>If CUDA support is active, the tensor will reside on the GPU
+which was used during rendering.</p>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for modules, classes, functions and other
+            symbols. You can omit any prefix from the symbol path; adding a <code>.</code>
+            suffix lists all members of given symbol.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v1.js"></script>
+<script src="searchdata-v1.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>stillleben Python. Created with <a href="https://mcss.mosra.cz/documentation/python/">m.css Python doc generator</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>

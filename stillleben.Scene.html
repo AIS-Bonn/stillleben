@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>stillleben.Scene | stillleben Python</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">stillleben <span class="m-thin">Python</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-12 m-col-m-none">
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="examples.html">Examples</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="classes.html">Classes</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>Scene <span class="m-thin">class</span>
+        </h1>
+        <p>Represents a scene with multiple objects.</p>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#methods">Methods</a></li>
+                <li><a href="#dunder-methods">Special methods</a></li>
+                <li><a href="#properties">Properties</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+<section id="typical-usage">
+<h2>Typical usage</h2>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="c1"># Load &amp; instantiate meshes</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="s1">&#39;my_mesh.gltf&#39;</span><span class="p">)</span>
+<span class="n">objectA</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<span class="n">objectB</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+
+<span class="c1"># Setup the scene</span>
+<span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1920</span><span class="p">,</span><span class="mi">1080</span><span class="p">))</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">objectA</span><span class="p">)</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">objectB</span><span class="p">)</span></pre>
+</section>
+        <section id="methods">
+          <h2><a href="#methods">Methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#add_object" class="m-doc">add_object</a>(</span><span class="m-doc-wrap">self,
+              object: <a href="stillleben.Object.html" class="m-doc">Object</a>) -&gt; None</span>
+            </dt>
+            <dd>Adds an object to the scene.</dd>
+            <dt id="camera_pose">
+              <span class="m-doc-wrap-bumper">def <a href="#camera_pose" class="m-doc-self">camera_pose</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Retrieve current camera pose (see <a class="m-doc" href="stillleben.Scene.html#set_camera_pose">set_camera_pose()</a>).</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#camera_to_world" class="m-doc">camera_to_world</a>(</span><span class="m-doc-wrap">self,
+              poseInCamera: at::Tensor) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Transform a pose from camera coordinates to world coordinates.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#choose_random_light_position" class="m-doc">choose_random_light_position</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Choose a random light position.</dd>
+            <dt id="deserialize">
+              <span class="m-doc-wrap-bumper">def <a href="#deserialize" class="m-doc-self">deserialize</a>(</span><span class="m-doc-wrap">self,
+              str: str,
+              cache: <a href="stillleben.MeshCache.html" class="m-doc">MeshCache</a> = None) -&gt; None</span>
+            </dt>
+            <dd>Deserialize the scene from a string</dd>
+            <dt id="find_noncolliding_pose">
+              <span class="m-doc-wrap-bumper">def <a href="#find_noncolliding_pose" class="m-doc-self">find_noncolliding_pose</a>(</span><span class="m-doc-wrap">self,
+              object: <a href="stillleben.Object.html" class="m-doc">Object</a>,
+              sampler: str = &#x27;random&#x27;,
+              max_iterations: int = 10,
+              **kwargs) -&gt; bool</span>
+            </dt>
+            <dd>Finds a non-colliding random pose for an object. The object should
+already have been added using add_object().</dd>
+            <dt id="load_physics">
+              <span class="m-doc-wrap-bumper">def <a href="#load_physics" class="m-doc-self">load_physics</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Load physics meshes</dd>
+            <dt id="load_visual">
+              <span class="m-doc-wrap-bumper">def <a href="#load_visual" class="m-doc-self">load_visual</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Load visual meshes</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#min_dist_for_object_diameter" class="m-doc">min_dist_for_object_diameter</a>(</span><span class="m-doc-wrap">self,
+              diameter: float) -&gt; float</span>
+            </dt>
+            <dd>Calculates the minimum Z distance from the camera to have an object
+of diameter <code>diameter</code> fully visible in the camera frustrum.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#place_object_randomly" class="m-doc">place_object_randomly</a>(</span><span class="m-doc-wrap">self,
+              diameter: float,
+              min_size_factor: float = 0.4000000059604645) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Generates a random pose for an object of given diameter.</dd>
+            <dt id="projection_matrix">
+              <span class="m-doc-wrap-bumper">def <a href="#projection_matrix" class="m-doc-self">projection_matrix</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Return the currently used OpenGL projection matrix.</dd>
+            <dt id="resolve_collisions">
+              <span class="m-doc-wrap-bumper">def <a href="#resolve_collisions" class="m-doc-self">resolve_collisions</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; bool</span>
+            </dt>
+            <dd>Resolve collisions by forward-simulation using the physics engine.</dd>
+            <dt id="serialize">
+              <span class="m-doc-wrap-bumper">def <a href="#serialize" class="m-doc-self">serialize</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; str</span>
+            </dt>
+            <dd>Serialize the scene to a string</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_camera_hfov" class="m-doc">set_camera_hfov</a>(</span><span class="m-doc-wrap">self,
+              hfov: float) -&gt; None</span>
+            </dt>
+            <dd>Set camera intrinsics from horizontal FOV.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_camera_intrinsics" class="m-doc">set_camera_intrinsics</a>(</span><span class="m-doc-wrap">self,
+              fx: float,
+              fy: float,
+              cx: float,
+              cy: float) -&gt; None</span>
+            </dt>
+            <dd>Set camera intrinsics directly.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_camera_look_at" class="m-doc">set_camera_look_at</a>(</span><span class="m-doc-wrap">self,
+              position: at::Tensor,
+              look_at: at::Tensor,
+              up: at::Tensor = tensor([0., 0., 1.])) -&gt; None</span>
+            </dt>
+            <dd>Sets the camera pose within the scene using lookAt parameters.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_camera_pose" class="m-doc">set_camera_pose</a>(</span><span class="m-doc-wrap">self,
+              pose: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Set the camera pose within the scene.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_camera_projection" class="m-doc">set_camera_projection</a>(</span><span class="m-doc-wrap">self,
+              P: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Set the camera intrinsics from a 4x4 matrix.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#simulate_tabletop_scene" class="m-doc">simulate_tabletop_scene</a>(</span><span class="m-doc-wrap">self,
+              vis_cb: typing.Callable[[int], None] = None) -&gt; None</span>
+            </dt>
+            <dd>Arrange the objects as if they were standing on a supporting surface.</dd>
+          </dl>
+        </section>
+        <section id="dunder-methods">
+          <h2><a href="#dunder-methods">Special methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc">__init__</a>(</span><span class="m-doc-wrap">self,
+              viewport_size: typing.Tuple[int, int]) -&gt; None</span>
+            </dt>
+            <dd>Constructor</dd>
+          </dl>
+        </section>
+        <section id="properties">
+          <h2><a href="#properties">Properties</a></h2>
+          <dl class="m-doc">
+            <dt id="ambient_light">
+              <a href="#ambient_light" class="m-doc-self">ambient_light</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>The color &amp; intensity of the ambient light. This is a float
+tensor of size 3 (RGB, range 0-1). This color is multiplied
+with the object color / texture during rendering.</dd>
+            <dt id="background_color">
+              <a href="#background_color" class="m-doc-self">background_color</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>The background color (RGBA, float, range 0-1). The default is white.</dd>
+            <dt id="background_image">
+              <a href="#background_image" class="m-doc-self">background_image</a>: <a href="stillleben.Texture.html" class="m-doc">Texture</a> <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>The background image. If None (default), the background color
+(see <a class="m-doc" href="stillleben.Scene.html#background_color">background_color</a>) is used.</dd>
+            <dt id="background_plane_pose">
+              <a href="#background_plane_pose" class="m-doc-self">background_plane_pose</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Pose of the background plane (plane normal is in +Z direction)</dd>
+            <dt id="background_plane_size">
+              <a href="#background_plane_size" class="m-doc-self">background_plane_size</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Size of the background plane in local X/Y directions</dd>
+            <dt id="background_plane_texture">
+              <a href="#background_plane_texture" class="m-doc-self">background_plane_texture</a>: <a href="stillleben.Texture2D.html" class="m-doc">Texture2D</a> <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Texture of the background plane</dd>
+            <dt id="light_map">
+              <a href="#light_map" class="m-doc-self">light_map</a>: <a href="stillleben.LightMap.html" class="m-doc">LightMap</a> <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Light map used for image-based lighting.</dd>
+            <dt id="light_position">
+              <a href="#light_position" class="m-doc-self">light_position</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>The light position in world coordinates. This is a float tensor
+of size 3.</dd>
+            <dt>
+              <a href="#objects" class="m-doc">objects</a>: typing.List[<a href="stillleben.Object.html" class="m-doc">Object</a>] <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>All objects added to the scene.</dd>
+            <dt id="viewport">
+              <a href="#viewport" class="m-doc-self">viewport</a>: typing.Tuple[int, int] <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The current viewport size (W,H) as set in the constructor.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Method documentation</h2>
+          <section class="m-doc-details" id="add_object"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#add_object" class="m-doc-self">add_object</a>(</span><span class="m-doc-wrap">self,
+              object: <a href="stillleben.Object.html" class="m-doc">Object</a>) -&gt; None</span></span>
+            </h3>
+            <p>Adds an object to the scene.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">object</td>
+                  <td>Object to be added</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="camera_to_world"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#camera_to_world" class="m-doc-self">camera_to_world</a>(</span><span class="m-doc-wrap">self,
+              poseInCamera: at::Tensor) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Transform a pose from camera coordinates to world coordinates.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">poseInCamera</td>
+                  <td>4x4 float pose</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="choose_random_light_position"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#choose_random_light_position" class="m-doc-self">choose_random_light_position</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
+            </h3>
+            <p>Choose a random light position.</p>
+<p>The position obeys the following constraints:</p>
+<ul>
+<li>The light comes from above (negative Y direction)</li>
+<li>The light never comes from behind the objects.</li>
+</ul>
+          </div></section>
+          <section class="m-doc-details" id="min_dist_for_object_diameter"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#min_dist_for_object_diameter" class="m-doc-self">min_dist_for_object_diameter</a>(</span><span class="m-doc-wrap">self,
+              diameter: float) -&gt; float</span></span>
+            </h3>
+            <p>Calculates the minimum Z distance from the camera to have an object
+of diameter <code>diameter</code> fully visible in the camera frustrum.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">diameter</td>
+                  <td>Diameter of the object.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="place_object_randomly"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#place_object_randomly" class="m-doc-self">place_object_randomly</a>(</span><span class="m-doc-wrap">self,
+              diameter: float,
+              min_size_factor: float = 0.4000000059604645) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Generates a random pose for an object of given diameter.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">diameter</td>
+                  <td>Object diameter</td>
+                </tr>
+                <tr>
+                  <td>min_size_factor</td>
+                  <td>The object will occupy at least this
+much of the screen space.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Object pose (4x4 tensor)</td>
+                </tr>
+              </tfoot>
+            </table>
+<p>The pose obeys the following constraints (relative to the camera
+coordinate system):</p>
+<ul>
+<li><svg class="m-math" style="width: 0.622em; height: 0.536em; vertical-align: -0.000em;" viewBox="0 -5.14737 5.97062 5.14737">
+<title>
+z
+</title>
+<defs>
+<path d='M1.51831 -0.968369C2.03238 -1.55417 2.45081 -1.92478 3.04857 -2.46276C3.76588 -3.08443 4.07671 -3.38331 4.24408 -3.56264C5.08095 -4.38755 5.49938 -5.08095 5.49938 -5.17659S5.40374 -5.27223 5.37983 -5.27223C5.29614 -5.27223 5.27223 -5.22441 5.21245 -5.14072C4.91357 -4.62665 4.62665 -4.37559 4.31582 -4.37559C4.06476 -4.37559 3.93325 -4.48319 3.7061 -4.77011C3.45504 -5.06899 3.25181 -5.27223 2.90511 -5.27223C2.03238 -5.27223 1.50635 -4.18431 1.50635 -3.93325C1.50635 -3.89738 1.51831 -3.82565 1.6259 -3.82565C1.72154 -3.82565 1.7335 -3.87347 1.76936 -3.95716C1.9726 -4.43537 2.54645 -4.51905 2.7736 -4.51905C3.02466 -4.51905 3.26376 -4.43537 3.51482 -4.32777C3.96912 -4.13649 4.1604 -4.13649 4.27995 -4.13649C4.36364 -4.13649 4.41146 -4.13649 4.47123 -4.14844C4.07671 -3.68219 3.43113 -3.10834 2.89315 -2.61818L1.68568 -1.50635C0.956413 -0.765131 0.514072 -0.0597758 0.514072 0.0239103C0.514072 0.0956413 0.573848 0.119552 0.645579 0.119552S0.729265 0.107597 0.812951 -0.0358655C1.00423 -0.334745 1.3868 -0.777086 1.82914 -0.777086C2.0802 -0.777086 2.19975 -0.6934 2.43885 -0.394521C2.666 -0.131507 2.86924 0.119552 3.25181 0.119552C4.42341 0.119552 5.0929 -1.39875 5.0929 -1.67372C5.0929 -1.72154 5.08095 -1.79328 4.96139 -1.79328C4.86575 -1.79328 4.8538 -1.74545 4.81793 -1.6259C4.55492 -0.920548 3.84956 -0.633624 3.38331 -0.633624C3.13225 -0.633624 2.89315 -0.71731 2.64209 -0.824907C2.16389 -1.01619 2.03238 -1.01619 1.87696 -1.01619C1.75741 -1.01619 1.6259 -1.01619 1.51831 -0.968369Z' id='eq1-g0-122'/>
+</defs>
+<g id='eq1-page1'>
+<use x='0' xlink:href='#eq1-g0-122' y='0'/>
+</g>
+</svg> is between <code>1.2*min_dist_for_object_diameter()</code>
+and <code>(1.0/min_size_factor) * min_dist_for_object_diameter()</code>, and</li>
+<li><svg class="m-math" style="width: 0.693em; height: 0.536em; vertical-align: -0.000em;" viewBox="0 -5.14737 6.65209 5.14737">
+<title>
+x
+</title>
+<defs>
+<path d='M5.66675 -4.87771C5.28418 -4.80598 5.14072 -4.51905 5.14072 -4.29191C5.14072 -4.00498 5.36787 -3.90934 5.53524 -3.90934C5.8939 -3.90934 6.14496 -4.22017 6.14496 -4.54296C6.14496 -5.04508 5.57111 -5.27223 5.06899 -5.27223C4.33973 -5.27223 3.93325 -4.55492 3.82565 -4.32777C3.55068 -5.22441 2.80946 -5.27223 2.59427 -5.27223C1.37484 -5.27223 0.729265 -3.7061 0.729265 -3.44309C0.729265 -3.39527 0.777086 -3.33549 0.860772 -3.33549C0.956413 -3.33549 0.980324 -3.40722 1.00423 -3.45504C1.41071 -4.78207 2.21171 -5.03313 2.55841 -5.03313C3.09639 -5.03313 3.20399 -4.53101 3.20399 -4.24408C3.20399 -3.98107 3.13225 -3.7061 2.98879 -3.13225L2.58232 -1.4944C2.40299 -0.777086 2.05629 -0.119552 1.42267 -0.119552C1.36289 -0.119552 1.06401 -0.119552 0.812951 -0.274969C1.24334 -0.358655 1.33898 -0.71731 1.33898 -0.860772C1.33898 -1.09988 1.15965 -1.24334 0.932503 -1.24334C0.645579 -1.24334 0.334745 -0.992279 0.334745 -0.609714C0.334745 -0.107597 0.896638 0.119552 1.41071 0.119552C1.98456 0.119552 2.39103 -0.334745 2.64209 -0.824907C2.83337 -0.119552 3.43113 0.119552 3.87347 0.119552C5.0929 0.119552 5.73848 -1.44658 5.73848 -1.70959C5.73848 -1.76936 5.69066 -1.81719 5.61893 -1.81719C5.51133 -1.81719 5.49938 -1.75741 5.46351 -1.66177C5.14072 -0.609714 4.44732 -0.119552 3.90934 -0.119552C3.49091 -0.119552 3.26376 -0.430386 3.26376 -0.920548C3.26376 -1.18356 3.31158 -1.37484 3.50286 -2.16389L3.9213 -3.78979C4.10062 -4.5071 4.5071 -5.03313 5.05704 -5.03313C5.08095 -5.03313 5.41569 -5.03313 5.66675 -4.87771Z' id='eq2-g0-120'/>
+</defs>
+<g id='eq2-page1'>
+<use x='0' xlink:href='#eq2-g0-120' y='0'/>
+</g>
+</svg> and <svg class="m-math" style="width: 0.639em; height: 0.778em; vertical-align: -0.243em;" viewBox="0 -5.14737 6.13666 7.47198">
+<title>
+y
+</title>
+<defs>
+<path d='M3.14421 1.33898C2.82142 1.79328 2.35517 2.19975 1.76936 2.19975C1.6259 2.19975 1.05205 2.17584 0.872727 1.6259C0.908593 1.63786 0.968369 1.63786 0.992279 1.63786C1.35093 1.63786 1.59004 1.32702 1.59004 1.05205S1.36289 0.681445 1.18356 0.681445C0.992279 0.681445 0.573848 0.824907 0.573848 1.41071C0.573848 2.02042 1.08792 2.43885 1.76936 2.43885C2.96488 2.43885 4.17235 1.33898 4.5071 0.0119552L5.6787 -4.65056C5.69066 -4.71034 5.71457 -4.78207 5.71457 -4.8538C5.71457 -5.03313 5.57111 -5.15268 5.39178 -5.15268C5.28418 -5.15268 5.03313 -5.10486 4.93748 -4.7462L4.0528 -1.23138C3.99303 -1.01619 3.99303 -0.992279 3.89738 -0.860772C3.65828 -0.526027 3.26376 -0.119552 2.68991 -0.119552C2.02042 -0.119552 1.96065 -0.777086 1.96065 -1.09988C1.96065 -1.78132 2.28344 -2.70187 2.60623 -3.56264C2.73773 -3.90934 2.80946 -4.07671 2.80946 -4.31582C2.80946 -4.81793 2.45081 -5.27223 1.86501 -5.27223C0.765131 -5.27223 0.32279 -3.53873 0.32279 -3.44309C0.32279 -3.39527 0.37061 -3.33549 0.454296 -3.33549C0.561893 -3.33549 0.573848 -3.38331 0.621669 -3.55068C0.908593 -4.55492 1.36289 -5.03313 1.82914 -5.03313C1.93674 -5.03313 2.13998 -5.03313 2.13998 -4.63861C2.13998 -4.32777 2.00847 -3.98107 1.82914 -3.52677C1.24334 -1.96065 1.24334 -1.56613 1.24334 -1.2792C1.24334 -0.143462 2.05629 0.119552 2.65405 0.119552C3.00075 0.119552 3.43113 0.0119552 3.84956 -0.430386L3.86152 -0.418431C3.68219 0.286924 3.56264 0.753176 3.14421 1.33898Z' id='eq3-g0-121'/>
+</defs>
+<g id='eq3-page1'>
+<use x='0' xlink:href='#eq3-g0-121' y='0'/>
+</g>
+</svg> are choosen such that the object center is
+inside 80% of the camera frustrum in each axis.</li>
+</ul>
+          </div></section>
+          <section class="m-doc-details" id="set_camera_hfov"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_camera_hfov" class="m-doc-self">set_camera_hfov</a>(</span><span class="m-doc-wrap">self,
+              hfov: float) -&gt; None</span></span>
+            </h3>
+            <p>Set camera intrinsics from horizontal FOV.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">hfov</td>
+                  <td>Horizontal FOV in radians</td>
+                </tr>
+              </tbody>
+            </table>
+<p>This assumes a pinhole camera with centered principal point
+and horizontal FOV <code>hfov</code>. The vertical FOV is set such that
+the pixel size is 1:1 (in other words, <svg class="m-math" style="width: 3.857em; height: 1.213em; vertical-align: -0.350em;" viewBox="0 -8.30219 37.023 11.6452">
+<title>
+f_x=f_y
+</title>
+<defs>
+<path d='M3.99303 -3.18007C3.64234 -3.0924 3.6264 -2.78157 3.6264 -2.74969C3.6264 -2.57435 3.76189 -2.45479 3.93724 -2.45479S4.38356 -2.59029 4.38356 -2.933C4.38356 -3.3873 3.88144 -3.51482 3.58655 -3.51482C3.21196 -3.51482 2.90909 -3.25181 2.72578 -2.94097C2.55044 -3.36339 2.13599 -3.51482 1.80922 -3.51482C0.940473 -3.51482 0.454296 -2.51856 0.454296 -2.29539C0.454296 -2.22366 0.510087 -2.19178 0.573848 -2.19178C0.669489 -2.19178 0.68543 -2.23163 0.70934 -2.32727C0.892653 -2.90909 1.37086 -3.29166 1.78531 -3.29166C2.09614 -3.29166 2.24757 -3.06849 2.24757 -2.78157C2.24757 -2.62217 2.15193 -2.25554 2.08817 -2.0005C2.03238 -1.76936 1.85704 -1.06002 1.81719 -0.908593C1.7056 -0.478207 1.41868 -0.143462 1.06002 -0.143462C1.02814 -0.143462 0.820922 -0.143462 0.653549 -0.255044C1.02017 -0.342715 1.02017 -0.67746 1.02017 -0.68543C1.02017 -0.868742 0.876712 -0.980324 0.70137 -0.980324C0.486177 -0.980324 0.255044 -0.797011 0.255044 -0.494147C0.255044 -0.127522 0.645579 0.0797011 1.05205 0.0797011C1.47447 0.0797011 1.76936 -0.239103 1.91283 -0.494147C2.08817 -0.103611 2.45479 0.0797011 2.83736 0.0797011C3.7061 0.0797011 4.18431 -0.916563 4.18431 -1.13973C4.18431 -1.21943 4.12055 -1.24334 4.06476 -1.24334C3.96912 -1.24334 3.95318 -1.18755 3.92927 -1.10785C3.76986 -0.573848 3.31557 -0.143462 2.8533 -0.143462C2.59029 -0.143462 2.399 -0.318804 2.399 -0.653549C2.399 -0.812951 2.44682 -0.996264 2.55841 -1.44259C2.6142 -1.68169 2.78954 -2.38306 2.82939 -2.5345C2.94097 -2.94894 3.21993 -3.29166 3.57858 -3.29166C3.61843 -3.29166 3.82565 -3.29166 3.99303 -3.18007Z' id='eq4-g0-120'/>
+<path d='M4.12852 -3.00473C4.1604 -3.11631 4.1604 -3.13225 4.1604 -3.18804C4.1604 -3.3873 4.001 -3.43512 3.90535 -3.43512C3.8655 -3.43512 3.68219 -3.42715 3.57858 -3.21993C3.56264 -3.18007 3.49091 -2.89315 3.45106 -2.72578L2.97285 -0.812951C2.96488 -0.789041 2.62217 -0.143462 2.04035 -0.143462C1.64981 -0.143462 1.51432 -0.430386 1.51432 -0.789041C1.51432 -1.25131 1.78531 -1.96065 1.96862 -2.42291C2.04832 -2.62217 2.07223 -2.6939 2.07223 -2.83736C2.07223 -3.27572 1.72154 -3.51482 1.35492 -3.51482C0.565878 -3.51482 0.239103 -2.39103 0.239103 -2.29539C0.239103 -2.22366 0.294894 -2.19178 0.358655 -2.19178C0.462267 -2.19178 0.470237 -2.2396 0.494147 -2.3193C0.70137 -3.0127 1.04408 -3.29166 1.33101 -3.29166C1.45056 -3.29166 1.52229 -3.21196 1.52229 -3.02864C1.52229 -2.86127 1.45853 -2.67796 1.40274 -2.5345C1.07597 -1.68966 0.940473 -1.28319 0.940473 -0.908593C0.940473 -0.127522 1.53026 0.0797011 2.0005 0.0797011C2.37509 0.0797011 2.64608 -0.0876712 2.83736 -0.270984C2.72578 0.175342 2.64608 0.486177 2.34321 0.868742C2.0802 1.19552 1.76139 1.40274 1.40274 1.40274C1.26725 1.40274 0.964384 1.37883 0.804981 1.13973C1.2274 1.10785 1.25928 0.749191 1.25928 0.70137C1.25928 0.510087 1.11582 0.406476 0.948443 0.406476C0.773101 0.406476 0.494147 0.541968 0.494147 0.932503C0.494147 1.3071 0.836862 1.6259 1.40274 1.6259C2.21569 1.6259 3.13225 0.972354 3.37136 0.00797011L4.12852 -3.00473Z' id='eq4-g0-121'/>
+<path d='M5.332 -4.80598C5.57111 -4.80598 5.66675 -4.80598 5.66675 -5.03313C5.66675 -5.15268 5.57111 -5.15268 5.35592 -5.15268H4.38755C4.61469 -6.38406 4.78207 -7.23288 4.87771 -7.61544C4.94944 -7.90237 5.2005 -8.17733 5.51133 -8.17733C5.76239 -8.17733 6.01345 -8.06974 6.133 -7.96214C5.66675 -7.91432 5.52329 -7.56762 5.52329 -7.36438C5.52329 -7.12528 5.70262 -6.98182 5.92976 -6.98182C6.16887 -6.98182 6.52752 -7.18506 6.52752 -7.63935C6.52752 -8.14147 6.0254 -8.41644 5.49938 -8.41644C4.98531 -8.41644 4.48319 -8.03387 4.24408 -7.56762C4.02889 -7.14919 3.90934 -6.7188 3.63437 -5.15268H2.83337C2.60623 -5.15268 2.48667 -5.15268 2.48667 -4.93748C2.48667 -4.80598 2.55841 -4.80598 2.79751 -4.80598H3.56264C3.34745 -3.69415 2.85729 -0.992279 2.58232 0.286924C2.37908 1.32702 2.19975 2.19975 1.60199 2.19975C1.56613 2.19975 1.21943 2.19975 1.00423 1.9726C1.61395 1.92478 1.61395 1.39875 1.61395 1.3868C1.61395 1.1477 1.43462 1.00423 1.20747 1.00423C0.968369 1.00423 0.609714 1.20747 0.609714 1.66177C0.609714 2.17584 1.13574 2.43885 1.60199 2.43885C2.82142 2.43885 3.32354 0.251059 3.45504 -0.3467C3.67024 -1.26725 4.25604 -4.44732 4.31582 -4.80598H5.332Z' id='eq4-g1-102'/>
+<path d='M8.06974 -3.87347C8.23711 -3.87347 8.4523 -3.87347 8.4523 -4.08867C8.4523 -4.31582 8.24907 -4.31582 8.06974 -4.31582H1.02814C0.860772 -4.31582 0.645579 -4.31582 0.645579 -4.10062C0.645579 -3.87347 0.848817 -3.87347 1.02814 -3.87347H8.06974ZM8.06974 -1.64981C8.23711 -1.64981 8.4523 -1.64981 8.4523 -1.86501C8.4523 -2.09215 8.24907 -2.09215 8.06974 -2.09215H1.02814C0.860772 -2.09215 0.645579 -2.09215 0.645579 -1.87696C0.645579 -1.64981 0.848817 -1.64981 1.02814 -1.64981H8.06974Z' id='eq4-g2-61'/>
+</defs>
+<g id='eq4-page1'>
+<use x='0' xlink:href='#eq4-g1-102' y='0'/>
+<use x='5.76999' xlink:href='#eq4-g0-120' y='1.79326'/>
+<use x='14.3558' xlink:href='#eq4-g2-61' y='0'/>
+<use x='26.7813' xlink:href='#eq4-g1-102' y='0'/>
+<use x='32.5513' xlink:href='#eq4-g0-121' y='1.79326'/>
+</g>
+</svg>).</p>
+          </div></section>
+          <section class="m-doc-details" id="set_camera_intrinsics"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_camera_intrinsics" class="m-doc-self">set_camera_intrinsics</a>(</span><span class="m-doc-wrap">self,
+              fx: float,
+              fy: float,
+              cx: float,
+              cy: float) -&gt; None</span></span>
+            </h3>
+            <p>Set camera intrinsics directly.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">fx</td>
+                  <td><svg class="m-math" style="width: 1.098em; height: 1.107em; vertical-align: -0.243em;" viewBox="0 -8.30219 10.5369 10.6268">
+<title>
+f_x
+</title>
+<defs>
+<path d='M3.99303 -3.18007C3.64234 -3.0924 3.6264 -2.78157 3.6264 -2.74969C3.6264 -2.57435 3.76189 -2.45479 3.93724 -2.45479S4.38356 -2.59029 4.38356 -2.933C4.38356 -3.3873 3.88144 -3.51482 3.58655 -3.51482C3.21196 -3.51482 2.90909 -3.25181 2.72578 -2.94097C2.55044 -3.36339 2.13599 -3.51482 1.80922 -3.51482C0.940473 -3.51482 0.454296 -2.51856 0.454296 -2.29539C0.454296 -2.22366 0.510087 -2.19178 0.573848 -2.19178C0.669489 -2.19178 0.68543 -2.23163 0.70934 -2.32727C0.892653 -2.90909 1.37086 -3.29166 1.78531 -3.29166C2.09614 -3.29166 2.24757 -3.06849 2.24757 -2.78157C2.24757 -2.62217 2.15193 -2.25554 2.08817 -2.0005C2.03238 -1.76936 1.85704 -1.06002 1.81719 -0.908593C1.7056 -0.478207 1.41868 -0.143462 1.06002 -0.143462C1.02814 -0.143462 0.820922 -0.143462 0.653549 -0.255044C1.02017 -0.342715 1.02017 -0.67746 1.02017 -0.68543C1.02017 -0.868742 0.876712 -0.980324 0.70137 -0.980324C0.486177 -0.980324 0.255044 -0.797011 0.255044 -0.494147C0.255044 -0.127522 0.645579 0.0797011 1.05205 0.0797011C1.47447 0.0797011 1.76936 -0.239103 1.91283 -0.494147C2.08817 -0.103611 2.45479 0.0797011 2.83736 0.0797011C3.7061 0.0797011 4.18431 -0.916563 4.18431 -1.13973C4.18431 -1.21943 4.12055 -1.24334 4.06476 -1.24334C3.96912 -1.24334 3.95318 -1.18755 3.92927 -1.10785C3.76986 -0.573848 3.31557 -0.143462 2.8533 -0.143462C2.59029 -0.143462 2.399 -0.318804 2.399 -0.653549C2.399 -0.812951 2.44682 -0.996264 2.55841 -1.44259C2.6142 -1.68169 2.78954 -2.38306 2.82939 -2.5345C2.94097 -2.94894 3.21993 -3.29166 3.57858 -3.29166C3.61843 -3.29166 3.82565 -3.29166 3.99303 -3.18007Z' id='eq9-g0-120'/>
+<path d='M5.332 -4.80598C5.57111 -4.80598 5.66675 -4.80598 5.66675 -5.03313C5.66675 -5.15268 5.57111 -5.15268 5.35592 -5.15268H4.38755C4.61469 -6.38406 4.78207 -7.23288 4.87771 -7.61544C4.94944 -7.90237 5.2005 -8.17733 5.51133 -8.17733C5.76239 -8.17733 6.01345 -8.06974 6.133 -7.96214C5.66675 -7.91432 5.52329 -7.56762 5.52329 -7.36438C5.52329 -7.12528 5.70262 -6.98182 5.92976 -6.98182C6.16887 -6.98182 6.52752 -7.18506 6.52752 -7.63935C6.52752 -8.14147 6.0254 -8.41644 5.49938 -8.41644C4.98531 -8.41644 4.48319 -8.03387 4.24408 -7.56762C4.02889 -7.14919 3.90934 -6.7188 3.63437 -5.15268H2.83337C2.60623 -5.15268 2.48667 -5.15268 2.48667 -4.93748C2.48667 -4.80598 2.55841 -4.80598 2.79751 -4.80598H3.56264C3.34745 -3.69415 2.85729 -0.992279 2.58232 0.286924C2.37908 1.32702 2.19975 2.19975 1.60199 2.19975C1.56613 2.19975 1.21943 2.19975 1.00423 1.9726C1.61395 1.92478 1.61395 1.39875 1.61395 1.3868C1.61395 1.1477 1.43462 1.00423 1.20747 1.00423C0.968369 1.00423 0.609714 1.20747 0.609714 1.66177C0.609714 2.17584 1.13574 2.43885 1.60199 2.43885C2.82142 2.43885 3.32354 0.251059 3.45504 -0.3467C3.67024 -1.26725 4.25604 -4.44732 4.31582 -4.80598H5.332Z' id='eq9-g1-102'/>
+</defs>
+<g id='eq9-page1'>
+<use x='0' xlink:href='#eq9-g1-102' y='0'/>
+<use x='5.76999' xlink:href='#eq9-g0-120' y='1.79326'/>
+</g>
+</svg></td>
+                </tr>
+                <tr>
+                  <td>fy</td>
+                  <td><svg class="m-math" style="width: 1.067em; height: 1.213em; vertical-align: -0.350em;" viewBox="0 -8.30219 10.2417 11.6452">
+<title>
+f_y
+</title>
+<defs>
+<path d='M4.12852 -3.00473C4.1604 -3.11631 4.1604 -3.13225 4.1604 -3.18804C4.1604 -3.3873 4.001 -3.43512 3.90535 -3.43512C3.8655 -3.43512 3.68219 -3.42715 3.57858 -3.21993C3.56264 -3.18007 3.49091 -2.89315 3.45106 -2.72578L2.97285 -0.812951C2.96488 -0.789041 2.62217 -0.143462 2.04035 -0.143462C1.64981 -0.143462 1.51432 -0.430386 1.51432 -0.789041C1.51432 -1.25131 1.78531 -1.96065 1.96862 -2.42291C2.04832 -2.62217 2.07223 -2.6939 2.07223 -2.83736C2.07223 -3.27572 1.72154 -3.51482 1.35492 -3.51482C0.565878 -3.51482 0.239103 -2.39103 0.239103 -2.29539C0.239103 -2.22366 0.294894 -2.19178 0.358655 -2.19178C0.462267 -2.19178 0.470237 -2.2396 0.494147 -2.3193C0.70137 -3.0127 1.04408 -3.29166 1.33101 -3.29166C1.45056 -3.29166 1.52229 -3.21196 1.52229 -3.02864C1.52229 -2.86127 1.45853 -2.67796 1.40274 -2.5345C1.07597 -1.68966 0.940473 -1.28319 0.940473 -0.908593C0.940473 -0.127522 1.53026 0.0797011 2.0005 0.0797011C2.37509 0.0797011 2.64608 -0.0876712 2.83736 -0.270984C2.72578 0.175342 2.64608 0.486177 2.34321 0.868742C2.0802 1.19552 1.76139 1.40274 1.40274 1.40274C1.26725 1.40274 0.964384 1.37883 0.804981 1.13973C1.2274 1.10785 1.25928 0.749191 1.25928 0.70137C1.25928 0.510087 1.11582 0.406476 0.948443 0.406476C0.773101 0.406476 0.494147 0.541968 0.494147 0.932503C0.494147 1.3071 0.836862 1.6259 1.40274 1.6259C2.21569 1.6259 3.13225 0.972354 3.37136 0.00797011L4.12852 -3.00473Z' id='eq10-g0-121'/>
+<path d='M5.332 -4.80598C5.57111 -4.80598 5.66675 -4.80598 5.66675 -5.03313C5.66675 -5.15268 5.57111 -5.15268 5.35592 -5.15268H4.38755C4.61469 -6.38406 4.78207 -7.23288 4.87771 -7.61544C4.94944 -7.90237 5.2005 -8.17733 5.51133 -8.17733C5.76239 -8.17733 6.01345 -8.06974 6.133 -7.96214C5.66675 -7.91432 5.52329 -7.56762 5.52329 -7.36438C5.52329 -7.12528 5.70262 -6.98182 5.92976 -6.98182C6.16887 -6.98182 6.52752 -7.18506 6.52752 -7.63935C6.52752 -8.14147 6.0254 -8.41644 5.49938 -8.41644C4.98531 -8.41644 4.48319 -8.03387 4.24408 -7.56762C4.02889 -7.14919 3.90934 -6.7188 3.63437 -5.15268H2.83337C2.60623 -5.15268 2.48667 -5.15268 2.48667 -4.93748C2.48667 -4.80598 2.55841 -4.80598 2.79751 -4.80598H3.56264C3.34745 -3.69415 2.85729 -0.992279 2.58232 0.286924C2.37908 1.32702 2.19975 2.19975 1.60199 2.19975C1.56613 2.19975 1.21943 2.19975 1.00423 1.9726C1.61395 1.92478 1.61395 1.39875 1.61395 1.3868C1.61395 1.1477 1.43462 1.00423 1.20747 1.00423C0.968369 1.00423 0.609714 1.20747 0.609714 1.66177C0.609714 2.17584 1.13574 2.43885 1.60199 2.43885C2.82142 2.43885 3.32354 0.251059 3.45504 -0.3467C3.67024 -1.26725 4.25604 -4.44732 4.31582 -4.80598H5.332Z' id='eq10-g1-102'/>
+</defs>
+<g id='eq10-page1'>
+<use x='0' xlink:href='#eq10-g1-102' y='0'/>
+<use x='5.76999' xlink:href='#eq10-g0-121' y='1.79326'/>
+</g>
+</svg></td>
+                </tr>
+                <tr>
+                  <td>cx</td>
+                  <td><svg class="m-math" style="width: 1.021em; height: 0.723em; vertical-align: -0.187em;" viewBox="0 -5.14737 9.80489 6.94064">
+<title>
+c_x
+</title>
+<defs>
+<path d='M3.99303 -3.18007C3.64234 -3.0924 3.6264 -2.78157 3.6264 -2.74969C3.6264 -2.57435 3.76189 -2.45479 3.93724 -2.45479S4.38356 -2.59029 4.38356 -2.933C4.38356 -3.3873 3.88144 -3.51482 3.58655 -3.51482C3.21196 -3.51482 2.90909 -3.25181 2.72578 -2.94097C2.55044 -3.36339 2.13599 -3.51482 1.80922 -3.51482C0.940473 -3.51482 0.454296 -2.51856 0.454296 -2.29539C0.454296 -2.22366 0.510087 -2.19178 0.573848 -2.19178C0.669489 -2.19178 0.68543 -2.23163 0.70934 -2.32727C0.892653 -2.90909 1.37086 -3.29166 1.78531 -3.29166C2.09614 -3.29166 2.24757 -3.06849 2.24757 -2.78157C2.24757 -2.62217 2.15193 -2.25554 2.08817 -2.0005C2.03238 -1.76936 1.85704 -1.06002 1.81719 -0.908593C1.7056 -0.478207 1.41868 -0.143462 1.06002 -0.143462C1.02814 -0.143462 0.820922 -0.143462 0.653549 -0.255044C1.02017 -0.342715 1.02017 -0.67746 1.02017 -0.68543C1.02017 -0.868742 0.876712 -0.980324 0.70137 -0.980324C0.486177 -0.980324 0.255044 -0.797011 0.255044 -0.494147C0.255044 -0.127522 0.645579 0.0797011 1.05205 0.0797011C1.47447 0.0797011 1.76936 -0.239103 1.91283 -0.494147C2.08817 -0.103611 2.45479 0.0797011 2.83736 0.0797011C3.7061 0.0797011 4.18431 -0.916563 4.18431 -1.13973C4.18431 -1.21943 4.12055 -1.24334 4.06476 -1.24334C3.96912 -1.24334 3.95318 -1.18755 3.92927 -1.10785C3.76986 -0.573848 3.31557 -0.143462 2.8533 -0.143462C2.59029 -0.143462 2.399 -0.318804 2.399 -0.653549C2.399 -0.812951 2.44682 -0.996264 2.55841 -1.44259C2.6142 -1.68169 2.78954 -2.38306 2.82939 -2.5345C2.94097 -2.94894 3.21993 -3.29166 3.57858 -3.29166C3.61843 -3.29166 3.82565 -3.29166 3.99303 -3.18007Z' id='eq11-g0-120'/>
+<path d='M4.67447 -4.49514C4.44732 -4.49514 4.33973 -4.49514 4.17235 -4.35168C4.10062 -4.29191 3.96912 -4.11258 3.96912 -3.9213C3.96912 -3.68219 4.14844 -3.53873 4.37559 -3.53873C4.66252 -3.53873 4.98531 -3.77783 4.98531 -4.25604C4.98531 -4.82989 4.43537 -5.27223 3.61046 -5.27223C2.04433 -5.27223 0.478207 -3.56264 0.478207 -1.86501C0.478207 -0.824907 1.12379 0.119552 2.34321 0.119552C3.96912 0.119552 4.99726 -1.1477 4.99726 -1.30311C4.99726 -1.37484 4.92553 -1.43462 4.87771 -1.43462C4.84184 -1.43462 4.82989 -1.42267 4.72229 -1.31507C3.95716 -0.298879 2.82142 -0.119552 2.36712 -0.119552C1.54222 -0.119552 1.2792 -0.836862 1.2792 -1.43462C1.2792 -1.85305 1.48244 -3.0127 1.91283 -3.82565C2.22366 -4.38755 2.86924 -5.03313 3.62242 -5.03313C3.77783 -5.03313 4.43537 -5.00922 4.67447 -4.49514Z' id='eq11-g1-99'/>
+</defs>
+<g id='eq11-page1'>
+<use x='0' xlink:href='#eq11-g1-99' y='0'/>
+<use x='5.03799' xlink:href='#eq11-g0-120' y='1.79326'/>
+</g>
+</svg></td>
+                </tr>
+                <tr>
+                  <td>cy</td>
+                  <td><svg class="m-math" style="width: 0.991em; height: 0.884em; vertical-align: -0.350em;" viewBox="0 -5.14737 9.5097 8.49038">
+<title>
+c_y
+</title>
+<defs>
+<path d='M4.12852 -3.00473C4.1604 -3.11631 4.1604 -3.13225 4.1604 -3.18804C4.1604 -3.3873 4.001 -3.43512 3.90535 -3.43512C3.8655 -3.43512 3.68219 -3.42715 3.57858 -3.21993C3.56264 -3.18007 3.49091 -2.89315 3.45106 -2.72578L2.97285 -0.812951C2.96488 -0.789041 2.62217 -0.143462 2.04035 -0.143462C1.64981 -0.143462 1.51432 -0.430386 1.51432 -0.789041C1.51432 -1.25131 1.78531 -1.96065 1.96862 -2.42291C2.04832 -2.62217 2.07223 -2.6939 2.07223 -2.83736C2.07223 -3.27572 1.72154 -3.51482 1.35492 -3.51482C0.565878 -3.51482 0.239103 -2.39103 0.239103 -2.29539C0.239103 -2.22366 0.294894 -2.19178 0.358655 -2.19178C0.462267 -2.19178 0.470237 -2.2396 0.494147 -2.3193C0.70137 -3.0127 1.04408 -3.29166 1.33101 -3.29166C1.45056 -3.29166 1.52229 -3.21196 1.52229 -3.02864C1.52229 -2.86127 1.45853 -2.67796 1.40274 -2.5345C1.07597 -1.68966 0.940473 -1.28319 0.940473 -0.908593C0.940473 -0.127522 1.53026 0.0797011 2.0005 0.0797011C2.37509 0.0797011 2.64608 -0.0876712 2.83736 -0.270984C2.72578 0.175342 2.64608 0.486177 2.34321 0.868742C2.0802 1.19552 1.76139 1.40274 1.40274 1.40274C1.26725 1.40274 0.964384 1.37883 0.804981 1.13973C1.2274 1.10785 1.25928 0.749191 1.25928 0.70137C1.25928 0.510087 1.11582 0.406476 0.948443 0.406476C0.773101 0.406476 0.494147 0.541968 0.494147 0.932503C0.494147 1.3071 0.836862 1.6259 1.40274 1.6259C2.21569 1.6259 3.13225 0.972354 3.37136 0.00797011L4.12852 -3.00473Z' id='eq12-g0-121'/>
+<path d='M4.67447 -4.49514C4.44732 -4.49514 4.33973 -4.49514 4.17235 -4.35168C4.10062 -4.29191 3.96912 -4.11258 3.96912 -3.9213C3.96912 -3.68219 4.14844 -3.53873 4.37559 -3.53873C4.66252 -3.53873 4.98531 -3.77783 4.98531 -4.25604C4.98531 -4.82989 4.43537 -5.27223 3.61046 -5.27223C2.04433 -5.27223 0.478207 -3.56264 0.478207 -1.86501C0.478207 -0.824907 1.12379 0.119552 2.34321 0.119552C3.96912 0.119552 4.99726 -1.1477 4.99726 -1.30311C4.99726 -1.37484 4.92553 -1.43462 4.87771 -1.43462C4.84184 -1.43462 4.82989 -1.42267 4.72229 -1.31507C3.95716 -0.298879 2.82142 -0.119552 2.36712 -0.119552C1.54222 -0.119552 1.2792 -0.836862 1.2792 -1.43462C1.2792 -1.85305 1.48244 -3.0127 1.91283 -3.82565C2.22366 -4.38755 2.86924 -5.03313 3.62242 -5.03313C3.77783 -5.03313 4.43537 -5.00922 4.67447 -4.49514Z' id='eq12-g1-99'/>
+</defs>
+<g id='eq12-page1'>
+<use x='0' xlink:href='#eq12-g1-99' y='0'/>
+<use x='5.03799' xlink:href='#eq12-g0-121' y='1.79326'/>
+</g>
+</svg></td>
+                </tr>
+              </tbody>
+            </table>
+<p>Set the camera intrinsics assuming a pinhole camera with focal
+lengths <svg class="m-math" style="width: 1.098em; height: 1.107em; vertical-align: -0.243em;" viewBox="0 -8.30219 10.5369 10.6268">
+<title>
+f_x
+</title>
+<defs>
+<path d='M3.99303 -3.18007C3.64234 -3.0924 3.6264 -2.78157 3.6264 -2.74969C3.6264 -2.57435 3.76189 -2.45479 3.93724 -2.45479S4.38356 -2.59029 4.38356 -2.933C4.38356 -3.3873 3.88144 -3.51482 3.58655 -3.51482C3.21196 -3.51482 2.90909 -3.25181 2.72578 -2.94097C2.55044 -3.36339 2.13599 -3.51482 1.80922 -3.51482C0.940473 -3.51482 0.454296 -2.51856 0.454296 -2.29539C0.454296 -2.22366 0.510087 -2.19178 0.573848 -2.19178C0.669489 -2.19178 0.68543 -2.23163 0.70934 -2.32727C0.892653 -2.90909 1.37086 -3.29166 1.78531 -3.29166C2.09614 -3.29166 2.24757 -3.06849 2.24757 -2.78157C2.24757 -2.62217 2.15193 -2.25554 2.08817 -2.0005C2.03238 -1.76936 1.85704 -1.06002 1.81719 -0.908593C1.7056 -0.478207 1.41868 -0.143462 1.06002 -0.143462C1.02814 -0.143462 0.820922 -0.143462 0.653549 -0.255044C1.02017 -0.342715 1.02017 -0.67746 1.02017 -0.68543C1.02017 -0.868742 0.876712 -0.980324 0.70137 -0.980324C0.486177 -0.980324 0.255044 -0.797011 0.255044 -0.494147C0.255044 -0.127522 0.645579 0.0797011 1.05205 0.0797011C1.47447 0.0797011 1.76936 -0.239103 1.91283 -0.494147C2.08817 -0.103611 2.45479 0.0797011 2.83736 0.0797011C3.7061 0.0797011 4.18431 -0.916563 4.18431 -1.13973C4.18431 -1.21943 4.12055 -1.24334 4.06476 -1.24334C3.96912 -1.24334 3.95318 -1.18755 3.92927 -1.10785C3.76986 -0.573848 3.31557 -0.143462 2.8533 -0.143462C2.59029 -0.143462 2.399 -0.318804 2.399 -0.653549C2.399 -0.812951 2.44682 -0.996264 2.55841 -1.44259C2.6142 -1.68169 2.78954 -2.38306 2.82939 -2.5345C2.94097 -2.94894 3.21993 -3.29166 3.57858 -3.29166C3.61843 -3.29166 3.82565 -3.29166 3.99303 -3.18007Z' id='eq5-g0-120'/>
+<path d='M5.332 -4.80598C5.57111 -4.80598 5.66675 -4.80598 5.66675 -5.03313C5.66675 -5.15268 5.57111 -5.15268 5.35592 -5.15268H4.38755C4.61469 -6.38406 4.78207 -7.23288 4.87771 -7.61544C4.94944 -7.90237 5.2005 -8.17733 5.51133 -8.17733C5.76239 -8.17733 6.01345 -8.06974 6.133 -7.96214C5.66675 -7.91432 5.52329 -7.56762 5.52329 -7.36438C5.52329 -7.12528 5.70262 -6.98182 5.92976 -6.98182C6.16887 -6.98182 6.52752 -7.18506 6.52752 -7.63935C6.52752 -8.14147 6.0254 -8.41644 5.49938 -8.41644C4.98531 -8.41644 4.48319 -8.03387 4.24408 -7.56762C4.02889 -7.14919 3.90934 -6.7188 3.63437 -5.15268H2.83337C2.60623 -5.15268 2.48667 -5.15268 2.48667 -4.93748C2.48667 -4.80598 2.55841 -4.80598 2.79751 -4.80598H3.56264C3.34745 -3.69415 2.85729 -0.992279 2.58232 0.286924C2.37908 1.32702 2.19975 2.19975 1.60199 2.19975C1.56613 2.19975 1.21943 2.19975 1.00423 1.9726C1.61395 1.92478 1.61395 1.39875 1.61395 1.3868C1.61395 1.1477 1.43462 1.00423 1.20747 1.00423C0.968369 1.00423 0.609714 1.20747 0.609714 1.66177C0.609714 2.17584 1.13574 2.43885 1.60199 2.43885C2.82142 2.43885 3.32354 0.251059 3.45504 -0.3467C3.67024 -1.26725 4.25604 -4.44732 4.31582 -4.80598H5.332Z' id='eq5-g1-102'/>
+</defs>
+<g id='eq5-page1'>
+<use x='0' xlink:href='#eq5-g1-102' y='0'/>
+<use x='5.76999' xlink:href='#eq5-g0-120' y='1.79326'/>
+</g>
+</svg>, <svg class="m-math" style="width: 1.067em; height: 1.213em; vertical-align: -0.350em;" viewBox="0 -8.30219 10.2417 11.6452">
+<title>
+f_y
+</title>
+<defs>
+<path d='M4.12852 -3.00473C4.1604 -3.11631 4.1604 -3.13225 4.1604 -3.18804C4.1604 -3.3873 4.001 -3.43512 3.90535 -3.43512C3.8655 -3.43512 3.68219 -3.42715 3.57858 -3.21993C3.56264 -3.18007 3.49091 -2.89315 3.45106 -2.72578L2.97285 -0.812951C2.96488 -0.789041 2.62217 -0.143462 2.04035 -0.143462C1.64981 -0.143462 1.51432 -0.430386 1.51432 -0.789041C1.51432 -1.25131 1.78531 -1.96065 1.96862 -2.42291C2.04832 -2.62217 2.07223 -2.6939 2.07223 -2.83736C2.07223 -3.27572 1.72154 -3.51482 1.35492 -3.51482C0.565878 -3.51482 0.239103 -2.39103 0.239103 -2.29539C0.239103 -2.22366 0.294894 -2.19178 0.358655 -2.19178C0.462267 -2.19178 0.470237 -2.2396 0.494147 -2.3193C0.70137 -3.0127 1.04408 -3.29166 1.33101 -3.29166C1.45056 -3.29166 1.52229 -3.21196 1.52229 -3.02864C1.52229 -2.86127 1.45853 -2.67796 1.40274 -2.5345C1.07597 -1.68966 0.940473 -1.28319 0.940473 -0.908593C0.940473 -0.127522 1.53026 0.0797011 2.0005 0.0797011C2.37509 0.0797011 2.64608 -0.0876712 2.83736 -0.270984C2.72578 0.175342 2.64608 0.486177 2.34321 0.868742C2.0802 1.19552 1.76139 1.40274 1.40274 1.40274C1.26725 1.40274 0.964384 1.37883 0.804981 1.13973C1.2274 1.10785 1.25928 0.749191 1.25928 0.70137C1.25928 0.510087 1.11582 0.406476 0.948443 0.406476C0.773101 0.406476 0.494147 0.541968 0.494147 0.932503C0.494147 1.3071 0.836862 1.6259 1.40274 1.6259C2.21569 1.6259 3.13225 0.972354 3.37136 0.00797011L4.12852 -3.00473Z' id='eq6-g0-121'/>
+<path d='M5.332 -4.80598C5.57111 -4.80598 5.66675 -4.80598 5.66675 -5.03313C5.66675 -5.15268 5.57111 -5.15268 5.35592 -5.15268H4.38755C4.61469 -6.38406 4.78207 -7.23288 4.87771 -7.61544C4.94944 -7.90237 5.2005 -8.17733 5.51133 -8.17733C5.76239 -8.17733 6.01345 -8.06974 6.133 -7.96214C5.66675 -7.91432 5.52329 -7.56762 5.52329 -7.36438C5.52329 -7.12528 5.70262 -6.98182 5.92976 -6.98182C6.16887 -6.98182 6.52752 -7.18506 6.52752 -7.63935C6.52752 -8.14147 6.0254 -8.41644 5.49938 -8.41644C4.98531 -8.41644 4.48319 -8.03387 4.24408 -7.56762C4.02889 -7.14919 3.90934 -6.7188 3.63437 -5.15268H2.83337C2.60623 -5.15268 2.48667 -5.15268 2.48667 -4.93748C2.48667 -4.80598 2.55841 -4.80598 2.79751 -4.80598H3.56264C3.34745 -3.69415 2.85729 -0.992279 2.58232 0.286924C2.37908 1.32702 2.19975 2.19975 1.60199 2.19975C1.56613 2.19975 1.21943 2.19975 1.00423 1.9726C1.61395 1.92478 1.61395 1.39875 1.61395 1.3868C1.61395 1.1477 1.43462 1.00423 1.20747 1.00423C0.968369 1.00423 0.609714 1.20747 0.609714 1.66177C0.609714 2.17584 1.13574 2.43885 1.60199 2.43885C2.82142 2.43885 3.32354 0.251059 3.45504 -0.3467C3.67024 -1.26725 4.25604 -4.44732 4.31582 -4.80598H5.332Z' id='eq6-g1-102'/>
+</defs>
+<g id='eq6-page1'>
+<use x='0' xlink:href='#eq6-g1-102' y='0'/>
+<use x='5.76999' xlink:href='#eq6-g0-121' y='1.79326'/>
+</g>
+</svg>, and projection center <svg class="m-math" style="width: 1.109em; height: 0.778em; vertical-align: -0.243em;" viewBox="0 -5.14737 10.642 7.47198">
+<title>
+p_x
+</title>
+<defs>
+<path d='M3.99303 -3.18007C3.64234 -3.0924 3.6264 -2.78157 3.6264 -2.74969C3.6264 -2.57435 3.76189 -2.45479 3.93724 -2.45479S4.38356 -2.59029 4.38356 -2.933C4.38356 -3.3873 3.88144 -3.51482 3.58655 -3.51482C3.21196 -3.51482 2.90909 -3.25181 2.72578 -2.94097C2.55044 -3.36339 2.13599 -3.51482 1.80922 -3.51482C0.940473 -3.51482 0.454296 -2.51856 0.454296 -2.29539C0.454296 -2.22366 0.510087 -2.19178 0.573848 -2.19178C0.669489 -2.19178 0.68543 -2.23163 0.70934 -2.32727C0.892653 -2.90909 1.37086 -3.29166 1.78531 -3.29166C2.09614 -3.29166 2.24757 -3.06849 2.24757 -2.78157C2.24757 -2.62217 2.15193 -2.25554 2.08817 -2.0005C2.03238 -1.76936 1.85704 -1.06002 1.81719 -0.908593C1.7056 -0.478207 1.41868 -0.143462 1.06002 -0.143462C1.02814 -0.143462 0.820922 -0.143462 0.653549 -0.255044C1.02017 -0.342715 1.02017 -0.67746 1.02017 -0.68543C1.02017 -0.868742 0.876712 -0.980324 0.70137 -0.980324C0.486177 -0.980324 0.255044 -0.797011 0.255044 -0.494147C0.255044 -0.127522 0.645579 0.0797011 1.05205 0.0797011C1.47447 0.0797011 1.76936 -0.239103 1.91283 -0.494147C2.08817 -0.103611 2.45479 0.0797011 2.83736 0.0797011C3.7061 0.0797011 4.18431 -0.916563 4.18431 -1.13973C4.18431 -1.21943 4.12055 -1.24334 4.06476 -1.24334C3.96912 -1.24334 3.95318 -1.18755 3.92927 -1.10785C3.76986 -0.573848 3.31557 -0.143462 2.8533 -0.143462C2.59029 -0.143462 2.399 -0.318804 2.399 -0.653549C2.399 -0.812951 2.44682 -0.996264 2.55841 -1.44259C2.6142 -1.68169 2.78954 -2.38306 2.82939 -2.5345C2.94097 -2.94894 3.21993 -3.29166 3.57858 -3.29166C3.61843 -3.29166 3.82565 -3.29166 3.99303 -3.18007Z' id='eq7-g0-120'/>
+<path d='M0.514072 1.51831C0.430386 1.87696 0.382565 1.9726 -0.107597 1.9726C-0.251059 1.9726 -0.37061 1.9726 -0.37061 2.19975C-0.37061 2.22366 -0.358655 2.3193 -0.227148 2.3193C-0.071731 2.3193 0.0956413 2.29539 0.251059 2.29539H0.765131C1.01619 2.29539 1.6259 2.3193 1.87696 2.3193C1.94869 2.3193 2.09215 2.3193 2.09215 2.10411C2.09215 1.9726 2.00847 1.9726 1.80523 1.9726C1.25529 1.9726 1.21943 1.88892 1.21943 1.79328C1.21943 1.64981 1.75741 -0.406476 1.82914 -0.681445C1.96065 -0.3467 2.28344 0.119552 2.90511 0.119552C4.25604 0.119552 5.71457 -1.63786 5.71457 -3.39527C5.71457 -4.49514 5.0929 -5.27223 4.19626 -5.27223C3.43113 -5.27223 2.78555 -4.53101 2.65405 -4.36364C2.55841 -4.96139 2.09215 -5.27223 1.61395 -5.27223C1.26725 -5.27223 0.992279 -5.10486 0.765131 -4.65056C0.549938 -4.22017 0.382565 -3.49091 0.382565 -3.44309S0.430386 -3.33549 0.514072 -3.33549C0.609714 -3.33549 0.621669 -3.34745 0.6934 -3.62242C0.872727 -4.32777 1.09988 -5.03313 1.57808 -5.03313C1.85305 -5.03313 1.94869 -4.84184 1.94869 -4.48319C1.94869 -4.19626 1.91283 -4.07671 1.86501 -3.86152L0.514072 1.51831ZM2.58232 -3.73001C2.666 -4.06476 3.00075 -4.41146 3.19203 -4.57883C3.32354 -4.69838 3.71806 -5.03313 4.17235 -5.03313C4.69838 -5.03313 4.93748 -4.5071 4.93748 -3.88543C4.93748 -3.31158 4.60274 -1.96065 4.30386 -1.33898C4.00498 -0.6934 3.45504 -0.119552 2.90511 -0.119552C2.09215 -0.119552 1.96065 -1.1477 1.96065 -1.19552C1.96065 -1.23138 1.98456 -1.32702 1.99651 -1.3868L2.58232 -3.73001Z' id='eq7-g1-112'/>
+</defs>
+<g id='eq7-page1'>
+<use x='0' xlink:href='#eq7-g1-112' y='0'/>
+<use x='5.87514' xlink:href='#eq7-g0-120' y='1.79326'/>
+</g>
+</svg>, <svg class="m-math" style="width: 1.078em; height: 0.884em; vertical-align: -0.350em;" viewBox="0 -5.14737 10.3469 8.49038">
+<title>
+p_y
+</title>
+<defs>
+<path d='M4.12852 -3.00473C4.1604 -3.11631 4.1604 -3.13225 4.1604 -3.18804C4.1604 -3.3873 4.001 -3.43512 3.90535 -3.43512C3.8655 -3.43512 3.68219 -3.42715 3.57858 -3.21993C3.56264 -3.18007 3.49091 -2.89315 3.45106 -2.72578L2.97285 -0.812951C2.96488 -0.789041 2.62217 -0.143462 2.04035 -0.143462C1.64981 -0.143462 1.51432 -0.430386 1.51432 -0.789041C1.51432 -1.25131 1.78531 -1.96065 1.96862 -2.42291C2.04832 -2.62217 2.07223 -2.6939 2.07223 -2.83736C2.07223 -3.27572 1.72154 -3.51482 1.35492 -3.51482C0.565878 -3.51482 0.239103 -2.39103 0.239103 -2.29539C0.239103 -2.22366 0.294894 -2.19178 0.358655 -2.19178C0.462267 -2.19178 0.470237 -2.2396 0.494147 -2.3193C0.70137 -3.0127 1.04408 -3.29166 1.33101 -3.29166C1.45056 -3.29166 1.52229 -3.21196 1.52229 -3.02864C1.52229 -2.86127 1.45853 -2.67796 1.40274 -2.5345C1.07597 -1.68966 0.940473 -1.28319 0.940473 -0.908593C0.940473 -0.127522 1.53026 0.0797011 2.0005 0.0797011C2.37509 0.0797011 2.64608 -0.0876712 2.83736 -0.270984C2.72578 0.175342 2.64608 0.486177 2.34321 0.868742C2.0802 1.19552 1.76139 1.40274 1.40274 1.40274C1.26725 1.40274 0.964384 1.37883 0.804981 1.13973C1.2274 1.10785 1.25928 0.749191 1.25928 0.70137C1.25928 0.510087 1.11582 0.406476 0.948443 0.406476C0.773101 0.406476 0.494147 0.541968 0.494147 0.932503C0.494147 1.3071 0.836862 1.6259 1.40274 1.6259C2.21569 1.6259 3.13225 0.972354 3.37136 0.00797011L4.12852 -3.00473Z' id='eq8-g0-121'/>
+<path d='M0.514072 1.51831C0.430386 1.87696 0.382565 1.9726 -0.107597 1.9726C-0.251059 1.9726 -0.37061 1.9726 -0.37061 2.19975C-0.37061 2.22366 -0.358655 2.3193 -0.227148 2.3193C-0.071731 2.3193 0.0956413 2.29539 0.251059 2.29539H0.765131C1.01619 2.29539 1.6259 2.3193 1.87696 2.3193C1.94869 2.3193 2.09215 2.3193 2.09215 2.10411C2.09215 1.9726 2.00847 1.9726 1.80523 1.9726C1.25529 1.9726 1.21943 1.88892 1.21943 1.79328C1.21943 1.64981 1.75741 -0.406476 1.82914 -0.681445C1.96065 -0.3467 2.28344 0.119552 2.90511 0.119552C4.25604 0.119552 5.71457 -1.63786 5.71457 -3.39527C5.71457 -4.49514 5.0929 -5.27223 4.19626 -5.27223C3.43113 -5.27223 2.78555 -4.53101 2.65405 -4.36364C2.55841 -4.96139 2.09215 -5.27223 1.61395 -5.27223C1.26725 -5.27223 0.992279 -5.10486 0.765131 -4.65056C0.549938 -4.22017 0.382565 -3.49091 0.382565 -3.44309S0.430386 -3.33549 0.514072 -3.33549C0.609714 -3.33549 0.621669 -3.34745 0.6934 -3.62242C0.872727 -4.32777 1.09988 -5.03313 1.57808 -5.03313C1.85305 -5.03313 1.94869 -4.84184 1.94869 -4.48319C1.94869 -4.19626 1.91283 -4.07671 1.86501 -3.86152L0.514072 1.51831ZM2.58232 -3.73001C2.666 -4.06476 3.00075 -4.41146 3.19203 -4.57883C3.32354 -4.69838 3.71806 -5.03313 4.17235 -5.03313C4.69838 -5.03313 4.93748 -4.5071 4.93748 -3.88543C4.93748 -3.31158 4.60274 -1.96065 4.30386 -1.33898C4.00498 -0.6934 3.45504 -0.119552 2.90511 -0.119552C2.09215 -0.119552 1.96065 -1.1477 1.96065 -1.19552C1.96065 -1.23138 1.98456 -1.32702 1.99651 -1.3868L2.58232 -3.73001Z' id='eq8-g1-112'/>
+</defs>
+<g id='eq8-page1'>
+<use x='0' xlink:href='#eq8-g1-112' y='0'/>
+<use x='5.87514' xlink:href='#eq8-g0-121' y='1.79326'/>
+</g>
+</svg>.</p>
+          </div></section>
+          <section class="m-doc-details" id="set_camera_look_at"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_camera_look_at" class="m-doc-self">set_camera_look_at</a>(</span><span class="m-doc-wrap">self,
+              position: at::Tensor,
+              look_at: at::Tensor,
+              up: at::Tensor = tensor([0., 0., 1.])) -&gt; None</span></span>
+            </h3>
+            <p>Sets the camera pose within the scene using lookAt parameters.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">position</td>
+                  <td>3D position vector</td>
+                </tr>
+                <tr>
+                  <td>look_at</td>
+                  <td>3D lookAt vector</td>
+                </tr>
+                <tr>
+                  <td>up</td>
+                  <td>3D up vector (defaults to Z axis)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="set_camera_pose"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_camera_pose" class="m-doc-self">set_camera_pose</a>(</span><span class="m-doc-wrap">self,
+              pose: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Set the camera pose within the scene.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">pose</td>
+                  <td>4x4 matrix transforming camera coordinates to
+global coordinates.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="set_camera_projection"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_camera_projection" class="m-doc-self">set_camera_projection</a>(</span><span class="m-doc-wrap">self,
+              P: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Set the camera intrinsics from a 4x4 matrix.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">P</td>
+                  <td>The projection matrix.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="simulate_tabletop_scene"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#simulate_tabletop_scene" class="m-doc-self">simulate_tabletop_scene</a>(</span><span class="m-doc-wrap">self,
+              vis_cb: typing.Callable[[int], None] = None) -&gt; None</span></span>
+            </h3>
+            <p>Arrange the objects as if they were standing on a supporting surface.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">vis_cb</td>
+                  <td>This callback is called after each physics simulation
+timestep.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="__init__"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self,
+              viewport_size: typing.Tuple[int, int]) -&gt; None</span></span>
+            </h3>
+            <p>Constructor</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">viewport_size</td>
+                  <td>Size of the rendered image (W,H)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+        </section>
+        <section>
+          <h2>Property documentation</h2>
+          <section class="m-doc-details" id="objects"><div>
+            <h3>
+              stillleben.<wbr />Scene.<wbr /><a href="#objects" class="m-doc-self">objects</a>: typing.List[<a href="stillleben.Object.html" class="m-doc">Object</a>] <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>All objects added to the scene.</p>
+<p>This is a list of <a class="m-doc" href="stillleben.Object.html">Object</a>. See <a class="m-doc" href="stillleben.Scene.html#add_object">add_object()</a>.</p>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for modules, classes, functions and other
+            symbols. You can omit any prefix from the symbol path; adding a <code>.</code>
+            suffix lists all members of given symbol.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v1.js"></script>
+<script src="searchdata-v1.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>stillleben Python. Created with <a href="https://mcss.mosra.cz/documentation/python/">m.css Python doc generator</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>

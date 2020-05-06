@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>stillleben.Mesh | stillleben Python</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">stillleben <span class="m-thin">Python</span></a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-12 m-col-m-none">
+            <li><a href="installation.html">Installation</a></li>
+            <li><a href="examples.html">Examples</a></li>
+            <li><a href="modules.html">Modules</a></li>
+            <li><a href="classes.html">Classes</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="5">
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>Mesh <span class="m-thin">class</span>
+        </h1>
+        <p>Represents a mesh shape.</p>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#staticmethods">Static methods</a></li>
+                <li><a href="#methods">Methods</a></li>
+                <li><a href="#dunder-methods">Special methods</a></li>
+                <li><a href="#properties">Properties</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+<p>Represents a loaded mesh file. A mesh can be seen as an object template.
+In order to be rendered, you need to instantiate it (see <a class="m-doc" href="stillleben.Object.html">Object</a>).</p>
+<section id="typical-usage">
+<h2>Typical usage</h2>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+
+<span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
+
+<span class="c1"># Load a mesh</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="s1">&#39;my_meshfile.gltf&#39;</span><span class="p">)</span>
+
+<span class="c1"># Add an object referencing the mesh to the scene</span>
+<span class="n">obj</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">))</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></pre>
+</section>
+        <section id="staticmethods">
+          <h2><a href="#staticmethods">Static methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#load_threaded" class="m-doc">load_threaded</a>(</span><span class="m-doc-wrap">filenames: typing.List[object],
+              visual: bool = True,
+              physics: bool = True,
+              max_physics_triangles: int = 2000) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>]</span>
+            </dt>
+            <dd>Load multiple meshes using a thread pool.</dd>
+          </dl>
+        </section>
+        <section id="methods">
+          <h2><a href="#methods">Methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#center_bbox" class="m-doc">center_bbox</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Center mesh.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#scale_to_bbox_diagonal" class="m-doc">scale_to_bbox_diagonal</a>(</span><span class="m-doc-wrap">self,
+              target_diagonal: float,
+              mode: str = &#x27;exact&#x27;) -&gt; None</span>
+            </dt>
+            <dd>Rescale mesh.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_new_colors" class="m-doc">set_new_colors</a>(</span><span class="m-doc-wrap">self,
+              new_colors: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Set new vertex colors.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#set_new_positions" class="m-doc">set_new_positions</a>(</span><span class="m-doc-wrap">self,
+              new_positions: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Set new vertex positions.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#update_colors" class="m-doc">update_colors</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              color_update: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Updates the mesh vertex colors.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#update_positions" class="m-doc">update_positions</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              position_update: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Updates the mesh vertex positions.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#update_positions_and_colors" class="m-doc">update_positions_and_colors</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              position_update: at::Tensor,
+              color_update: at::Tensor) -&gt; None</span>
+            </dt>
+            <dd>Updates the mesh verticex positions and vertex colors.</dd>
+          </dl>
+        </section>
+        <section id="dunder-methods">
+          <h2><a href="#dunder-methods">Special methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc">__init__</a>(</span><span class="m-doc-wrap">self,
+              filename: object,
+              max_physics_triangles: int = 2000,
+              visual: bool = True,
+              physics: bool = True) -&gt; None</span>
+            </dt>
+            <dd>Constructor</dd>
+          </dl>
+        </section>
+        <section id="properties">
+          <h2><a href="#properties">Properties</a></h2>
+          <dl class="m-doc">
+            <dt id="bbox">
+              <a href="#bbox" class="m-doc-self">bbox</a>: <a href="stillleben.Range3D.html" class="m-doc">Range3D</a> <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>Mesh bounding box.</dd>
+            <dt>
+              <a href="#class_index" class="m-doc">class_index</a>: int <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Class index for training semantic segmentation.</dd>
+            <dt>
+              <a href="#colors" class="m-doc">colors</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The mesh normals as (Nx4) float tensor.</dd>
+            <dt>
+              <a href="#faces" class="m-doc">faces</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The mesh faces as (N*3) int32 tensor.</dd>
+            <dt>
+              <a href="#normals" class="m-doc">normals</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The mesh normals as (Nx3) float tensor.</dd>
+            <dt>
+              <a href="#points" class="m-doc">points</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The mesh vertices as (Nx3) float tensor.</dd>
+            <dt>
+              <a href="#pretransform" class="m-doc">pretransform</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>The current pretransform matrix.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Method documentation</h2>
+          <section class="m-doc-details" id="load_threaded"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#load_threaded" class="m-doc-self">load_threaded</a>(</span><span class="m-doc-wrap">filenames: typing.List[object],
+              visual: bool = True,
+              physics: bool = True,
+              max_physics_triangles: int = 2000) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>] <span class="m-label m-info">staticmethod</span></span></span>
+            </h3>
+            <p>Load multiple meshes using a thread pool.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">filenames</td>
+                  <td>List of file names to load</td>
+                </tr>
+                <tr>
+                  <td>visual</td>
+                  <td>Should we load visual components?</td>
+                </tr>
+                <tr>
+                  <td>physics</td>
+                  <td>Should we load collision meshes?</td>
+                </tr>
+                <tr>
+                  <td>max_physics_triangles</td>
+                  <td>Maximum number of triangles for
+collision shape (see <a class="m-doc" href="stillleben.Mesh.html#__init__">__init__()</a>).</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>List of mesh instances</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="center_bbox"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#center_bbox" class="m-doc-self">center_bbox</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
+            </h3>
+            <p>Center mesh.</p>
+<p>Modifies the pretransform such that the bounding box
+(see <a class="m-doc" href="stillleben.Mesh.html#bbox">bbox</a>) is centered at the origin.</p>
+          </div></section>
+          <section class="m-doc-details" id="scale_to_bbox_diagonal"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#scale_to_bbox_diagonal" class="m-doc-self">scale_to_bbox_diagonal</a>(</span><span class="m-doc-wrap">self,
+              target_diagonal: float,
+              mode: str = &#x27;exact&#x27;) -&gt; None</span></span>
+            </h3>
+            <p>Rescale mesh.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">target_diagonal</td>
+                  <td>Target diagonal</td>
+                </tr>
+                <tr>
+                  <td>mode</td>
+                  <td>Scaling mode (default 'exact').
+If 'order_of_magnitude', the resulting scale factor is the
+nearest power of 10 that fits. This is useful for detecting
+the scale of arbitrary mesh files.</td>
+                </tr>
+              </tbody>
+            </table>
+<p>Modifies the pretransform such that the bounding box diagonal (see <a class="m-doc" href="stillleben.Mesh.html#bbox">bbox</a>) is equal to <cite>target_diagonal</cite>.</p>
+          </div></section>
+          <section class="m-doc-details" id="set_new_colors"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_new_colors" class="m-doc-self">set_new_colors</a>(</span><span class="m-doc-wrap">self,
+              new_colors: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Set new vertex colors.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">new_colors</td>
+                  <td>Nx4</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="set_new_positions"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#set_new_positions" class="m-doc-self">set_new_positions</a>(</span><span class="m-doc-wrap">self,
+              new_positions: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Set new vertex positions.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">new_positions</td>
+                  <td>Nx3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="update_colors"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#update_colors" class="m-doc-self">update_colors</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              color_update: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Updates the mesh vertex colors.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">vertex_indices</td>
+                  <td>N (dim=1)</td>
+                </tr>
+                <tr>
+                  <td>color_update</td>
+                  <td>Nx4</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="update_positions"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#update_positions" class="m-doc-self">update_positions</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              position_update: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Updates the mesh vertex positions.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">vertex_indices</td>
+                  <td>N (dim=1)</td>
+                </tr>
+                <tr>
+                  <td>position_update</td>
+                  <td>Nx3</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="update_positions_and_colors"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#update_positions_and_colors" class="m-doc-self">update_positions_and_colors</a>(</span><span class="m-doc-wrap">self,
+              vertex_indices: at::Tensor,
+              position_update: at::Tensor,
+              color_update: at::Tensor) -&gt; None</span></span>
+            </h3>
+            <p>Updates the mesh verticex positions and vertex colors.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">vertex_indices</td>
+                  <td>N (dim=1)</td>
+                </tr>
+                <tr>
+                  <td>position_update</td>
+                  <td>Nx3</td>
+                </tr>
+                <tr>
+                  <td>color_update</td>
+                  <td>Nx4</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="__init__"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self,
+              filename: object,
+              max_physics_triangles: int = 2000,
+              visual: bool = True,
+              physics: bool = True) -&gt; None</span></span>
+            </h3>
+            <p>Constructor</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">filename</td>
+                  <td>Mesh filename</td>
+                </tr>
+                <tr>
+                  <td>max_physics_triangles</td>
+                  <td>Maximum number of triangles for
+collision shape. If the mesh is more complex than this, it is
+simplified using quadric edge decimation.</td>
+                </tr>
+                <tr>
+                  <td>visual</td>
+                  <td>Should we load visual components?</td>
+                </tr>
+                <tr>
+                  <td>physics</td>
+                  <td>Should we load collision meshes?</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+        </section>
+        <section>
+          <h2>Property documentation</h2>
+          <section class="m-doc-details" id="class_index"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#class_index" class="m-doc-self">class_index</a>: int <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>Class index for training semantic segmentation.</p>
+<p>Zero is usually reserved for the background class.
+Unlike <a class="m-doc" href="stillleben.Object.html#instance_index">Object.instance_index</a>, this property is not set
+automatically.</p>
+          </div></section>
+          <section class="m-doc-details" id="colors"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#colors" class="m-doc-self">colors</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>The mesh normals as (Nx4) float tensor.</p>
+<aside class="m-block m-warning">
+<h3>Multiple sub meshes</h3>
+<p>This can only be used on single-submesh meshes for now.
+On meshes with multiple submeshes this will raise a RuntimeError.</p>
+</aside>
+          </div></section>
+          <section class="m-doc-details" id="faces"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#faces" class="m-doc-self">faces</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>The mesh faces as (N*3) int32 tensor.</p>
+<aside class="m-block m-info">
+<h3>Note</h3>
+<p>Because PyTorch does not support unsigned ints, the indices
+will wrap around at <svg class="m-math" style="width: 1.492em; height: 0.987em; vertical-align: -0.000em;" viewBox="0 -9.47474 14.3214 9.47474">
+<title>
+2^{31}
+</title>
+<defs>
+<path d='M2.50262 -5.07696C2.50262 -5.29215 2.48667 -5.30012 2.27148 -5.30012C1.94471 -4.98132 1.52229 -4.79004 0.765131 -4.79004V-4.52702C0.980324 -4.52702 1.41071 -4.52702 1.87298 -4.74222V-0.653549C1.87298 -0.358655 1.84907 -0.263014 1.09191 -0.263014H0.812951V0C1.13973 -0.0239103 1.82516 -0.0239103 2.18381 -0.0239103S3.23587 -0.0239103 3.56264 0V-0.263014H3.28369C2.52653 -0.263014 2.50262 -0.358655 2.50262 -0.653549V-5.07696Z' id='eq1-g0-49'/>
+<path d='M2.01644 -2.66202C2.64608 -2.66202 3.04458 -2.19975 3.04458 -1.36289C3.04458 -0.366625 2.4787 -0.071731 2.05629 -0.071731C1.61793 -0.071731 1.02017 -0.231133 0.74122 -0.653549C1.02814 -0.653549 1.2274 -0.836862 1.2274 -1.09988C1.2274 -1.35492 1.04408 -1.53823 0.789041 -1.53823C0.573848 -1.53823 0.350685 -1.40274 0.350685 -1.08394C0.350685 -0.326775 1.16364 0.167372 2.07223 0.167372C3.13225 0.167372 3.87347 -0.565878 3.87347 -1.36289C3.87347 -2.02441 3.34745 -2.63014 2.5345 -2.80548C3.16413 -3.02864 3.63437 -3.57061 3.63437 -4.20822S2.91706 -5.30012 2.08817 -5.30012C1.23537 -5.30012 0.589788 -4.83786 0.589788 -4.23213C0.589788 -3.93724 0.789041 -3.80971 0.996264 -3.80971C1.24334 -3.80971 1.40274 -3.98506 1.40274 -4.21619C1.40274 -4.51108 1.1477 -4.62267 0.972354 -4.63064C1.3071 -5.06899 1.9208 -5.0929 2.06426 -5.0929C2.27148 -5.0929 2.87721 -5.02914 2.87721 -4.20822C2.87721 -3.65031 2.64608 -3.31557 2.5345 -3.18804C2.29539 -2.94097 2.11208 -2.92503 1.6259 -2.89315C1.47447 -2.88518 1.41071 -2.87721 1.41071 -2.7736C1.41071 -2.66202 1.48244 -2.66202 1.61793 -2.66202H2.01644Z' id='eq1-g0-51'/>
+<path d='M5.26027 -2.00847H4.99726C4.96139 -1.80523 4.86575 -1.1477 4.7462 -0.956413C4.66252 -0.848817 3.98107 -0.848817 3.62242 -0.848817H1.41071C1.7335 -1.12379 2.46276 -1.88892 2.7736 -2.17584C4.59078 -3.84956 5.26027 -4.47123 5.26027 -5.65479C5.26027 -7.02964 4.17235 -7.95019 2.78555 -7.95019S0.585803 -6.76663 0.585803 -5.73848C0.585803 -5.12877 1.11183 -5.12877 1.1477 -5.12877C1.39875 -5.12877 1.70959 -5.30809 1.70959 -5.69066C1.70959 -6.0254 1.48244 -6.25255 1.1477 -6.25255C1.0401 -6.25255 1.01619 -6.25255 0.980324 -6.2406C1.20747 -7.05355 1.85305 -7.60349 2.63014 -7.60349C3.64633 -7.60349 4.268 -6.75467 4.268 -5.65479C4.268 -4.63861 3.68219 -3.75392 3.00075 -2.98879L0.585803 -0.286924V0H4.94944L5.26027 -2.00847Z' id='eq1-g1-50'/>
+</defs>
+<g id='eq1-page1'>
+<use x='0' xlink:href='#eq1-g1-50' y='0'/>
+<use x='5.85299' xlink:href='#eq1-g0-51' y='-4.33844'/>
+<use x='10.0872' xlink:href='#eq1-g0-49' y='-4.33844'/>
+</g>
+</svg>.</p>
+</aside>
+<aside class="m-block m-warning">
+<h3>Multiple sub meshes</h3>
+<p>This can only be used on single-submesh meshes for now.
+On meshes with multiple submeshes this will raise a RuntimeError.</p>
+</aside>
+          </div></section>
+          <section class="m-doc-details" id="normals"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#normals" class="m-doc-self">normals</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>The mesh normals as (Nx3) float tensor.</p>
+<aside class="m-block m-warning">
+<h3>Multiple sub meshes</h3>
+<p>This can only be used on single-submesh meshes for now.
+On meshes with multiple submeshes this will raise a RuntimeError.</p>
+</aside>
+          </div></section>
+          <section class="m-doc-details" id="points"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#points" class="m-doc-self">points</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>The mesh vertices as (Nx3) float tensor.</p>
+<aside class="m-block m-warning">
+<h3>Multiple sub meshes</h3>
+<p>This can only be used on single-submesh meshes for now.
+On meshes with multiple submeshes this will raise a RuntimeError.</p>
+</aside>
+          </div></section>
+          <section class="m-doc-details" id="pretransform"><div>
+            <h3>
+              stillleben.<wbr />Mesh.<wbr /><a href="#pretransform" class="m-doc-self">pretransform</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>The current pretransform matrix.</p>
+<p>This is initialized to identity and can be set directly or through
+<a class="m-doc" href="stillleben.Mesh.html#center_bbox">center_bbox()</a> and <a class="m-doc" href="stillleben.Mesh.html#scale_to_bbox_diagonal">scale_to_bbox_diagonal()</a>.</p>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for modules, classes, functions and other
+            symbols. You can omit any prefix from the symbol path; adding a <code>.</code>
+            suffix lists all members of given symbol.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v1.js"></script>
+<script src="searchdata-v1.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>stillleben Python. Created with <a href="https://mcss.mosra.cz/documentation/python/">m.css Python doc generator</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>
