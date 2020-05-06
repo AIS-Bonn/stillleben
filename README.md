@@ -1,6 +1,6 @@
 # stillleben
 
-<p align="center">
+<p style="text-align: center">
   <img src="doc/examples/ycb.jpeg" width="500" alt="YCB-Video example">
 </p>
 
