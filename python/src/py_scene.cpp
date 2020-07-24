@@ -272,10 +272,16 @@ void init(py::module& m)
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
             Arrange the objects as if they were standing on a supporting surface.
+            This also calls :ref:`choose_random_camera_pose`.
 
             :param vis_cb: This callback is called after each physics simulation
                 timestep.
         )EOS", py::arg("vis_cb")=std::function<void()>{})
+
+        .def("choose_random_camera_pose", &sl::Scene::chooseRandomCameraPose, R"EOS(
+            Choose a random camera pose in the upper hemisphere (Z up) under the constraint
+            that all objects in the scene should be within the camera frustum.
+        )EOS")
 
         .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
             Choose a random light position.

@@ -368,17 +368,13 @@ void Scene::chooseRandomLightPosition()
     setLightPosition(m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam));
 }
 
-void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
+void Scene::chooseRandomCameraPose()
 {
-    loadPhysics();
-
     // What kind of objects do we have in the scene?
-    float maxDiameter = 0.0f;
     float minDistVis = 0.05f;
     for(auto& obj : m_objects)
     {
         float diameter = obj->mesh()->bbox().size().length();
-        maxDiameter = std::max(maxDiameter, diameter);
         minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
     }
 
@@ -410,6 +406,21 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             basePose;
 
         setCameraPose(pose);
+    }
+}
+
+void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
+{
+    loadPhysics();
+
+    chooseRandomCameraPose();
+
+    // What kind of objects do we have in the scene?
+    float maxDiameter = 0.0f;
+    for(auto& obj : m_objects)
+    {
+        float diameter = obj->mesh()->bbox().size().length();
+        maxDiameter = std::max(maxDiameter, diameter);
     }
 
     // Define the plane. It always goes through the origin.
