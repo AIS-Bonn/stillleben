@@ -17,7 +17,6 @@ import os
 import numpy as np
 import types
 
-import cv2
 from .profiling import Timer
 
 from .lib.libstillleben_python import Scene, RenderPassResult
@@ -47,13 +46,25 @@ __all__ = [
 TH_GAUSSIAN_KERNEL = 0
 KS = 0
 
+def gaussian_kernel(l=5, sig=1.):
+    """
+    1D Gaussian kernel with side length l and sigma sig.
+    Source: https://stackoverflow.com/questions/29731726/how-to-calculate-a-gaussian-kernel-matrix-efficiently-in-numpy
+    """
+
+    ax = np.linspace(-(l - 1) / 2., (l - 1) / 2., l)
+
+    kernel = np.exp(-0.5 * np.square(ax) / np.square(sig))
+
+    return kernel / np.sum(kernel)
+
 def _init_diff():
     global TH_GAUSSIAN_KERNEL
     global KS
 
     KS = 11
     SIGMA = 1
-    o = np.tile(cv2.getGaussianKernel(KS, SIGMA), (1, KS))
+    o = np.tile(gaussian_kernel(KS, SIGMA).reshape(KS, 1), (1, KS))
     kernel  = o * o.T
     TH_GAUSSIAN_KERNEL = torch.from_numpy(kernel)
     TH_GAUSSIAN_KERNEL = TH_GAUSSIAN_KERNEL.view(1,1, KS, KS).float()
