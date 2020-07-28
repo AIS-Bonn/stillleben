@@ -417,13 +417,20 @@ void Scene::chooseRandomCameraPose()
     // with the camera coordinate system.
     Matrix4 toWorkSystem = cameraRot.invertedRigid();
 
-    Containers::Array<Vector3> objectPositions(m_objects.size());
-    Containers::Array<float> objectDiameters(m_objects.size());
+    Containers::Array<Vector3> objectPoints(m_objects.size() * 8);
     for(std::size_t i = 0; i < m_objects.size(); ++i)
     {
         Range3D bbox = m_objects[i]->mesh()->bbox();
-        objectPositions[i] = (toWorkSystem * m_objects[i]->pose()).transformPoint(bbox.center());
-        objectDiameters[i] = bbox.size().length();
+        Matrix4 trans = toWorkSystem * m_objects[i]->pose();
+
+        objectPoints[i*8 + 0] = trans.transformPoint(bbox.backBottomLeft());
+        objectPoints[i*8 + 1] = trans.transformPoint(bbox.backBottomRight());
+        objectPoints[i*8 + 2] = trans.transformPoint(bbox.backTopLeft());
+        objectPoints[i*8 + 3] = trans.transformPoint(bbox.backTopRight());
+        objectPoints[i*8 + 4] = trans.transformPoint(bbox.frontBottomLeft());
+        objectPoints[i*8 + 5] = trans.transformPoint(bbox.frontBottomRight());
+        objectPoints[i*8 + 6] = trans.transformPoint(bbox.frontTopLeft());
+        objectPoints[i*8 + 7] = trans.transformPoint(bbox.frontTopRight());
     }
 
     // a) Frustum planes (left, right, top, bottom)
@@ -447,12 +454,8 @@ void Scene::chooseRandomCameraPose()
             Vector3 normal = plane.xyz();
             float min_lambda = std::numeric_limits<float>::max();
 
-            for(std::size_t i = 0; i < m_objects.size(); ++i)
-            {
-                // Plane-sphere intersection
-                float lambda = Math::dot(normal, objectPositions[i]) - objectDiameters[i]/2.0f;
-                min_lambda = std::min(min_lambda, lambda);
-            }
+            for(const auto& p : objectPoints)
+                min_lambda = std::min(min_lambda, Math::dot(normal, p));
 
             plane.w() = -min_lambda;
         }
