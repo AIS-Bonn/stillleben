@@ -9,6 +9,7 @@
 #include <stillleben/mesh.h>
 #include <stillleben/mesh_cache.h>
 
+#include <Corrade/Containers/StaticArray.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Corrade/Utility/Format.h>
 
@@ -370,43 +371,144 @@ void Scene::chooseRandomLightPosition()
 
 void Scene::chooseRandomCameraPose()
 {
-    // What kind of objects do we have in the scene?
-    float minDistVis = 0.05f;
-    for(auto& obj : m_objects)
+    // Basic idea:
+    //   1) Pick a random direction from which to look at the scene
+    //   2) Find a camera position that keeps all objects inside the frustum
+
+    // 1) is very simple.
+    Matrix4 cameraRot;
     {
-        float diameter = obj->mesh()->bbox().size().length();
-        minDistVis = std::max(minDistVis, minimumDistanceForObjectDiameter(diameter));
-    }
-
-    // Choose a nice camera pose
-    {
-        // We want to look at the origin with a distance d.
-        std::uniform_real_distribution<float> dDist{1.5f*minDistVis, 3.0f*minDistVis};
-
-        float d = dDist(m_randomGenerator);
-
-        // Columns!
-        Magnum::Matrix3 camRot{
-            -Magnum::Vector3::yAxis(),
-            -Magnum::Vector3::zAxis(),
-            Magnum::Vector3::xAxis()
-        };
-
-        Magnum::Matrix4 basePose = Magnum::Matrix4::from(camRot, Magnum::Vector3(-d, 0.0f, 0.0f));
-
         std::uniform_real_distribution<float> azimuthDist{-M_PI, M_PI};
         constexpr Magnum::Rad ELEVATION_LIMIT{Magnum::Deg{30.0f}};
         std::uniform_real_distribution<float> elevationDist{
             static_cast<float>(ELEVATION_LIMIT), M_PI/2.0f - static_cast<float>(ELEVATION_LIMIT)
         };
 
-        Magnum::Matrix4 pose =
-            Magnum::Matrix4::rotationZ(Magnum::Rad{azimuthDist(m_randomGenerator)}) *
-            Magnum::Matrix4::rotationY(Magnum::Rad{elevationDist(m_randomGenerator)}) *
-            basePose;
+        // Rotation into image coordinate system
+        Magnum::Matrix3 camRot{
+            -Magnum::Vector3::yAxis(),
+            -Magnum::Vector3::zAxis(),
+            Magnum::Vector3::xAxis()
+        };
 
-        setCameraPose(pose);
+        cameraRot =
+            Matrix4::rotationZ(Magnum::Rad{azimuthDist(m_randomGenerator)}) *
+            Matrix4::rotationY(Magnum::Rad{elevationDist(m_randomGenerator)}) *
+            Matrix4::from(camRot, {});
     }
+
+    // If there are no objects, there is nothing to do.
+    if(m_objects.empty())
+    {
+        Warning{} << "You called Scene::chooseRandomCameraPose() without objects";
+        setCameraPose(Matrix4::translation({0.0, 0.0, -1.0f}) * cameraRot);
+        return;
+    }
+
+    // 2) is quite complex. Approach:
+    //   a) Determine the normals of the frustum planes (normals facing inward).
+    //   b) Place each frustum plane so that it touches each object diameter sphere exactly.
+    //      Record the maximum (i.e. the plane placement furthest in normal direction).
+    //   c) The left/right and top/bottom frustom planes will intersect in a line, respectively.
+    //   d) Choose the "backmost" line and project the other line on it. The resulting intersection
+    //      point is the optimal candidate for the camere position.
+
+    // To simplify everything, we are working in a rotated coordinate system aligned
+    // with the camera coordinate system.
+    Matrix4 toWorkSystem = cameraRot.invertedRigid();
+
+    Containers::Array<Vector3> objectPositions(m_objects.size());
+    Containers::Array<float> objectDiameters(m_objects.size());
+    for(std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        objectPositions[i] = toWorkSystem.transformPoint(m_objects[i]->pose().translation());
+        objectDiameters[i] = m_objects[i]->mesh()->bbox().size().length();
+    }
+
+    // a) Frustum planes (left, right, top, bottom)
+    Containers::StaticArray<4, Vector4> frustum;
+    {
+        const auto proj = projectionMatrix();
+        frustum[0] = proj.row(3) + proj.row(0); // left
+        frustum[1] = proj.row(3) - proj.row(0); // right
+        frustum[2] = proj.row(3) + proj.row(1); // top
+        frustum[3] = proj.row(3) - proj.row(1); // bottom
+
+        // normalize
+        for(auto& f : frustum)
+            f = f / f.xyz().length();
+
+        Debug{} << "frustum planes:";
+        Debug{} << frustum;
+    }
+
+    // b) Find maximum for each plane
+    {
+        for(auto& plane : frustum)
+        {
+            Vector3 normal = plane.xyz();
+            float min_lambda = std::numeric_limits<float>::max();
+
+            for(std::size_t i = 0; i < m_objects.size(); ++i)
+            {
+                // Plane-sphere intersection
+                float lambda = Math::dot(normal, objectPositions[i]) - objectDiameters[i]/2.0f;
+                min_lambda = std::min(min_lambda, lambda);
+            }
+
+            plane.w() = -min_lambda;
+        }
+
+        Debug{} << "Shifted frustum planes:";
+        Debug{} << frustum;
+    }
+
+    // c) Left/right and Top/bottom intersection
+    float lr_x = 0.0f;
+    float lr_z = 0.0f;
+    {
+        // Simply solve in 2D as we know that the frustum is aligned
+        if(std::abs(frustum[0].y()) > 1e-3)
+            Warning{} << "chooseRandomCameraPose(): Frustum is strange, the result might not be correct";
+
+        Vector3 leftLine{frustum[0].x(), frustum[0].z(), frustum[0].w()};
+        Vector3 rightLine{frustum[1].x(), frustum[1].z(), frustum[1].w()};
+
+        Vector3 intersection = Math::cross(leftLine, rightLine);
+        if(std::abs(intersection.z()) < 1e-3)
+        {
+            Warning{} << "chooseRandomCameraPose(): Frustum is strange, the result might not be correct";
+            intersection = {0.0f, 0.0f, 1.0f};
+        }
+
+        lr_x = intersection[0] / intersection[2];
+        lr_z = intersection[1] / intersection[2];
+    }
+
+    float tb_y = 0.0f;
+    float tb_z = 0.0f;
+    {
+        // Simply solve in 2D as we know that the frustum is aligned
+        if(std::abs(frustum[2].x()) > 1e-3)
+            Warning{} << "chooseRandomCameraPose(): Frustum is strange, the result might not be correct";
+
+        Vector3 topLine{frustum[2].y(), frustum[2].z(), frustum[2].w()};
+        Vector3 bottomLine{frustum[3].y(), frustum[3].z(), frustum[3].w()};
+
+        Vector3 intersection = Math::cross(topLine, bottomLine);
+        if(std::abs(intersection.z()) < 1e-3)
+        {
+            Warning{} << "chooseRandomCameraPose(): Frustum is strange, the result might not be correct";
+            intersection = {0.0f, 0.0f, 1.0f};
+        }
+
+        tb_y = intersection[0] / intersection[2];
+        tb_z = intersection[1] / intersection[2];
+    }
+
+    Vector3 camPosition{lr_x, tb_y, std::min(lr_z, tb_z)};
+
+    setCameraPose(cameraRot * Matrix4::translation(camPosition));
 }
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
