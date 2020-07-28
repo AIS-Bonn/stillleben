@@ -233,6 +233,7 @@ public:
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
     bool drawPhysics = false;
+    bool drawSpheres = false;
 
     bool showInstances = true;
 };
@@ -428,6 +429,7 @@ void Viewer::draw()
 
     m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
     m_d->renderer->setDrawPhysicsEnabled(m_d->drawPhysics);
+    m_d->renderer->setDrawSpheresEnabled(m_d->drawSpheres);
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
@@ -563,6 +565,7 @@ void Viewer::draw()
         if(ImGui::CollapsingHeader("Debug"))
         {
             ImGui::Checkbox("Draw collision meshes", &m_d->drawPhysics);
+            ImGui::Checkbox("Draw bbox spheres", &m_d->drawSpheres);
         }
 
         ImGui::End();

@@ -78,6 +78,10 @@ public:
     constexpr bool drawPhysicsEnabled() const
     { return m_drawPhysics; }
 
+    void setDrawSpheresEnabled(bool enabled);
+    constexpr bool drawSpheresEnabled() const
+    { return m_drawSpheres; }
+
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 
     Type type() const
@@ -112,6 +116,7 @@ private:
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;
     Magnum::GL::Mesh m_backgroundPlaneMesh;
+    Magnum::GL::Mesh m_sphereMesh;
 
     std::shared_ptr<Result> m_result;
 
@@ -119,6 +124,7 @@ private:
 
     bool m_ssaoEnabled = true;
     bool m_drawPhysics = false;
+    bool m_drawSpheres = false;
 };
 
 }

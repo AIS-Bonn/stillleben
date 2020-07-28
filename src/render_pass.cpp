@@ -27,6 +27,7 @@
 #include <Magnum/Primitives/Cube.h>
 #include <Magnum/Primitives/Plane.h>
 #include <Magnum/Primitives/Square.h>
+#include <Magnum/Primitives/UVSphere.h>
 
 #include <Magnum/PixelFormat.h>
 
@@ -112,6 +113,7 @@ RenderPass::RenderPass(Type type, bool cuda)
     m_quadMesh = MeshTools::compile(Primitives::squareSolid());
     m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneFlag::TextureCoordinates));
+    m_sphereMesh = MeshTools::compile(Primitives::uvSphereSolid(80, 80));
 
     m_result = std::make_shared<Result>(cuda);
 }
@@ -461,6 +463,33 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         return {scalarGen(seqGen), scalarGen(seqGen), scalarGen(seqGen), 1.0};
     };
 
+    if(m_drawSpheres)
+    {
+        m_framebuffer.mapForDraw({
+            {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+        });
+
+        GL::Renderer::enable(GL::Renderer::Feature::Blending);
+        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+            GL::Renderer::BlendEquation::Max);
+        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
+        for(auto& object : scene.objects())
+        {
+            Matrix4 scaling = Matrix4::scaling(Vector3{0.5f * object->mesh()->bbox().size().length()});
+            Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+
+            (*m_meshShader)
+                .setColor(randomColor())
+                .setWireframeColor(0xdcdcdc_rgbf)
+                .setViewportSize(Vector2{scene.viewport()})
+                .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
+                .setProjectionMatrix(scene.camera().projectionMatrix())
+                .draw(m_sphereMesh);
+        }
+    }
+
     if(m_drawPhysics)
     {
         m_framebuffer.mapForDraw({
@@ -542,5 +571,9 @@ void RenderPass::setDrawPhysicsEnabled(bool enabled)
     m_drawPhysics = enabled;
 }
 
+void RenderPass::setDrawSpheresEnabled(bool enabled)
+{
+    m_drawSpheres = enabled;
+}
 
 }
