@@ -574,7 +574,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         }*/;
         Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
 
-        Magnum::Matrix4 pose = Magnum::Matrix4::from(q.toMatrix(), pos);
+        Matrix4 pose = Matrix4::from(q.toMatrix(), pos) * Matrix4::translation(-obj->mesh()->bbox().center());
         obj->setPose(pose);
 
         obj->rigidBody().setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
