@@ -421,8 +421,9 @@ void Scene::chooseRandomCameraPose()
     Containers::Array<float> objectDiameters(m_objects.size());
     for(std::size_t i = 0; i < m_objects.size(); ++i)
     {
-        objectPositions[i] = toWorkSystem.transformPoint(m_objects[i]->pose().translation());
-        objectDiameters[i] = m_objects[i]->mesh()->bbox().size().length();
+        Range3D bbox = m_objects[i]->mesh()->bbox();
+        objectPositions[i] = (toWorkSystem * m_objects[i]->pose()).transformPoint(bbox.center());
+        objectDiameters[i] = bbox.size().length();
     }
 
     // a) Frustum planes (left, right, top, bottom)
@@ -437,9 +438,6 @@ void Scene::chooseRandomCameraPose()
         // normalize
         for(auto& f : frustum)
             f = f / f.xyz().length();
-
-        Debug{} << "frustum planes:";
-        Debug{} << frustum;
     }
 
     // b) Find maximum for each plane
@@ -458,9 +456,6 @@ void Scene::chooseRandomCameraPose()
 
             plane.w() = -min_lambda;
         }
-
-        Debug{} << "Shifted frustum planes:";
-        Debug{} << frustum;
     }
 
     // c) Left/right and Top/bottom intersection
@@ -514,8 +509,6 @@ void Scene::chooseRandomCameraPose()
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
     loadPhysics();
-
-    chooseRandomCameraPose();
 
     // What kind of objects do we have in the scene?
     float maxDiameter = 0.0f;
@@ -645,6 +638,8 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             obj->updateFromPhysics();
         }
     }
+
+    chooseRandomCameraPose();
 }
 
 void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
