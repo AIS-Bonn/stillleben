@@ -78,6 +78,17 @@ public:
     constexpr bool drawPhysicsEnabled() const
     { return m_drawPhysics; }
 
+    enum class DrawBounding
+    {
+        Disabled,
+        Boxes,
+        Spheres
+    };
+
+    void setDrawBounding(DrawBounding drawBounding);
+    constexpr DrawBounding drawBounding() const
+    { return m_drawBounding; }
+
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 
     Type type() const
@@ -112,6 +123,7 @@ private:
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;
     Magnum::GL::Mesh m_backgroundPlaneMesh;
+    Magnum::GL::Mesh m_sphereMesh;
 
     std::shared_ptr<Result> m_result;
 
@@ -119,6 +131,7 @@ private:
 
     bool m_ssaoEnabled = true;
     bool m_drawPhysics = false;
+    DrawBounding m_drawBounding = DrawBounding::Disabled;
 };
 
 }
