@@ -72,6 +72,19 @@ namespace
         }
         return {};
     }
+
+    constexpr const char* drawBoundingLabel(sl::RenderPass::DrawBounding db)
+    {
+        using namespace sl;
+
+        switch(db)
+        {
+            case RenderPass::DrawBounding::Disabled: return "No";
+            case RenderPass::DrawBounding::Boxes: return "Box";
+            case RenderPass::DrawBounding::Spheres: return "Sphere";
+        }
+        return {};
+    }
 }
 
 namespace sl
@@ -233,7 +246,6 @@ public:
     RenderPass::Type renderType = RenderPass::Type::PBR;
     bool enableSSAO = true;
     bool drawPhysics = false;
-    bool drawSpheres = false;
 
     bool showInstances = true;
 };
@@ -429,7 +441,6 @@ void Viewer::draw()
 
     m_d->renderer->setSSAOEnabled(m_d->enableSSAO);
     m_d->renderer->setDrawPhysicsEnabled(m_d->drawPhysics);
-    m_d->renderer->setDrawSpheresEnabled(m_d->drawSpheres);
 
     m_d->result = m_d->renderer->render(*m_d->scene, m_d->result);
 
@@ -565,7 +576,20 @@ void Viewer::draw()
         if(ImGui::CollapsingHeader("Debug"))
         {
             ImGui::Checkbox("Draw collision meshes", &m_d->drawPhysics);
-            ImGui::Checkbox("Draw bbox spheres", &m_d->drawSpheres);
+
+            ImGui::PushItemWidth(-100);
+            if(ImGui::BeginCombo("bounds", drawBoundingLabel(m_d->renderer->drawBounding())))
+            {
+                for(auto type : {RenderPass::DrawBounding::Disabled, RenderPass::DrawBounding::Boxes, RenderPass::DrawBounding::Spheres})
+                {
+                    bool selected = (m_d->renderer->drawBounding() == type);
+                    if(ImGui::Selectable(drawBoundingLabel(type), selected))
+                        m_d->renderer->setDrawBounding(type);
+                    if(selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
         }
 
         ImGui::End();

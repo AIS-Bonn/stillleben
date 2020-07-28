@@ -78,9 +78,16 @@ public:
     constexpr bool drawPhysicsEnabled() const
     { return m_drawPhysics; }
 
-    void setDrawSpheresEnabled(bool enabled);
-    constexpr bool drawSpheresEnabled() const
-    { return m_drawSpheres; }
+    enum class DrawBounding
+    {
+        Disabled,
+        Boxes,
+        Spheres
+    };
+
+    void setDrawBounding(DrawBounding drawBounding);
+    constexpr DrawBounding drawBounding() const
+    { return m_drawBounding; }
 
     std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
 
@@ -124,7 +131,7 @@ private:
 
     bool m_ssaoEnabled = true;
     bool m_drawPhysics = false;
-    bool m_drawSpheres = false;
+    DrawBounding m_drawBounding = DrawBounding::Disabled;
 };
 
 }

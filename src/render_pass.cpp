@@ -459,11 +459,11 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
     std::mt19937 seqGen{0};
     std::uniform_real_distribution<float> scalarGen(0.0, 1.0);
-    auto randomColor = [&]() -> Color4 {
-        return {scalarGen(seqGen), scalarGen(seqGen), scalarGen(seqGen), 1.0};
+    auto randomColor = [&](float alpha = 1.0f) -> Color4 {
+        return {scalarGen(seqGen), scalarGen(seqGen), scalarGen(seqGen), alpha};
     };
 
-    if(m_drawSpheres)
+    if(m_drawBounding != DrawBounding::Disabled)
     {
         m_framebuffer.mapForDraw({
             {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
@@ -475,18 +475,42 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
             GL::Renderer::BlendFunction::OneMinusSourceAlpha);
 
-        for(auto& object : scene.objects())
+        switch(m_drawBounding)
         {
-            Matrix4 scaling = Matrix4::scaling(Vector3{0.5f * object->mesh()->bbox().size().length()});
-            Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+            case DrawBounding::Disabled:
+                break;
 
-            (*m_meshShader)
-                .setColor(randomColor())
-                .setWireframeColor(0xdcdcdc_rgbf)
-                .setViewportSize(Vector2{scene.viewport()})
-                .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
-                .setProjectionMatrix(scene.camera().projectionMatrix())
-                .draw(m_sphereMesh);
+            case DrawBounding::Spheres:
+                for(auto& object : scene.objects())
+                {
+                    Matrix4 scaling = Matrix4::scaling(Vector3{0.5f * object->mesh()->bbox().size().length()});
+                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+
+                    (*m_meshShader)
+                        .setColor(randomColor(0.8f))
+                        .setWireframeColor(0xdcdcdc_rgbf)
+                        .setViewportSize(Vector2{scene.viewport()})
+                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
+                        .setProjectionMatrix(scene.camera().projectionMatrix())
+                        .draw(m_sphereMesh);
+                }
+                break;
+
+            case DrawBounding::Boxes:
+                for(auto& object : scene.objects())
+                {
+                    Matrix4 scaling = Matrix4::scaling(0.5f * object->mesh()->bbox().size());
+                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+
+                    (*m_meshShader)
+                        .setColor(randomColor(0.8f))
+                        .setWireframeColor(0xdcdcdc_rgbf)
+                        .setViewportSize(Vector2{scene.viewport()})
+                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
+                        .setProjectionMatrix(scene.camera().projectionMatrix())
+                        .draw(m_cubeMesh);
+                }
+                break;
         }
     }
 
@@ -571,9 +595,9 @@ void RenderPass::setDrawPhysicsEnabled(bool enabled)
     m_drawPhysics = enabled;
 }
 
-void RenderPass::setDrawSpheresEnabled(bool enabled)
+void RenderPass::setDrawBounding(DrawBounding drawBounding)
 {
-    m_drawSpheres = enabled;
+    m_drawBounding = drawBounding;
 }
 
 }
