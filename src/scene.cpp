@@ -55,9 +55,10 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
     m_physicsDispatcher.reset(physx::PxDefaultCpuDispatcherCreate(2));
 
     physx::PxSceneDesc desc(physics.getTolerancesScale());
-    desc.gravity = physx::PxVec3(0.0f, 9.81f, 0.0f);
+    desc.gravity = physx::PxVec3(0.0f, 0.0f, 9.81f);
     desc.cpuDispatcher = m_physicsDispatcher.get();
     desc.filterShader = physx::PxDefaultSimulationFilterShader;
+    desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
 
     m_physicsScene.reset(physics.createScene(desc));
 }
@@ -561,19 +562,19 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     // Arrange the objects randomly above the plane
     std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
 
-    float z = 0.0f;
+    float z = BOX_HALF_EXTENTS.z();
     for(auto& obj : m_objects)
     {
-        z += maxDiameter;
-        Magnum::Vector3 pos = z*normal /*+ Magnum::Vector3{
-            posDist(m_randomGenerator), posDist(m_randomGenerator), posDist(m_randomGenerator)
-        }*/;
+        double diameter = obj->mesh()->bbox().size().length();
+        z += diameter/2.0f;
+        Magnum::Vector3 pos = z*normal;
+        z += diameter/2.0f;
+
         Magnum::Quaternion q = randomQuaternion(m_randomGenerator);
 
         Matrix4 pose = Matrix4::from(q.toMatrix(), pos) * Matrix4::translation(-obj->mesh()->bbox().center());
         obj->setPose(pose);
-
-        obj->rigidBody().setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
+        obj->rigidBody().wakeUp();
     }
 
     // We simulate a strong fake gravity towards the center
@@ -581,7 +582,8 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     constexpr unsigned int FPS = 25;
     constexpr float TIME_PER_FRAME = 1.0f / FPS;
-    constexpr unsigned int SUBSTEPS = 4;
+    constexpr unsigned int SUBSTEPS_PRECISE = 8;
+    constexpr unsigned int SUBSTEPS_FAST = 2;
 
     const int maxIterations = 100;
     for(int i = 0; i < maxIterations; ++i)
@@ -589,21 +591,24 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         if(visCallback)
             visCallback(i);
 
-        for(auto& obj : m_objects)
-        {
-            Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
-
-            Magnum::Vector3 dir = diff.normalized();
-
-            float magnitude = 5.0f;
-            if(diff.dot() < 0.05f*0.05f)
-                magnitude = 0.5f * diff.length() / 0.05f;
-
-            obj->rigidBody().addForce(physx::PxVec3{magnitude * dir});
-        }
+        const unsigned int SUBSTEPS = (i < 40) ? SUBSTEPS_PRECISE : SUBSTEPS_FAST;
 
         for(unsigned int i = 0; i < SUBSTEPS; ++i)
         {
+            for(auto& obj : m_objects)
+            {
+                Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
+
+                Magnum::Vector3 dir = diff.normalized();
+
+                float magnitude = 5.0f;
+                if(diff.dot() < 0.05f*0.05f)
+                    magnitude = 0.5f * diff.length() / 0.05f;
+
+                obj->rigidBody().clearForce();
+                obj->rigidBody().addForce(physx::PxVec3{magnitude * dir}, physx::PxForceMode::eACCELERATION, false);
+            }
+
             m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS);
             m_physicsScene->fetchResults(true);
         }
@@ -615,24 +620,35 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     }
 
     for(auto& obj : m_objects)
+    {
+        obj->rigidBody().clearForce(physx::PxForceMode::eACCELERATION);
         obj->rigidBody().wakeUp();
+    }
 
-    // Simulate further with only gravity
-    for(int i = 0; i < maxIterations; ++i)
+    // Simulate a bit further with only gravity
+    for(int i = 0; i < maxIterations/2; ++i)
     {
         if(visCallback)
             visCallback(maxIterations + i);
 
-        for(auto& obj : m_objects)
-        {
-            Magnum::Vector3 dir = (gravityCenter - obj->pose().translation()).normalized();
-            obj->rigidBody().clearForce();
-            obj->rigidBody().addForce(physx::PxVec3{0.5f * dir});
-        }
+        if(std::all_of(m_objects.begin(), m_objects.end(), [](auto& obj){
+            return obj->rigidBody().isSleeping();
+        }))
+            break;
 
-        for(unsigned int i = 0; i < SUBSTEPS; ++i)
+        for(unsigned int i = 0; i < SUBSTEPS_FAST; ++i)
         {
-            m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS);
+            for(auto& obj : m_objects)
+            {
+                Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
+
+                Magnum::Vector3 dir = diff.normalized();
+
+                obj->rigidBody().clearForce();
+                obj->rigidBody().addForce(physx::PxVec3{0.05f * dir}, physx::PxForceMode::eACCELERATION, false);
+            }
+
+            m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS_FAST);
             m_physicsScene->fetchResults(true);
         }
 

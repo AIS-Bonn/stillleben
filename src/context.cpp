@@ -237,8 +237,10 @@ public:
             PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
         ));
 
+        physx::PxCookingParams cookingParams(scale);
+        cookingParams.midphaseDesc = physx::PxMeshMidPhase::eBVH34;
         pxCooking.reset(PxCreateCooking(
-            PX_PHYSICS_VERSION, *pxFoundation, physx::PxCookingParams(scale)
+            PX_PHYSICS_VERSION, *pxFoundation, cookingParams
         ));
     }
 

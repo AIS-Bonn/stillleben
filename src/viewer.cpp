@@ -248,6 +248,10 @@ public:
     bool drawPhysics = false;
 
     bool showInstances = true;
+
+    int simIteration = -1;
+    bool rearrangeRequested = false;
+    bool visualizeRearrangement = true;
 };
 
 Viewer::Viewer(const std::shared_ptr<Context>& ctx)
@@ -553,7 +557,21 @@ void Viewer::draw()
         ImGui::SetNextWindowSize(ImVec2(MENU_BAR_WIDTH, m_d->windowSize.y()));
         ImGui::Begin("Menu", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-        if(ImGui::CollapsingHeader("Rendering"))
+        if(ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            if(m_d->simIteration >= 0)
+            {
+                ImGui::Button(Utility::formatString("Running: {}", m_d->simIteration).c_str());
+            }
+            else if(ImGui::Button("Rearrange"))
+            {
+                m_d->rearrangeRequested = true;
+            }
+
+            ImGui::Checkbox("Draw sim steps", &m_d->visualizeRearrangement);
+        }
+
+        if(ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Text("Shading:"); ImGui::SameLine();
             if(ImGui::BeginCombo("Shading model", renderTypeLabel(m_d->renderType)))
@@ -573,7 +591,7 @@ void Viewer::draw()
             ImGui::Checkbox("SSAO", &m_d->enableSSAO);
         }
 
-        if(ImGui::CollapsingHeader("Debug"))
+        if(ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::Checkbox("Draw collision meshes", &m_d->drawPhysics);
 
@@ -681,6 +699,26 @@ bool Viewer::mainLoopIteration()
     {
         m_d->redrawCount--;
         draw();
+
+        if(m_d->rearrangeRequested)
+        {
+            using namespace std::chrono;
+
+            auto t0 = high_resolution_clock::now();
+
+            m_d->simIteration = 0;
+            m_d->rearrangeRequested = false;
+            m_d->scene->simulateTableTopScene([&](int iter){
+                m_d->simIteration = iter;
+                if(m_d->visualizeRearrangement)
+                    draw();
+            });
+            m_d->simIteration = -1;
+            m_d->redraw();
+
+            auto t1 = high_resolution_clock::now();
+            Debug{} << "Took" << duration_cast<milliseconds>(t1-t0).count() << "ms";
+        }
     }
     else Corrade::Utility::System::sleep(5);
 
