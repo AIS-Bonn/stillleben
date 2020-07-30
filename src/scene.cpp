@@ -514,14 +514,6 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
     loadPhysics();
 
-    // What kind of objects do we have in the scene?
-    float maxDiameter = 0.0f;
-    for(auto& obj : m_objects)
-    {
-        float diameter = obj->mesh()->bbox().size().length();
-        maxDiameter = std::max(maxDiameter, diameter);
-    }
-
     // Define the plane. It always goes through the origin.
     constexpr Magnum::Vector3 normal{0.0f, 0.0f, 1.0f};
 
@@ -558,9 +550,6 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
     auto remover = finally([&](){ m_physicsScene->removeActor(*actor); });
 
     m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
-
-    // Arrange the objects randomly above the plane
-    std::uniform_real_distribution<float> posDist{-2.0f*maxDiameter, 2.0f*maxDiameter};
 
     float z = BOX_HALF_EXTENTS.z();
     for(auto& obj : m_objects)
