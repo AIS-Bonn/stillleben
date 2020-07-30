@@ -521,6 +521,9 @@ void Viewer::draw()
     const int MENU_BAR_WIDTH = 200;
     Vector2 qSize = Vector2{(m_d->windowSize - Vector2i{MENU_BAR_WIDTH, 0})}/2.0f;
 
+    // We need to make the individual windows a bit larger to prevent rounding errors
+    Vector2 qSizePad = qSize + (Vector2{m_d->windowSize} - Vector2{1})/Vector2{m_d->windowSize};
+
     m_d->arcBallHovered = false;
 
     auto fitImage = [&](Magnum::GL::Texture2D& tex){
@@ -548,21 +551,21 @@ void Viewer::draw()
 
     {
         ImGui::SetNextWindowPos(ImVec2{0,0});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("RGB", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureRGB);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{qSize.x(),0});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Normals", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureNormal);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{0,qSize.y()});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Segmentation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         {
@@ -583,7 +586,7 @@ void Viewer::draw()
     }
     {
         ImGui::SetNextWindowPos(ImVec2{qSize});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Coordinates", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureCoordinates);
         ImGui::End();
