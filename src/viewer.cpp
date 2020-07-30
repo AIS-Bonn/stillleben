@@ -3,6 +3,12 @@
 
 #include <stillleben/viewer.h>
 
+// Need to include X11 early: Magnum (understandably) undefines a lot of their
+// crappy macros, so subsequent includes won't work.
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/extensions/sync.h>
+
 #include <stillleben/context.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
@@ -37,6 +43,7 @@
 #include <Egl.h>
 
 #include <EGL/egl.h>
+
 /* undef Xlib nonsense to avoid conflicts */
 #undef None
 #undef Complex
@@ -53,7 +60,7 @@ typedef EGLInt VisualId;
 #endif
 
 /* Mask for X events */
-#define INPUT_MASK KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|StructureNotifyMask
+#define INPUT_MASK KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|StructureNotifyMask|ExposureMask|VisibilityChangeMask
 
 using namespace Magnum;
 using namespace Magnum::Math::Literals;
@@ -214,6 +221,13 @@ public:
     Display* display{};
     Window window{};
     Atom deleteWindow{};
+    Atom wmProtocol{};
+
+    Atom counterProperty{};
+    Atom syncRequest{};
+    XSyncCounter syncCounter{};
+    XSyncValue syncValue{};
+    bool syncRequired = false;
 
     EGLSurface surface{};
 
@@ -261,6 +275,9 @@ Viewer::Viewer(const std::shared_ptr<Context>& ctx)
 
 Viewer::~Viewer()
 {
+    if(m_d->display && m_d->syncCounter)
+        XSyncDestroyCounter(m_d->display, m_d->syncCounter);
+
     if(m_d->surface)
         eglDestroySurface(eglGetCurrentDisplay(), m_d->surface);
 
@@ -313,12 +330,39 @@ void Viewer::setup()
         attr.event_mask = 0;
         unsigned long mask = CWBackPixel|CWBorderPixel|CWColormap|CWEventMask;
         m_d->window = XCreateWindow(m_d->display, root, 20, 20, m_d->windowSize.x(), m_d->windowSize.y(), 0, visInfo->depth, InputOutput, visInfo->visual, mask, &attr);
-        XSetStandardProperties(m_d->display, m_d->window, "stillleben", nullptr, 0, nullptr, 0, nullptr);
         XFree(visInfo);
+
+        XSetStandardProperties(m_d->display, m_d->window, "stillleben", nullptr, 0, nullptr, 0, nullptr);
+
+        // It seems Xlib by default uses a black background pixmap, which
+        // is used during resize -> horrible flickering. Don't do that.
+        XSetWindowBackgroundPixmap(m_d->display, m_d->window, 0);
+
+        // Support for the basic frame synchronization protocol. This helps during resize,
+        // since the WM will wait for us to draw before resizing the window further.
+        {
+            m_d->syncRequest = XInternAtom(m_d->display, "_NET_WM_SYNC_REQUEST", True);
+
+            XSyncValue value;
+            XSyncIntToValue(&value, 0);
+
+            m_d->syncCounter = XSyncCreateCounter(m_d->display, value);
+
+            m_d->counterProperty = XInternAtom(m_d->display, "_NET_WM_SYNC_REQUEST_COUNTER", True);
+
+            XChangeProperty(
+                m_d->display, m_d->window, m_d->counterProperty,
+                XA_CARDINAL, 32, PropModeReplace,
+                reinterpret_cast<const uint8_t*>(&m_d->syncCounter), 1
+            );
+        }
 
         /* Be notified about closing the window */
         m_d->deleteWindow = XInternAtom(m_d->display, "WM_DELETE_WINDOW", True);
-        XSetWMProtocols(m_d->display, m_d->window, &m_d->deleteWindow, 1);
+
+        // Report supported window manager protocols
+        XID protocols[] = {m_d->deleteWindow, m_d->syncRequest};
+        XSetWMProtocols(m_d->display, m_d->window, protocols, 2);
     }
 
     // Create the EGL surface connected to the window
@@ -468,10 +512,6 @@ void Viewer::draw()
     m_d->textureClass.generateMipmap();
     m_d->textureCoordinates.generateMipmap();
 
-    Magnum::GL::defaultFramebuffer.bind();
-    Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
-    Magnum::GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
-
     if(!m_d->scene)
         return;
 
@@ -479,7 +519,10 @@ void Viewer::draw()
 
     Vector2 srcSize{m_d->scene->viewport()};
     const int MENU_BAR_WIDTH = 200;
-    Vector2 qSize = Vector2{(m_d->windowSize - Vector2i{MENU_BAR_WIDTH, 0})/ 2};
+    Vector2 qSize = Vector2{(m_d->windowSize - Vector2i{MENU_BAR_WIDTH, 0})}/2.0f;
+
+    // We need to make the individual windows a bit larger to prevent rounding errors
+    Vector2 qSizePad = qSize + (Vector2{m_d->windowSize} - Vector2{1})/Vector2{m_d->windowSize};
 
     m_d->arcBallHovered = false;
 
@@ -508,21 +551,21 @@ void Viewer::draw()
 
     {
         ImGui::SetNextWindowPos(ImVec2{0,0});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("RGB", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureRGB);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{qSize.x(),0});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Normals", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureNormal);
         ImGui::End();
     }
     {
         ImGui::SetNextWindowPos(ImVec2{0,qSize.y()});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Segmentation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         {
@@ -543,7 +586,7 @@ void Viewer::draw()
     }
     {
         ImGui::SetNextWindowPos(ImVec2{qSize});
-        ImGui::SetNextWindowSize(ImVec2{qSize});
+        ImGui::SetNextWindowSize(ImVec2{qSizePad});
         ImGui::Begin("Coordinates", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         fitImage(m_d->textureCoordinates);
         ImGui::End();
@@ -618,6 +661,10 @@ void Viewer::draw()
     // Update cursor
     m_d->imgui.updateApplicationCursor(*m_d);
 
+    Magnum::GL::defaultFramebuffer.bind();
+    Magnum::GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
+    Magnum::GL::defaultFramebuffer.mapForDraw(Magnum::GL::DefaultFramebuffer::DrawAttachment::Back);
+
     /* Set appropriate states. If you only draw ImGui, it is sufficient to
        just enable blending and scissor test in the constructor. */
     GL::Renderer::enable(GL::Renderer::Feature::Blending);
@@ -654,12 +701,22 @@ bool Viewer::mainLoopIteration()
 {
     XEvent event;
 
-    // Closed window
-    if(XCheckTypedWindowEvent(m_d->display, m_d->window, ClientMessage, &event) &&
-        Atom(event.xclient.data.l[0]) == m_d->deleteWindow)
+    while(XCheckTypedWindowEvent(m_d->display, m_d->window, ClientMessage, &event))
     {
-        return false;
+        // Closed window
+        if(Atom(event.xclient.data.l[0]) == m_d->deleteWindow)
+            return false;
+
+        // WM sync request
+        if(Atom(event.xclient.data.l[0]) == m_d->syncRequest)
+        {
+            m_d->syncRequired = true;
+            m_d->syncValue.lo = event.xclient.data.l[2];
+            m_d->syncValue.hi = event.xclient.data.l[3];
+        }
     }
+
+    bool resize = false;
 
     while(XCheckWindowEvent(m_d->display, m_d->window, INPUT_MASK, &event)) {
         switch(event.type) {
@@ -669,11 +726,14 @@ bool Viewer::mainLoopIteration()
                 if(size != m_d->windowSize)
                 {
                     m_d->windowSize = size;
-                    Magnum::GL::defaultFramebuffer.setViewport({{}, size});
-                    m_d->imgui.relayout(size);
-                    m_d->redraw();
+                    resize = true;
                 }
             } break;
+            case Expose:
+            case VisibilityNotify:
+            case MapNotify:
+                m_d->redraw();
+                break;
 
             /* Key/mouse events */
             case KeyPress:
@@ -693,6 +753,13 @@ bool Viewer::mainLoopIteration()
                 m_d->mouseMoveEvent(e);
             } break;
         }
+    }
+
+    if(resize)
+    {
+        Magnum::GL::defaultFramebuffer.setViewport({{}, m_d->windowSize});
+        m_d->imgui.relayout(m_d->windowSize);
+        m_d->redraw(2);
     }
 
     if(m_d->redrawCount > 0)
@@ -721,6 +788,13 @@ bool Viewer::mainLoopIteration()
         }
     }
     else Corrade::Utility::System::sleep(5);
+
+    // If requested, notify the WM that we are finished reacting to the resize
+    if(resize && m_d->syncRequired)
+    {
+        XSyncSetCounter(m_d->display, m_d->syncCounter, m_d->syncValue);
+        m_d->syncRequired = false;
+    }
 
     return !(m_d->flags & Private::Flag::Exit);
 }
