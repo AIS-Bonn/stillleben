@@ -551,8 +551,13 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
 
+    std::vector<std::shared_ptr<Object>> dynamicObjects;
+    std::copy_if(m_objects.begin(), m_objects.end(), std::back_inserter(dynamicObjects), [](auto& obj){
+        return !obj->isStatic();
+    });
+
     float z = BOX_HALF_EXTENTS.z();
-    for(auto& obj : m_objects)
+    for(auto& obj : dynamicObjects)
     {
         double diameter = obj->mesh()->bbox().size().length();
         z += diameter/2.0f;
@@ -584,7 +589,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
         for(unsigned int i = 0; i < SUBSTEPS; ++i)
         {
-            for(auto& obj : m_objects)
+            for(auto& obj : dynamicObjects)
             {
                 Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
 
@@ -602,13 +607,13 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             m_physicsScene->fetchResults(true);
         }
 
-        for(auto& obj : m_objects)
+        for(auto& obj : dynamicObjects)
         {
             obj->updateFromPhysics();
         }
     }
 
-    for(auto& obj : m_objects)
+    for(auto& obj : dynamicObjects)
     {
         obj->rigidBody().clearForce(physx::PxForceMode::eACCELERATION);
         obj->rigidBody().wakeUp();
@@ -620,14 +625,14 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         if(visCallback)
             visCallback(maxIterations + i);
 
-        if(std::all_of(m_objects.begin(), m_objects.end(), [](auto& obj){
+        if(std::all_of(dynamicObjects.begin(), dynamicObjects.end(), [](auto& obj){
             return obj->rigidBody().isSleeping();
         }))
             break;
 
         for(unsigned int i = 0; i < SUBSTEPS_FAST; ++i)
         {
-            for(auto& obj : m_objects)
+            for(auto& obj : dynamicObjects)
             {
                 Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
 
@@ -641,7 +646,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             m_physicsScene->fetchResults(true);
         }
 
-        for(auto& obj : m_objects)
+        for(auto& obj : dynamicObjects)
         {
             obj->updateFromPhysics();
         }

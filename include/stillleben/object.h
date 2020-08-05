@@ -189,6 +189,10 @@ public:
 
     Magnum::Matrix4 stickerViewProjection() const;
 
+    void setStatic(bool isStatic);
+    constexpr bool isStatic() const
+    { return m_static; }
+
 private:
     void populateParts();
     void addPart(Object3D& parent, Magnum::UnsignedInt i);
@@ -237,6 +241,8 @@ private:
     std::shared_ptr<Magnum::GL::RectangleTexture> m_stickerTexture{};
     Magnum::Range2D m_stickerRange{};
     Magnum::Quaternion m_stickerRotation{};
+
+    bool m_static = false;
 };
 
 }

@@ -127,6 +127,12 @@ void init(py::module& m)
         .def_property("sticker_texture", &sl::Object::stickerTexture, &sl::Object::setStickerTexture, R"EOS(
             Sticker texture.
         )EOS")
+
+
+        .def_property("static", &sl::Object::isStatic, &sl::Object::setStatic, R"EOS(
+            If set to true, the object is marked as static for physics simulation. This is a good choice
+            for containers or supporting planes.
+        )EOS")
     ;
 }
 

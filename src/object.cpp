@@ -219,6 +219,9 @@ void Object::loadPhysics()
 
     // Calculate mass & inertia
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
+
+    // Synchronize static flag
+    setStatic(isStatic());
 }
 
 void Object::loadPhysicsVisualization()
@@ -425,6 +428,13 @@ Magnum::Matrix4 Object::stickerViewProjection() const
     );
 
     return proj * trans * Magnum::Matrix4{m_stickerRotation.toMatrix()};
+}
+
+void Object::setStatic(bool isStatic)
+{
+    m_static = isStatic;
+    if(m_rigidBody)
+        m_rigidBody->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isStatic);
 }
 
 }
