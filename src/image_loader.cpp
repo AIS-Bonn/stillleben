@@ -23,6 +23,9 @@
 #include <Corrade/Utility/String.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
+#include <Corrade/Utility/FormatStl.h>
+
+using namespace Magnum;
 
 namespace sl
 {
@@ -43,6 +46,9 @@ ImageLoader::ImageLoader(
     auto files = Dir::list(m_path, Dir::Flag::SkipDirectories | Dir::Flag::SkipDotAndDotDot);
     for(const auto& name : files)
         m_paths.push_back(Dir::join(m_path, name));
+
+    if(m_paths.empty())
+        throw std::runtime_error{Utility::formatString("Could not find any images in '{}'", path)};
 
     for(unsigned int i = 0; i < std::thread::hardware_concurrency(); ++i)
     {
