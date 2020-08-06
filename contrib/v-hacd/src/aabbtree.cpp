@@ -1319,7 +1319,7 @@ void AABBTreeImpl::CalculateFaceBounds(uint32_t* faces, uint32_t numFaces, Vecto
 }
 
 // track current tree depth
-static uint32_t s_depth = 0;
+static thread_local uint32_t s_depth = 0;
 
 void AABBTreeImpl::Build()
 {
