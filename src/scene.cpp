@@ -471,49 +471,57 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
     loadPhysics();
 
-    // Define the plane. It always goes through the origin.
-    constexpr Magnum::Vector3 normal{0.0f, 0.0f, 1.0f};
-
-    // Add it to the physics scene
-    Vector3 xAxis = Vector3::xAxis();
-    Vector3 zAxis = normal;
-    Vector3 yAxis = Math::cross(zAxis, xAxis);
-
-    Matrix3 rot{xAxis, yAxis, zAxis};
-
-    constexpr Magnum::Vector3 BOX_HALF_EXTENTS{30.0, 30.0, 0.04};
-
-    Matrix4 T = Matrix4::from(rot, Vector3{});
-
-    auto& physics = m_ctx->physxPhysics();
-
-    physx::PxBoxGeometry boxGeom{BOX_HALF_EXTENTS.x(), BOX_HALF_EXTENTS.y(), BOX_HALF_EXTENTS.z()};
-    PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
-    PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
-    PhysXHolder<physx::PxRigidStatic> actor{physics.createRigidStatic(physx::PxTransform{T})};
-    actor->attachShape(*shape);
-
-    // Call setBackgroundPlanePose() with the correct pose so that the visual
-    // matches up with the physics simulation
-    {
-        std::uniform_real_distribution<float> planeRotDist(-M_PI, M_PI);
-        Magnum::Rad planeRot{planeRotDist(m_randomGenerator)};
-
-        Matrix4 topSidePlanePose = T * Matrix4::rotationZ(planeRot) * Matrix4::translation({0.0, 0.0, BOX_HALF_EXTENTS.z()});
-        setBackgroundPlanePose(topSidePlanePose);
-    }
-
-    m_physicsScene->addActor(*actor);
-    auto remover = finally([&](){ m_physicsScene->removeActor(*actor); });
-
-    m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
-
     std::vector<std::shared_ptr<Object>> dynamicObjects;
     std::copy_if(m_objects.begin(), m_objects.end(), std::back_inserter(dynamicObjects), [](auto& obj){
         return !obj->isStatic();
     });
 
-    float z = BOX_HALF_EXTENTS.z();
+    // Define the plane. It always goes through the origin.
+    constexpr Magnum::Vector3 normal{0.0f, 0.0f, 1.0f};
+
+    PhysXHolder<physx::PxRigidStatic> actor;
+    auto remover = finally([&](){ if(actor) m_physicsScene->removeActor(*actor); });
+
+    float z = 0.4f;
+
+    if(m_objects.size() == dynamicObjects.size())
+    {
+        // Add it to the physics scene
+        Vector3 xAxis = Vector3::xAxis();
+        Vector3 zAxis = normal;
+        Vector3 yAxis = Math::cross(zAxis, xAxis);
+
+        Matrix3 rot{xAxis, yAxis, zAxis};
+
+        constexpr Magnum::Vector3 BOX_HALF_EXTENTS{30.0, 30.0, 0.04};
+
+        Matrix4 T = Matrix4::from(rot, Vector3{});
+
+        auto& physics = m_ctx->physxPhysics();
+
+        physx::PxBoxGeometry boxGeom{BOX_HALF_EXTENTS.x(), BOX_HALF_EXTENTS.y(), BOX_HALF_EXTENTS.z()};
+        PhysXHolder<physx::PxMaterial> material{physics.createMaterial(0.5f, 0.5f, 0.0f)};
+        PhysXHolder<physx::PxShape> shape{physics.createShape(boxGeom, *material, true)};
+        actor.reset(physics.createRigidStatic(physx::PxTransform{T}));
+        actor->attachShape(*shape);
+
+        // Call setBackgroundPlanePose() with the correct pose so that the visual
+        // matches up with the physics simulation
+        {
+            std::uniform_real_distribution<float> planeRotDist(-M_PI, M_PI);
+            Magnum::Rad planeRot{planeRotDist(m_randomGenerator)};
+
+            Matrix4 topSidePlanePose = T * Matrix4::rotationZ(planeRot) * Matrix4::translation({0.0, 0.0, BOX_HALF_EXTENTS.z()});
+            setBackgroundPlanePose(topSidePlanePose);
+        }
+
+        m_physicsScene->addActor(*actor);
+
+        z = BOX_HALF_EXTENTS.z();
+    }
+
+    m_physicsScene->setGravity(physx::PxVec3{-9.81f * normal});
+
     for(auto& obj : dynamicObjects)
     {
         double diameter = obj->mesh()->bbox().size().length();
@@ -533,7 +541,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
     constexpr unsigned int FPS = 25;
     constexpr float TIME_PER_FRAME = 1.0f / FPS;
-    constexpr unsigned int SUBSTEPS_PRECISE = 8;
+    constexpr unsigned int SUBSTEPS_PRECISE = 12;
     constexpr unsigned int SUBSTEPS_FAST = 2;
 
     const int maxIterations = 100;
@@ -544,7 +552,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
         const unsigned int SUBSTEPS = (i < 40) ? SUBSTEPS_PRECISE : SUBSTEPS_FAST;
 
-        for(unsigned int i = 0; i < SUBSTEPS; ++i)
+        for(unsigned int j = 0; j < SUBSTEPS; ++j)
         {
             for(auto& obj : dynamicObjects)
             {
@@ -552,7 +560,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 
                 Magnum::Vector3 dir = diff.normalized();
 
-                float magnitude = 5.0f;
+                float magnitude = 0.5f;
                 if(diff.dot() < 0.05f*0.05f)
                     magnitude = 0.5f * diff.length() / 0.05f;
 
@@ -567,6 +575,14 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         for(auto& obj : dynamicObjects)
         {
             obj->updateFromPhysics();
+
+            if(obj->pose().translation().z() < -0.5)
+            {
+                Matrix4 pose = obj->pose();
+                pose.translation() = Vector3{0.0f, 0.0f, 1.0f};
+
+                obj->setPose(pose);
+            }
         }
     }
 
@@ -587,7 +603,7 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         }))
             break;
 
-        for(unsigned int i = 0; i < SUBSTEPS_FAST; ++i)
+        for(unsigned int j = 0; j < SUBSTEPS_FAST; ++j)
         {
             for(auto& obj : dynamicObjects)
             {

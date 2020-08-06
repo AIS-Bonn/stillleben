@@ -231,6 +231,8 @@ public:
         );
 
         physx::PxTolerancesScale scale;
+        scale.length = 0.25f;
+        scale.speed = 10.0f / 4.0f;
 
         pxPhysics.reset(PxCreatePhysics(
             PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
