@@ -249,10 +249,6 @@ void init(py::module& m)
             :return: True if a non-colliding pose was found.
         )EOS", py::arg("object"), py::arg("sampler") = "random", py::arg("max_iterations")=10)
 
-        .def("resolve_collisions", &sl::Scene::resolveCollisions, R"EOS(
-            Resolve collisions by forward-simulation using the physics engine.
-        )EOS")
-
         .def_property("light_position",
             wrapShared(&sl::Scene::lightPosition),
             wrapShared(&sl::Scene::setLightPosition),

@@ -156,14 +156,8 @@ public:
 
     //! @name Physics
     //@{
-    void drawPhysicsDebug();
-
-    using OrientationHint = Corrade::Containers::Optional<Magnum::Matrix3>;
-
     template<class Sampler>
     bool findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations = 10);
-
-    bool resolveCollisions();
 
     void simulateTableTopScene(const std::function<void(int)>& visCallback = {});
     //@}

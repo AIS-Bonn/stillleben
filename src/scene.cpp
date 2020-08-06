@@ -205,11 +205,6 @@ void Scene::setBackgroundColor(const Magnum::Color4& color)
     m_backgroundColor = color;
 }
 
-void Scene::drawPhysicsDebug()
-{
-    throw std::logic_error("Not implemented");
-}
-
 namespace
 {
     class AutoCollisionFilter : public physx::PxQueryFilterCallback
@@ -295,44 +290,6 @@ namespace
     {
         return {std::move(f)};
     }
-}
-
-bool Scene::resolveCollisions()
-{
-//     constexpr int maxIterations = 40;
-//
-//     // Remove gravity
-//     auto grav = m_physicsWorld->getGravity();
-//     m_physicsWorld->setGravity(btVector3(0, 0, 0));
-//
-//     // Set it back when we exit
-//     auto _ = finally([&](){m_physicsWorld->setGravity(grav);});
-//
-//     for(int i = 0; i < maxIterations; ++i)
-//     {
-//         m_physicsWorld->performDiscreteCollisionDetection();
-//
-//         int numContacts = 0;
-//         {
-//             auto* dispatcher = m_physicsWorld->getDispatcher();
-//
-//             int numManifolds = dispatcher->getNumManifolds();
-//             for(int i = 0; i < numManifolds; ++i)
-//             {
-//                 auto* manifold = dispatcher->getManifoldByIndexInternal(i);
-//
-//                 numContacts += manifold->getNumContacts();
-//             }
-//         }
-//
-//         if(numContacts == 0)
-//             return true;
-//
-//         m_physicsWorld->setInternalTickCallback(&Scene::constrainingTickCallback, this);
-//         m_physicsWorld->stepSimulation(0.1, 1, 0.1);
-//     }
-
-    return false;
 }
 
 void Scene::setLightPosition(const Magnum::Vector3& position)
