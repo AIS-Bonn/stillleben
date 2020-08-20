@@ -197,11 +197,10 @@ public:
     {
         cudaDebug = envFlag("STILLLEBEN_CUDA_DEBUG");
 
-        int argc = 3;
-        std::vector<const char*> argv{
-            "dummy",
-            "--magnum-log", "quiet"
+        std::vector<const char*> argv{ "dummy",
+           "--magnum-log", "quiet"
         };
+        int argc = argv.size();
         gl_context.reset(new Platform::GLContext{NoCreate, argc, argv.data()});
 
         if(!installPrefix.empty())
