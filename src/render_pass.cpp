@@ -168,9 +168,16 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     {
         result->rgb.setStorage(GL::TextureFormat::RGBA8, 4, viewport);
         result->objectCoordinates.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
-        result->classIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
-        result->instanceIndex.setStorage(GL::TextureFormat::R16UI, 2, viewport);
-        result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        result->classIndex
+            .setStorage(GL::TextureFormat::R16UI, 2, viewport)
+            .setMagnificationFilter(GL::SamplerFilter::Nearest)
+            .setMinificationFilter(GL::SamplerFilter::Nearest);
+        result->instanceIndex
+            .setStorage(GL::TextureFormat::R16UI, 2, viewport)
+            .setMagnificationFilter(GL::SamplerFilter::Nearest)
+            .setMinificationFilter(GL::SamplerFilter::Nearest);
+
+	result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
 
         result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
         result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
