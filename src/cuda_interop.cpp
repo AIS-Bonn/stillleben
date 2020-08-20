@@ -80,7 +80,7 @@ CUDATexture& CUDATexture::operator=(CUDATexture&& other)
     return *this;
 }
 
-void CUDATexture::setStorage(Magnum::GL::TextureFormat internalFormat, std::size_t pixelSize, const Magnum::Vector2i& size)
+CUDATexture& CUDATexture::setStorage(Magnum::GL::TextureFormat internalFormat, std::size_t pixelSize, const Magnum::Vector2i& size)
 {
     if(m_d)
         m_parent.unregisterMap(*m_d);
@@ -104,6 +104,8 @@ void CUDATexture::setStorage(Magnum::GL::TextureFormat internalFormat, std::size
         m_parent.registerMap(*m_d);
     }
 #endif
+
+    return *this;
 }
 
 void CUDATexture::readIntoCUDA(void* cudaDest)

@@ -30,7 +30,7 @@ public:
     CUDATexture& operator=(CUDATexture&& other);
 
     void setStorage(Magnum::GL::TextureFormat internalFormat, const Magnum::Vector2i& size) = delete;
-    void setStorage(Magnum::GL::TextureFormat internalFormat, std::size_t pixelSize, const Magnum::Vector2i& size);
+    CUDATexture& setStorage(Magnum::GL::TextureFormat internalFormat, std::size_t pixelSize, const Magnum::Vector2i& size);
 
     /**
      * @brief Copy data into CUDA buffer
