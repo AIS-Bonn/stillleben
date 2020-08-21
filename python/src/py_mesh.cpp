@@ -362,7 +362,10 @@ void init(py::module& m)
             automatically.
         )EOS")
 
-        .def_property_readonly("points", wrapShared(&sl::Mesh::meshPoints),
+        .def_property_readonly("points", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto points = mesh->meshPoints(-1);
+            return toTorch<std::decay_t<decltype(points)>>::convert(points);
+        },
         R"EOS(
             The mesh vertices as (Nx3) float tensor.
 
