@@ -32,6 +32,8 @@ class PythonTest(unittest.TestCase):
         mesh.scale_to_bbox_diagonal(0.5)
         object = sl.Object(mesh)
 
+        print(f'Mesh points: {mesh.points.size()}')
+
         scene.add_object(object)
 
         pose = torch.eye(4)
