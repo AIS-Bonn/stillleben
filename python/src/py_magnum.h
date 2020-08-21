@@ -139,7 +139,7 @@ struct toTorch<Corrade::Containers::StridedArrayView1D<Magnum::Vector3>>
         return torch::from_blob(
             const_cast<float*>(reinterpret_cast<const float*>(view.data())),
             {static_cast<long int>(view.size()), 3},
-            {static_cast<long int>(view.stride() / sizeof(float))},
+            {static_cast<long int>(view.stride() / sizeof(float)), 1},
             at::kFloat
         ).clone();
     }
@@ -168,7 +168,7 @@ struct toTorch<Corrade::Containers::StridedArrayView1D<Magnum::Color4>>
         return torch::from_blob(
             const_cast<float*>(reinterpret_cast<const float*>(view.data())),
             {static_cast<long int>(view.size()), 4},
-            {static_cast<long int>(view.stride() / sizeof(float))},
+            {static_cast<long int>(view.stride() / sizeof(float)), 1},
             at::kFloat
         ).clone();
     }
