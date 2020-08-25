@@ -370,6 +370,7 @@ TEST_CASE("serialization")
 
     auto nScene0Obj = nScene0.objects()[0];
     CHECK(nScene0Obj->mesh()->pretransformScale() == mesh->pretransformScale());
+    CHECK((nScene0Obj->mesh()->pretransform() - mesh->pretransform()).toVector().length() < 1e-5);
 
     CHECK(nScene0Obj->pose().translation().x() == 0);
     CHECK(nScene0Obj->pose().translation().y() == 0);

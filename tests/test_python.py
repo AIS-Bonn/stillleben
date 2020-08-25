@@ -66,6 +66,29 @@ class PythonTest(unittest.TestCase):
         noise_img = Image.fromarray(rgb_noise_np, mode='RGB')
         noise_img.save('/tmp/stillleben_noise.png')
 
+    def test_serialization(self):
+        scene = sl.Scene((640,480))
+
+        mesh = sl.Mesh(os.path.join(TESTS_PATH, 'stanford_bunny', 'scene.gltf'))
+        mesh.center_bbox()
+        mesh.scale_to_bbox_diagonal(0.5)
+        object = sl.Object(mesh)
+
+        scene.add_object(object)
+
+        pose = torch.eye(4)
+        pose[2,3] = 0.5
+        object.set_pose(pose)
+
+        ser = scene.serialize()
+
+        scene2 = sl.Scene((640,480))
+        scene2.deserialize(ser)
+
+        self.assertLess((scene.objects[0].pose() - scene2.objects[0].pose()).norm(), 1e-9)
+        self.assertLess((scene.objects[0].mesh.pretransform - scene2.objects[0].mesh.pretransform).norm(), 1e-5)
+
+
 if __name__ == "__main__":
     Timer.enabled = True
     unittest.main()
