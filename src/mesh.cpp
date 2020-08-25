@@ -1093,6 +1093,8 @@ void Mesh::deserialize(const Corrade::Utility::ConfigurationGroup& group)
 
     if(group.hasValue("rigidPretransform"))
         m_pretransformRigid = group.value<Magnum::Matrix4>("rigidPretransform");
+
+    updatePretransform();
 }
 
 }
