@@ -148,6 +148,10 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(const Containers::ArrayVi
             indexLength = inputMesh.vertexCount();
         }
 
+        /* Reset markers saying which attribute has already been copied */
+        for(auto it = attributeMap.begin(); it != attributeMap.end(); ++it)
+            it->second.second = false;
+
         Containers::Array<Trade::MeshAttributeData> attributes;
 
         /* Copy attributes to their destination, skipping ones that don't have
@@ -193,11 +197,10 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(const Containers::ArrayVi
         }
 
         auto subIndices = indices.slice(indexOffset, indexOffset + indexLength);
-        auto subVertices = vertices.slice(vertexOffset, vertexOffset + inputMesh.vertexCount());
         out.meshes[i] = Trade::MeshData{
             primitive,
             Trade::DataFlag::Mutable, subIndices, Trade::MeshIndexData{subIndices},
-            Trade::DataFlag::Mutable, subVertices, std::move(attributes)
+            Trade::DataFlag::Mutable, vertices, std::move(attributes)
         };
 
         /* Update vertex offset for the next mesh */
