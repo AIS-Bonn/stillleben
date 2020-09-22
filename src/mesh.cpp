@@ -28,7 +28,6 @@
 #include <Magnum/Math/Algorithms/Svd.h>
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
-#include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/PixelFormat.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 #include <Magnum/SceneGraph/SceneGraph.h>
@@ -300,59 +299,7 @@ void Mesh::openFile()
             continue;
         }
 
-        // All the following code makes the assumption that the mesh has the
-        // following attributes: Position, Normal, Color
-        // So make sure our meshData has these fields.
-
-        Array<Trade::MeshAttributeData> extraAttributes{};
-
-        Array<Color4> white;
-        if(mesh->hasAttribute(Trade::MeshAttribute::Color))
-            m_meshFlags[i] |= MeshFlag::HasVertexColors;
-        else
-        {
-            white = Array<Color4>{Containers::DirectInit, mesh->vertexCount(), 1.0f, 1.0f, 1.0f, 1.0f};
-
-            Containers::arrayAppend(extraAttributes,
-                Trade::MeshAttributeData{Trade::MeshAttribute::Color, Containers::arrayView(white)}
-            );
-        }
-
-        // For TinyGltf, we can load tangents as well (will hopefully soon be available in the Magnum importer)
-        Array<Vector3> tangents;
-        if(haveTinyGltf)
-        {
-            if(auto tangentData = extractTangents(*importer, *mesh))
-            {
-                tangents = std::move(*tangentData);
-                Containers::arrayAppend(extraAttributes,
-                    Trade::MeshAttributeData{Trade::MeshAttribute::Tangent, Containers::arrayView(tangents)}
-                );
-            }
-        }
-
-        auto interleavedMesh = MeshTools::interleave(std::move(*mesh), extraAttributes);
-
-        // Make sure everything is in the format we expect
-        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Position) != VertexFormat::Vector3)
-        {
-            Warning{} << "Unsupported vertex format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Position);
-            continue;
-        }
-
-        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Normal) != VertexFormat::Vector3)
-        {
-            Warning{} << "Unsupported normal format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Normal);
-            continue;
-        }
-
-        if(interleavedMesh.attributeFormat(Trade::MeshAttribute::Color) != VertexFormat::Vector4)
-        {
-            Warning{} << "Unsupported color format" << interleavedMesh.attributeFormat(Trade::MeshAttribute::Color);
-            continue;
-        }
-
-        meshData[i] = std::move(interleavedMesh);
+        meshData[i] = std::move(mesh);
     }
 
     // Consolidate mesh data into one buffer

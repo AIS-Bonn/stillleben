@@ -1,5 +1,6 @@
 // Consolidate multiple MeshData instances into one buffer
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
+// adapted from Magnum::MeshTools::concatenate()
 
 #include <stillleben/mesh_tools/consolidate.h>
 
@@ -24,7 +25,7 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(const Containers::ArrayVi
     {
         Vector3 position;
         Vector2 textureCoords;
-        Color4 color;
+        Color4 color{{1.0f, 1.0f, 1.0f}};
         Vector4 tangent;
         UnsignedInt vertexIndex;
         Vector3 normal;
