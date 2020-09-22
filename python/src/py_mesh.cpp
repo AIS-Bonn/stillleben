@@ -265,6 +265,28 @@ void init(py::module& m)
             obj = sl.Object(mesh)
             scene = sl.Scene((1920, 1080))
             scene.add_object(obj)
+
+        Accessing and manipulating vertex data
+        --------------------------------------
+
+        You can use :ref:`points`, :ref:`faces`, :ref:`colors`, :ref:`normals`
+        to access common vertex attributes. :ref:`update_positions` and friends
+        can be used to write vertex attributes.
+
+        Sub-Meshes
+        ----------
+
+        Some mesh file formats (such as .obj) may contain multiple sub-meshes
+        with different properties and textures. Stillleben fully supports
+        loading and working with such files.
+        If you work with the mesh data itself (see :ref:`points`, :ref:`faces`),
+        it will feel like working with a big concatenated mesh. This is more
+        convenient in most situations and removes a level of indirection
+        when performing vertex updates.
+
+        However, be careful when manipulating data: The vertex data does not
+        live in a common coordinate system, as each sub-mesh may have a separate
+        transformation matrix.
     )EOS")
 
         .def(py::init(&Mesh_factory), R"EOS(
