@@ -82,7 +82,7 @@ namespace
         bool status = cooking.cookConvexMesh(meshDesc, buffer, &result);
         if(!status)
         {
-            Error{} << "PhysX cooking failed, ignoring mesh";
+            Error{} << "PhysX cooking failed, ignoring submesh";
             return false;
         }
 
@@ -718,7 +718,7 @@ void Mesh::loadVisual()
 
             mesh.addVertexBuffer(
                 m_vertexBuffer,
-                m_consolidated->vertexOffsets[i] * m_consolidated->vertexStride + meshData->attributeOffset(attr),
+                meshData->attributeOffset(attr),
                 meshData->attributeStride(attr),
                 *attribute
             );
