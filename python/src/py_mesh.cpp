@@ -363,7 +363,7 @@ void init(py::module& m)
         )EOS")
 
         .def_property_readonly("points", [&](const std::shared_ptr<sl::Mesh>& mesh){
-            auto points = mesh->meshPoints(-1);
+            auto points = mesh->meshPoints();
             return toTorch<std::decay_t<decltype(points)>>::convert(points);
         },
         R"EOS(
@@ -371,21 +371,27 @@ void init(py::module& m)
 
             .. block-warning:: Multiple sub meshes
 
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
+                This property returns a view on all vertices, concatenated for all sub-meshes.
+                The points do *not* live in a common coordinate system!
         )EOS")
 
-        .def_property_readonly("normals", wrapShared(&sl::Mesh::meshNormals),
+        .def_property_readonly("normals", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshNormals();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
             The mesh normals as (Nx3) float tensor.
 
             .. block-warning:: Multiple sub meshes
 
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
+                This property returns a view on all vertices, concatenated for all sub-meshes.
+                The points do *not* live in a common coordinate system!
         )EOS")
 
-        .def_property_readonly("faces", wrapShared(&sl::Mesh::meshFaces),
+        .def_property_readonly("faces", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshFaces();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
             The mesh faces as (N*3) int32 tensor.
 
@@ -396,11 +402,14 @@ void init(py::module& m)
 
             .. block-warning:: Multiple sub meshes
 
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
+                This property returns a view on all vertices, concatenated for all sub-meshes.
+                The points do *not* live in a common coordinate system!
         )EOS")
 
-        .def_property_readonly("colors", wrapShared(&sl::Mesh::meshColors),
+        .def_property_readonly("colors", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshColors();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
             The mesh normals as (Nx4) float tensor.
 

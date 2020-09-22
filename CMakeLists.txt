@@ -105,6 +105,7 @@ add_library(stillleben SHARED
     src/shaders/viewer/viewer_shader.cpp
     src/mesh_tools/pbr_material_data.cpp
     src/mesh_tools/tangents.cpp
+    src/mesh_tools/consolidate.cpp
     src/utils/arc_ball.cpp
     src/utils/os.cpp
     ${stillleben_RESOURCES}

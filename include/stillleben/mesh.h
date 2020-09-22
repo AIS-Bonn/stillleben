@@ -38,6 +38,7 @@ namespace physx
 namespace sl
 {
 
+class ConsolidatedMesh;
 class Context;
 class PhysXOutputBuffer;
 
@@ -212,56 +213,10 @@ public:
     const MeshFlagArray& meshFlags() const
     { return m_meshFlags; }
 
-    StridedArrayView1D<Magnum::Vector3> meshPoints(int i = -1)
-    {
-        if(i == -1)
-        {
-            if(m_meshData.size() != 1)
-                throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshPoints(-1) supports only single meshes"};
-            i = 0;
-        }
-
-        if(i < -1 || static_cast<std::size_t>(i) >= m_meshData.size())
-            throw Exception{"sl::Mesh::meshPoints() invalid index"};
-
-        if(!m_meshData[i])
-            throw Exception{"Submesh 0 has no points"};
-
-        return m_meshData[i]->mutableAttribute<Magnum::Vector3>(Magnum::Trade::MeshAttribute::Position);
-    }
-
-    StridedArrayView1D<Magnum::Vector3> meshNormals()
-    {
-        if(m_meshData.size() != 1)
-            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshNormals supports only single meshes"};
-
-        if(!m_meshData.front())
-            throw Exception{"Submesh 0 has no points"};
-
-        return m_meshData.front()->mutableAttribute<Magnum::Vector3>(Magnum::Trade::MeshAttribute::Normal);
-    }
-
-    StridedArrayView1D<Magnum::UnsignedInt> meshFaces()
-    {
-        if(m_meshData.size() != 1)
-            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshFaces supports only single meshes"};
-
-        if(!m_meshData.front())
-            throw Exception{"Submesh 0 has no points"};
-
-        return m_meshData.front()->mutableIndices<Magnum::UnsignedInt>();
-    }
-
-    StridedArrayView1D<Magnum::Color4> meshColors()
-    {
-        if(m_meshData.size() != 1)
-            throw Exception{"sl::Mesh contains multiple meshes, but sl::Mesh::meshColors supports only single meshes"};
-
-        if(!m_meshData.front())
-            throw Exception{"Submesh 0 has no points"};
-
-        return m_meshData.front()->mutableAttribute<Magnum::Color4>(Magnum::Trade::MeshAttribute::Color);
-    }
+    StridedArrayView1D<Magnum::Vector3> meshPoints(int subMesh = -1);
+    StridedArrayView1D<Magnum::Vector3> meshNormals(int subMesh = -1);
+    StridedArrayView1D<Magnum::UnsignedInt> meshFaces(int subMesh = -1);
+    StridedArrayView1D<Magnum::Color4> meshColors(int subMesh = -1);
 
     const PhysXMeshArray& physXMeshes() const
     { return m_physXMeshes; }
@@ -311,7 +266,7 @@ private:
     Optional<Magnum::Trade::SceneData> m_sceneData;
     ObjectDataArray m_objectData;
     MeshArray m_meshes;
-    MeshDataArray m_meshData;
+    Pointer<ConsolidatedMesh> m_consolidated;
     MeshFlagArray m_meshFlags;
     ImageDataArray m_imageData;
     TextureDataArray m_textureData;
@@ -333,8 +288,8 @@ private:
 
     unsigned int m_classIndex = 1;
 
-    Array<Magnum::GL::Buffer> m_vertexBuffers;
-    Array<Magnum::GL::Buffer> m_indexBuffers;
+    Magnum::GL::Buffer m_vertexBuffer{Magnum::NoCreate};
+    Magnum::GL::Buffer m_indexBuffer{Magnum::NoCreate};
 };
 
 }
