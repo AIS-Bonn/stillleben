@@ -197,7 +197,7 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::load(std::size_t maxPhysicsTriangles, bool visual, bool physics)
+void Mesh::load(bool visual, bool physics)
 {
     // If we don't load the visuals, hide Magnum importer warnings
     std::stringstream warnings;
@@ -206,7 +206,7 @@ void Mesh::load(std::size_t maxPhysicsTriangles, bool visual, bool physics)
     openFile();
 
     if(physics)
-        loadPhysics(maxPhysicsTriangles);
+        loadPhysics();
 
     if(visual)
         loadVisual();
@@ -283,27 +283,8 @@ void Mesh::openFile()
         m_objectData[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0});
     }
 
-    // Load meshes
-    Array<Optional<Magnum::Trade::MeshData>> meshData{importer->meshCount()};
-    m_meshFlags = Containers::Array<MeshFlags>{meshData.size()};
-    for(UnsignedInt i = 0; i < importer->meshCount(); ++i)
-    {
-        auto mesh = importer->mesh(i);
-
-        if(!mesh)
-            continue;
-
-        if(mesh->primitive() != MeshPrimitive::Triangles || !mesh->isIndexed())
-        {
-            Warning{} << "Ignoring non-triangle (or non-indexed) sub-mesh" << i << "/" << importer->meshCount();
-            continue;
-        }
-
-        meshData[i] = std::move(mesh);
-    }
-
     // Consolidate mesh data into one buffer
-    auto consolidated = consolidateMesh(meshData);
+    auto consolidated = consolidateMesh(*importer);
     if(!consolidated)
     {
         Error{} << "Could not consolidate mesh";
@@ -339,26 +320,12 @@ void Mesh::openFile()
     }
 
     // Compute bounding box
-    {
-        // Inspect the scene if available
-        if(m_sceneData)
-        {
-            // Recursively inspect all children
-            for(UnsignedInt objectId : m_sceneData->children3D())
-                updateBoundingBox(Matrix4{}, objectId);
-        }
-        else if(m_consolidated && !m_consolidated->meshes.empty() && m_consolidated->meshes[0])
-        {
-            updateBoundingBox(Matrix4{}, 0);
-        }
-        else
-            Warning{} << "Could not estimate bounding box";
-    }
+    updateBoundingBox();
 
     m_opened = true;
 }
 
-void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
+void Mesh::loadPhysics()
 {
     if(m_physicsLoaded)
         return;
@@ -366,125 +333,118 @@ void Mesh::loadPhysics(std::size_t maxPhysicsTriangles)
     if(!m_consolidated)
         throw std::runtime_error{"No mesh found"};
 
-    // Simplify meshes if possible
-    UnsignedInt numMeshes = m_consolidated->meshes.size();
-    m_physXBuffers = CookedPhysXMeshArray{numMeshes};
-    m_physXMeshes = PhysXMeshArray{numMeshes};
-    for(UnsignedInt i = 0; i != numMeshes; ++i)
+    auto& meshData = m_consolidated->data;
+    if(meshData.primitive() != MeshPrimitive::Triangles)
     {
-        auto& meshData = m_consolidated->meshes[i];
-        if(!meshData || meshData->primitive() != MeshPrimitive::Triangles)
-        {
-            Warning{} << "loadPhysics: skipping mesh";
-            continue;
-        }
+        Warning{} << "loadPhysics: unsupported primitive";
+        return;
+    }
 
-        PhysXOutputBuffer buf;
+    PhysXOutputBuffer buf;
 
-        // We want to cache the simplified & cooked PhysX mesh.
-        std::string cacheFile = Corrade::Utility::formatString("{}.mesh{}", m_filename, i);
+    // We want to cache the simplified & cooked PhysX mesh.
+    std::string cacheFile = Corrade::Utility::formatString("{}.sl_mesh", m_filename);
 
-        auto buffer = readCacheFile(cacheFile, m_filename, *meshData);
+    auto buffer = readCacheFile(cacheFile, m_filename, meshData);
 
-        if(buffer)
-        {
-            buf = PhysXOutputBuffer{std::move(*buffer)};
-        }
-        else
-        {
-            Debug{} << "Simplifying mesh and writing cache file...";
-            Array<Vector3> vertices = meshData->positions3DAsArray();
-            Array<UnsignedInt> indices = meshData->indicesAsArray();
+    if(buffer)
+    {
+        buf = PhysXOutputBuffer{std::move(*buffer)};
+    }
+    else
+    {
+        Debug{} << "Simplifying mesh and writing cache file...";
+        Array<Vector3> vertices = meshData.positions3DAsArray();
+        Array<UnsignedInt> indices = meshData.indicesAsArray();
 
-            if(!meshIsWatertight(vertices, indices))
-                Warning{} << "Mesh is not watertight!";
+        if(!meshIsWatertight(vertices, indices))
+            Warning{} << "Mesh is not watertight!";
 
-            // Call V-HACD for convex decomposition
-            VHACD::IVHACD::Parameters params;
-            params.m_concavity = 0.002;
-            params.m_asyncACD = false; // hangs sometimes
+        // Call V-HACD for convex decomposition
+        VHACD::IVHACD::Parameters params;
+        params.m_concavity = 0.002;
+        params.m_asyncACD = false; // hangs sometimes
 
-            auto vhacd = VHACD::CreateVHACD();
-            Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
-                vhacd->Clean();
-                vhacd->Release();
-            }};
+        auto vhacd = VHACD::CreateVHACD();
+        Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
+            vhacd->Clean();
+            vhacd->Release();
+        }};
 
-            vhacd->Compute(
-                reinterpret_cast<const float*>(vertices.data()),
-                vertices.size(),
-                indices.data(),
-                indices.size()/3,
-                params
-            );
+        vhacd->Compute(
+            reinterpret_cast<const float*>(vertices.data()),
+            vertices.size(),
+            indices.data(),
+            indices.size()/3,
+            params
+        );
 
-            Magnum::UnsignedInt n = vhacd->GetNConvexHulls();
-            buf.write(&n, sizeof(n));
+        Magnum::UnsignedInt n = vhacd->GetNConvexHulls();
+        buf.write(&n, sizeof(n));
 
-            bool allOK = true;
-            for(Magnum::UnsignedInt j = 0; j < n; ++j)
-            {
-                VHACD::IVHACD::ConvexHull hull;
-                vhacd->GetConvexHull(j, hull);
-                auto hullVerticesD = Containers::arrayView(
-                    reinterpret_cast<const Vector3d*>(hull.m_points),
-                    hull.m_nPoints
-                );
-                Array<Vector3> hullVertices{hullVerticesD.size()};
-                for(std::size_t k = 0; k < hullVertices.size(); ++k)
-                    hullVertices[k] = Vector3{hullVerticesD[k]};
-
-                bool ok = cookForPhysX(
-                    m_ctx->physxCooking(),
-                    hullVertices,
-                    buf
-                );
-
-                if(!ok)
-                {
-                    allOK = false;
-                    break;
-                }
-            }
-
-            if(!allOK)
-                continue;
-
-            os::AtomicFileStream ostream(cacheFile);
-
-            // Write version
-            ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
-
-            // Write hashes
-            MeshHash::Digest vertexHash = hashArray(meshData->positions3DAsArray());
-            vertexHash.byteArray();
-            ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
-
-            MeshHash::Digest indicesHash = hashArray(meshData->indicesAsArray());
-            ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
-
-            // Write buf data
-            ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
-        }
-
-        physx::PxDefaultMemoryInputData stream(buf.data(), buf.size());
-        Magnum::UnsignedInt n;
-        if(stream.read(&n, sizeof(n)) != sizeof(n))
-        {
-            Error{} << "Invalid buffer, could not read number of convex hulls";
-            continue;
-        }
-
-        m_physXMeshes[i] = Array<PhysXHolder<physx::PxConvexMesh>>{n};
+        bool allOK = true;
         for(Magnum::UnsignedInt j = 0; j < n; ++j)
         {
-            m_physXMeshes[i][j] = PhysXHolder<physx::PxConvexMesh>{
-                m_ctx->physxPhysics().createConvexMesh(stream)
-            };
+            VHACD::IVHACD::ConvexHull hull;
+            vhacd->GetConvexHull(j, hull);
+            auto hullVerticesD = Containers::arrayView(
+                reinterpret_cast<const Vector3d*>(hull.m_points),
+                hull.m_nPoints
+            );
+            Array<Vector3> hullVertices{hullVerticesD.size()};
+            for(std::size_t k = 0; k < hullVertices.size(); ++k)
+                hullVertices[k] = Vector3{hullVerticesD[k]};
+
+            bool ok = cookForPhysX(
+                m_ctx->physxCooking(),
+                hullVertices,
+                buf
+            );
+
+            if(!ok)
+            {
+                allOK = false;
+                break;
+            }
         }
 
-        m_physXBuffers[i] = std::move(buf);
+        if(!allOK)
+            return;
+
+        os::AtomicFileStream ostream(cacheFile);
+
+        // Write version
+        ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
+
+        // Write hashes
+        MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
+        vertexHash.byteArray();
+        ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
+
+        MeshHash::Digest indicesHash = hashArray(meshData.indicesAsArray());
+        ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
+
+        // Write buf data
+        ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
     }
+
+    physx::PxDefaultMemoryInputData stream(buf.data(), buf.size());
+    Magnum::UnsignedInt n;
+    if(stream.read(&n, sizeof(n)) != sizeof(n))
+    {
+        Error{} << "Invalid buffer, could not read number of convex hulls";
+        return;
+    }
+
+    m_physXMeshes = Array<PhysXHolder<physx::PxConvexMesh>>{n};
+    for(Magnum::UnsignedInt j = 0; j < n; ++j)
+    {
+        m_physXMeshes[j] = PhysXHolder<physx::PxConvexMesh>{
+            m_ctx->physxPhysics().createConvexMesh(stream)
+        };
+    }
+
+    m_physXBuffer.emplace(std::move(buf));
 
     m_physicsLoaded = true;
 }
@@ -496,61 +456,57 @@ void Mesh::loadPhysicsVisualization()
 
     loadPhysics();
 
-    m_physXVisMeshes = PhysXVisArray{m_physXMeshes.size()};
-    for(std::size_t i = 0; i < m_physXMeshes.size(); ++i)
+    m_physXVisMeshes = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes.size()};
+
+    for(std::size_t j = 0; j < m_physXMeshes.size(); ++j)
     {
-        m_physXVisMeshes[i] = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes[i].size()};
+        auto& physXMesh = m_physXMeshes[j];
 
-        for(std::size_t j = 0; j < m_physXMeshes[i].size(); ++j)
+        auto physXVertices = Corrade::Containers::arrayView(physXMesh->getVertices(), physXMesh->getNbVertices());
+        auto vertices = Corrade::Containers::arrayCast<const Magnum::Vector3>(physXVertices);
+
+        const Magnum::UnsignedByte* indexSrcData = physXMesh->getIndexBuffer();
+
+        // Triangulate the polygons
+        Corrade::Containers::Array<UnsignedInt> triangles;
+        for(std::size_t k = 0; k < physXMesh->getNbPolygons(); ++k)
         {
-            auto& physXMesh = m_physXMeshes[i][j];
+            physx::PxHullPolygon poly;
+            physXMesh->getPolygonData(k, poly);
 
-            auto physXVertices = Corrade::Containers::arrayView(physXMesh->getVertices(), physXMesh->getNbVertices());
-            auto vertices = Corrade::Containers::arrayCast<const Magnum::Vector3>(physXVertices);
+            UnsignedInt v0 = indexSrcData[poly.mIndexBase];
 
-            const Magnum::UnsignedByte* indexSrcData = physXMesh->getIndexBuffer();
-
-            // Triangulate the polygons
-            Corrade::Containers::Array<UnsignedInt> triangles;
-            for(std::size_t k = 0; k < physXMesh->getNbPolygons(); ++k)
+            for(std::size_t l = 1; l + 1 < poly.mNbVerts; ++l)
             {
-                physx::PxHullPolygon poly;
-                physXMesh->getPolygonData(k, poly);
+                UnsignedInt v1 = indexSrcData[poly.mIndexBase + l];
+                UnsignedInt v2 = indexSrcData[poly.mIndexBase + l + 1];
 
-                UnsignedInt v0 = indexSrcData[poly.mIndexBase];
-
-                for(std::size_t l = 1; l + 1 < poly.mNbVerts; ++l)
-                {
-                    UnsignedInt v1 = indexSrcData[poly.mIndexBase + l];
-                    UnsignedInt v2 = indexSrcData[poly.mIndexBase + l + 1];
-
-                    Containers::arrayAppend(triangles, v0);
-                    Containers::arrayAppend(triangles, v1);
-                    Containers::arrayAppend(triangles, v2);
-                }
+                Containers::arrayAppend(triangles, v0);
+                Containers::arrayAppend(triangles, v1);
+                Containers::arrayAppend(triangles, v2);
             }
-
-            auto triangleView = Containers::arrayCast<char>(triangles);
-            Containers::Array<char> indexData(triangleView.size());
-            std::memcpy(indexData.data(), triangleView.data(), indexData.size());
-            auto indexView = Containers::arrayCast<UnsignedInt>(indexData);
-
-            auto vertexSrc = Containers::arrayCast<const char>(vertices);
-            Containers::Array<char> vertexData(vertexSrc.size());
-            std::memcpy(vertexData.data(), vertexSrc.data(), vertexData.size());
-            auto vertexView = Containers::arrayCast<Vector3>(vertexData);
-
-            Trade::MeshData meshData{MeshPrimitive::Triangles,
-                std::move(indexData), Trade::MeshIndexData{indexView},
-                std::move(vertexData), {
-                Trade::MeshAttributeData{Trade::MeshAttribute::Position,
-                    Containers::StridedArrayView1D<const Vector3>{
-                        vertexView, &vertexView[0],
-                        vertexView.size(), sizeof(Magnum::Vector3)}}
-            }};
-
-            m_physXVisMeshes[i][j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
         }
+
+        auto triangleView = Containers::arrayCast<char>(triangles);
+        Containers::Array<char> indexData(triangleView.size());
+        std::memcpy(indexData.data(), triangleView.data(), indexData.size());
+        auto indexView = Containers::arrayCast<UnsignedInt>(indexData);
+
+        auto vertexSrc = Containers::arrayCast<const char>(vertices);
+        Containers::Array<char> vertexData(vertexSrc.size());
+        std::memcpy(vertexData.data(), vertexSrc.data(), vertexData.size());
+        auto vertexView = Containers::arrayCast<Vector3>(vertexData);
+
+        Trade::MeshData meshData{MeshPrimitive::Triangles,
+            std::move(indexData), Trade::MeshIndexData{indexView},
+            std::move(vertexData), {
+            Trade::MeshAttributeData{Trade::MeshAttribute::Position,
+                Containers::StridedArrayView1D<const Vector3>{
+                    vertexView, &vertexView[0],
+                    vertexView.size(), sizeof(Magnum::Vector3)}}
+        }};
+
+        m_physXVisMeshes[j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
     }
 }
 
@@ -601,6 +557,7 @@ void Mesh::loadVisual()
     // Load all meshes. Meshes that fail to load will be NullOpt.
     std::size_t numMeshes = m_consolidated->meshes.size();
     m_meshes = MeshArray{numMeshes};
+    m_meshFlags = MeshFlagArray{numMeshes};
 
     m_vertexBuffer = Magnum::GL::Buffer{};
     m_indexBuffer = Magnum::GL::Buffer{};
@@ -612,13 +569,7 @@ void Mesh::loadVisual()
     {
         const auto& meshData = m_consolidated->meshes[i];
         if(!meshData || !meshData->hasAttribute(Trade::MeshAttribute::Normal) || meshData->primitive() != MeshPrimitive::Triangles)
-        {
-            Warning{} << "Cannot load the mesh, skipping";
-            if(meshData)
-                Warning{} << " ^- mesh had primitive type" << meshData->primitive();
-
             continue;
-        }
 
         GL::Mesh mesh;
         mesh
@@ -641,6 +592,7 @@ void Mesh::loadVisual()
                     attribute.emplace(Shaders::Generic2D::TextureCoordinates{}, format);
                     break;
                 case Trade::MeshAttribute::Color:
+                    m_meshFlags[i] |= MeshFlag::HasVertexColors;
                     attribute.emplace(Shaders::Generic2D::Color4{}, format);
                     break;
                 case Trade::MeshAttribute::Tangent:
@@ -860,8 +812,7 @@ void Mesh::loadPretransform(const std::string& filename)
 std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
-    bool visual, bool physics,
-    std::size_t maxPhysicsTriangles)
+    bool visual, bool physics)
 {
     std::queue<int> workQueue;
     std::mutex workQueueMutex;
@@ -900,7 +851,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
                 mesh->openFile();
 
                 if(physics)
-                    mesh->loadPhysics(maxPhysicsTriangles);
+                    mesh->loadPhysics();
 
                 meshes[index] = std::move(mesh);
             }
@@ -931,37 +882,23 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     return meshes;
 }
 
-void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int objectID)
+void Mesh::updateBoundingBox()
 {
-    CORRADE_INTERNAL_ASSERT(objectID < m_objectData.size());
+    m_bbox = {
+        Magnum::Vector3(std::numeric_limits<float>::infinity()),
+        Magnum::Vector3(-std::numeric_limits<float>::infinity())
+    };
 
-    const auto& objectData = m_objectData[objectID];
-    if(!objectData)
-        return;
-
-    Magnum::Matrix4 transform = parentTransform * objectData->transformation();
-
-    if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_consolidated->meshes[objectData->instance()])
+    for(auto& point : m_consolidated->data.attribute<Vector3>(Trade::MeshAttribute::Position))
     {
-        auto& meshData = m_consolidated->meshes[objectData->instance()];
-        auto points = meshData->attribute<Vector3>(Trade::MeshAttribute::Position);
-        for(const auto& idx : meshData->indices<UnsignedInt>())
-        {
-            auto transformed = transform.transformPoint(points[idx]);
+        m_bbox.min().x() = std::min(m_bbox.min().x(), point.x());
+        m_bbox.min().y() = std::min(m_bbox.min().y(), point.y());
+        m_bbox.min().z() = std::min(m_bbox.min().z(), point.z());
 
-            m_bbox.min().x() = std::min(m_bbox.min().x(), transformed.x());
-            m_bbox.min().y() = std::min(m_bbox.min().y(), transformed.y());
-            m_bbox.min().z() = std::min(m_bbox.min().z(), transformed.z());
-
-            m_bbox.max().x() = std::max(m_bbox.max().x(), transformed.x());
-            m_bbox.max().y() = std::max(m_bbox.max().y(), transformed.y());
-            m_bbox.max().z() = std::max(m_bbox.max().z(), transformed.z());
-        }
+        m_bbox.max().x() = std::max(m_bbox.max().x(), point.x());
+        m_bbox.max().y() = std::max(m_bbox.max().y(), point.y());
+        m_bbox.max().z() = std::max(m_bbox.max().z(), point.z());
     }
-
-    // Recurse
-    for(std::size_t idx : objectData->children())
-        updateBoundingBox(transform, idx);
 }
 
 void Mesh::centerBBox()

@@ -14,22 +14,20 @@ namespace
 {
     std::shared_ptr<sl::Mesh> Mesh_factory(
         const py::object& filename,
-        std::size_t maxPhysicsTriangles,
         bool visual, bool physics)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
 
         auto mesh = std::make_shared<sl::Mesh>(py::str(filename), sl::python::Context::instance());
-        mesh->load(maxPhysicsTriangles, visual, physics);
+        mesh->load(visual, physics);
 
         return mesh;
     }
 
     std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
         const std::vector<py::object>& filenames,
-        bool visual, bool physics,
-        std::size_t maxPhysicsTriangles)
+        bool visual, bool physics)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
@@ -38,7 +36,7 @@ namespace
         for(std::size_t i = 0; i < filenames.size(); ++i)
             filenameStrings[i] = py::str(filenames[i]);
 
-        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, maxPhysicsTriangles);
+        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics);
     }
 
     void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -293,12 +291,9 @@ void init(py::module& m)
             Constructor
 
             :param filename: Mesh filename
-            :param max_physics_triangles: Maximum number of triangles for
-                collision shape. If the mesh is more complex than this, it is
-                simplified using quadric edge decimation.
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
-        )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("visual")=true, py::arg("physics")=true)
+        )EOS", py::arg("filename"), py::arg("visual")=true, py::arg("physics")=true)
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
@@ -306,10 +301,8 @@ void init(py::module& m)
             :param filenames: List of file names to load
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
-            :param max_physics_triangles: Maximum number of triangles for
-                    collision shape (see :ref:`__init__`).
             :return: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
+        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.

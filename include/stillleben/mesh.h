@@ -77,10 +77,8 @@ public:
     using MaterialArray = Array<Optional<PBRMaterialData>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
-    using PhysXMeshArray = Array<Array<PhysXHolder<physx::PxConvexMesh>>>;
-    using PhysXVisArray = Array<Array<std::shared_ptr<Magnum::GL::Mesh>>>;
-
-    static constexpr std::size_t DefaultPhysicsTriangles = 2000;
+    using PhysXMeshArray = Array<PhysXHolder<physx::PxConvexMesh>>;
+    using PhysXVisArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
 
     class LoadException : public Exception
     {
@@ -112,13 +110,12 @@ public:
      *
      * This is your one-catch-all method: Loads visual & collision meshes.
      **/
-    void load(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles, bool visual = true, bool physics = true);
+    void load(bool visual = true, bool physics = true);
 
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
         const std::shared_ptr<Context>& ctx,
         const std::vector<std::string>& filenames,
-        bool visual = true, bool physics = true,
-        std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles
+        bool visual = true, bool physics = true
     );
 
     /**
@@ -136,7 +133,7 @@ public:
     /**
      * @brief Load physics meshes
      **/
-    void loadPhysics(std::size_t maxPhysicsTriangles = DefaultPhysicsTriangles);
+    void loadPhysics();
 
     /**
      * @brief Load physics visualization meshes
@@ -246,7 +243,7 @@ public:
 
 
 private:
-    void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int objectID);
+    void updateBoundingBox();
 
     void updatePretransform();
 
@@ -273,7 +270,7 @@ private:
     TextureDataArray m_textureData;
     TextureArray m_textures;
     MaterialArray m_materials;
-    CookedPhysXMeshArray m_physXBuffers;
+    Pointer<sl::PhysXOutputBuffer> m_physXBuffer;
     PhysXMeshArray m_physXMeshes;
     PhysXVisArray m_physXVisMeshes;
 
