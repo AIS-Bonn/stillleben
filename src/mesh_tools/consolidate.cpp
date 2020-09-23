@@ -129,8 +129,6 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
         if(!mesh)
             continue;
 
-        Debug{} << "Object" << i << "mesh" << obj->instance() << "#vertices" << mesh->vertexCount();
-
         indexCount += mesh->isIndexed() ? mesh->indexCount() : mesh->vertexCount();
         vertexCount += mesh->vertexCount();
     }
@@ -187,8 +185,6 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
         out.vertexOffsets[objectID] = vertexOffset;
 
         auto& obj = objects[objectID];
-        Debug{} << objectID << obj;
-
         if(!obj)
             return;
 
@@ -199,8 +195,6 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
                 return;
 
             auto& inputMesh = meshData[obj->instance()];
-
-            Debug{} << "recurse Object" << objectID << "mesh" << obj->instance() << "#vertices" << inputMesh->vertexCount();
 
             if(!inputMesh)
                 return;
@@ -300,11 +294,9 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
 
     if(importer.defaultScene() != -1)
     {
-        Debug{} << "Loading scene";
         auto scene = importer.scene(importer.defaultScene());
         for(auto idx : scene->children3D())
         {
-            Debug{} << "child:" << idx;
             recurse(idx, {}, recurse);
         }
     }
