@@ -246,7 +246,8 @@ public:
 
 
 private:
-    void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int meshObjectIdx);
+    void updateBoundingBox(const Magnum::Matrix4& transform, unsigned int objectID);
+
     void updatePretransform();
 
     void loadPretransform(const std::string& filename);

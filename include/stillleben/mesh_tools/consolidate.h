@@ -36,6 +36,8 @@ public:
  **/
 Corrade::Containers::Optional<ConsolidatedMesh> consolidateMesh(const Corrade::Containers::ArrayView<Corrade::Containers::Optional<Magnum::Trade::MeshData>>& input);
 
+Corrade::Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractImporter& importer);
+
 }
 
 #endif

@@ -931,11 +931,11 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     return meshes;
 }
 
-void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int meshObjectIdx)
+void Mesh::updateBoundingBox(const Magnum::Matrix4& parentTransform, unsigned int objectID)
 {
-    CORRADE_INTERNAL_ASSERT(meshObjectIdx < m_objectData.size());
+    CORRADE_INTERNAL_ASSERT(objectID < m_objectData.size());
 
-    const auto& objectData = m_objectData[meshObjectIdx];
+    const auto& objectData = m_objectData[objectID];
     if(!objectData)
         return;
 
