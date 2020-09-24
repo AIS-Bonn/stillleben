@@ -9,4 +9,6 @@ doc/_*
 doc/output
 doc/m.math.cache
 .vscode/*
+*.sl_mesh
 *.mesh0
+
