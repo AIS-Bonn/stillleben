@@ -47,6 +47,7 @@ namespace Magnum
 }
 
 constexpr const char* BUNNY = PATH_TO_SOURCES "/tests/stanford_bunny/scene.gltf";
+constexpr const char* CUBE = PATH_TO_SOURCES "/tests/cube.glb";
 
 TEST_CASE("basic")
 {
@@ -300,7 +301,7 @@ TEST_CASE("physics")
 
     // Load a mesh file
     auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
-    mesh->load(100);
+    mesh->load();
 
     mesh->centerBBox();
     mesh->scaleToBBoxDiagonal(0.5);
@@ -346,7 +347,7 @@ TEST_CASE("serialization")
 
     // Load a mesh file
     auto mesh = std::make_shared<sl::Mesh>(BUNNY, context);
-    mesh->load(100);
+    mesh->load();
 
     // Create a scene
     sl::Scene scene(context, sl::ViewportSize(640, 480));
@@ -403,3 +404,84 @@ TEST_CASE("serialization")
     REQUIRE(nScene1.objects().size() == 1);
     CHECK(nScene1.objects()[0]->mesh() == nScene0Obj->mesh());
 }
+
+TEST_CASE("vertex indices")
+{
+    // Create our stillleben Context
+    auto context = sl::Context::Create();
+    REQUIRE(context);
+
+    // Load a mesh file
+    auto mesh = std::make_shared<sl::Mesh>(CUBE, context);
+    mesh->load();
+
+    // Create a scene
+    sl::Scene scene(context, sl::ViewportSize(640, 480));
+
+    // Instantiate the mesh to create a movable scene object
+    auto object = std::make_shared<sl::Object>();
+    object->setMesh(mesh);
+
+    // Add it to the scene
+    scene.addObject(object);
+
+    scene.setCameraLookAt({4.0, 0.0, 0.0}, {});
+    scene.chooseRandomLightPosition();
+
+    // Render everything using a Phong shader
+    sl::RenderPass pass;
+    auto ret = pass.render(scene);
+
+    Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(context->imageConverterPluginPath());
+    auto converter = manager.loadAndInstantiate("PngImageConverter");
+    if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
+
+    Image2D image = ret->rgb.image({PixelFormat::RGBA8Unorm});
+    CHECK(converter->exportToFile(image, "/tmp/stillleben_cube.png"));
+
+    Containers::Array<bool> visible(25);
+
+    Image2D vertexIndexImage = ret->vertexIndex.image({PixelFormat::RGB32UI});
+    const auto indices = Containers::arrayCast<Math::Vector3<UnsignedInt>>(vertexIndexImage.data());
+    {
+        CHECK(indices[0].x() == 0);
+        CHECK(indices[0].y() == 0);
+        CHECK(indices[0].z() == 0);
+
+        UnsignedInt max = 0;
+        for(auto& v : indices)
+        {
+            for(int i = 0; i < 3; ++i)
+            {
+                REQUIRE(v[i] <= mesh->meshPoints().size());
+                visible[v[i]] = true;
+                max = std::max(max, v[i]);
+            }
+        }
+
+        CHECK(max > 10);
+
+        INFO(visible);
+
+        // 0 is always visible (background), and we should see 4 vertices
+        CHECK(std::count(visible.begin(), visible.end(), true) == 5);
+    }
+
+    Image2D barycentricImage = ret->barycentricCoeffs.image({PixelFormat::RGB32F});
+    const auto coeffs = Containers::arrayCast<Vector3>(barycentricImage.data());
+    {
+        REQUIRE(coeffs.size() == indices.size());
+        for(std::size_t i = 0; i < coeffs.size(); ++i)
+        {
+            if(indices[i][0] == 0)
+                continue;
+
+            CHECK(indices[i][0] != indices[i][1]);
+            CHECK(indices[i][0] != indices[i][2]);
+            CHECK(indices[i][1] != indices[i][2]);
+
+            CHECK(coeffs[i].sum() == Approx(1.0f));
+        }
+    }
+}
+
