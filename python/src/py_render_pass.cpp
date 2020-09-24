@@ -192,7 +192,7 @@ void init(py::module& m)
             }, R"EOS(
                 Read vertex indices map.
 
-                :return: (H x W x 4) float tensor with normals.
+                :return: (H x W x 4) float tensor with vertex indices.
 
                 If CUDA support is active, the tensor will reside on the GPU
                 which was used during rendering.

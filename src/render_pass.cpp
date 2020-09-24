@@ -145,7 +145,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     }
 
     GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-    GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+    GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
 
     // Not really, but we skip the usual right-handed -> left-handed
     // coordinate system change (see scene.cpp), which messes everything up.

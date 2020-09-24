@@ -105,13 +105,12 @@ void Object::loadVisual()
         const auto& objectData = m_mesh->objects()[part->index()];
 
         // Add a drawable if the object has a mesh and the mesh is loaded
-        if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && objectData->instance() != -1 && m_mesh->meshes()[objectData->instance()])
+        if(objectData->instanceType() == Trade::ObjectInstanceType3D::Mesh && m_mesh->meshes()[part->index()])
         {
             auto meshObjectData = static_cast<const Trade::MeshObjectData3D*>(objectData.get());
-            auto mesh = m_mesh->meshes()[objectData->instance()];
-            auto meshFlags = m_mesh->meshFlags()[objectData->instance()];
+            auto mesh = m_mesh->meshes()[part->index()];
+            auto meshFlags = m_mesh->meshFlags()[part->index()];
             const Int materialId = meshObjectData->material();
-
 
             auto drawable = new Drawable{*part, m_drawables, mesh, &m_cb};
             drawable->setHasVertexColors(!m_options.forceColor && (meshFlags & Mesh::MeshFlag::HasVertexColors));
@@ -167,54 +166,40 @@ void Object::loadPhysics()
     if(m_physicsScene)
         m_physicsScene->addActor(*m_rigidBody);
 
-    for(auto part : m_parts)
+    auto& physxMeshes = m_mesh->physXMeshes();
+    auto& physics = m_mesh->context()->physxPhysics();
+
+    // The transformation between m_sceneObject and m_meshObject is
+    // composed of a rigid part and a scale.
+    Matrix4 poseInSceneObjectRigid = m_mesh->pretransformRigid();
+
+    // PhysX applies scale locally in the shape.
+    // => This is pretransformScale(), but we need to adjust the
+    //    translation part of poseInSceneObjectRigid from scaled
+    //    coordinates to unscaled ones.
+
+    Matrix4 pose = Matrix4::from(
+        poseInSceneObjectRigid.rotationScaling(),
+        m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
+    );
+
+    for(auto& physxMesh : physxMeshes)
     {
-        const auto& objectData = m_mesh->objects()[part->index()];
+        PhysXHolder<physx::PxMaterial> material{
+            physics.createMaterial(0.5f, 0.5f, 0.0f)
+        };
+        physx::PxMeshScale meshScale(m_mesh->pretransformScale());
 
-        if(!objectData || objectData->instanceType() != Trade::ObjectInstanceType3D::Mesh)
-            continue;
+        // FIXME: Ugly const_cast
+        physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
 
-        if(objectData->instance() == -1)
-            continue;
+        PhysXHolder<physx::PxShape> shape{
+            physics.createShape(geometry, *material, true)
+        };
 
-        auto& physxMeshes = m_mesh->physXMeshes()[objectData->instance()];
-        auto& physics = m_mesh->context()->physxPhysics();
+        shape->setLocalPose(physx::PxTransform{pose});
 
-        // Where are we relative to m_meshObject?
-        Matrix4 poseInMeshObject = m_meshObject.absoluteTransformationMatrix().inverted() * part->absoluteTransformationMatrix();
-
-        // The transformation between m_sceneObject and m_meshObject is
-        // composed of a rigid part and a scale.
-        Matrix4 poseInSceneObjectRigid = m_mesh->pretransformRigid() * poseInMeshObject;
-
-        // PhysX applies scale locally in the shape.
-        // => This is pretransformScale(), but we need to adjust the
-        //    translation part of poseInSceneObjectRigid from scaled
-        //    coordinates to unscaled ones.
-
-        Matrix4 pose = Matrix4::from(
-            poseInSceneObjectRigid.rotationScaling(),
-            m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
-        );
-
-        for(auto& physxMesh : physxMeshes)
-        {
-            PhysXHolder<physx::PxMaterial> material{
-                physics.createMaterial(0.5f, 0.5f, 0.0f)
-            };
-            physx::PxMeshScale meshScale(m_mesh->pretransformScale());
-
-            // FIXME: Ugly const_cast
-            physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
-
-            PhysXHolder<physx::PxShape> shape{
-                physics.createShape(geometry, *material, true)
-            };
-
-            shape->setLocalPose(physx::PxTransform{pose});
-
-            m_rigidBody->attachShape(*shape);
-        }
+        m_rigidBody->attachShape(*shape);
     }
 
     // Calculate mass & inertia
@@ -233,19 +218,10 @@ void Object::loadPhysicsVisualization()
 
     populateParts();
 
-    for(auto part : m_parts)
-    {
-        const auto& objectData = m_mesh->objects()[part->index()];
+    auto& meshes = m_mesh->physXVisualizationMeshes();
 
-        // Add a drawable if the object has a mesh and the mesh is loaded
-        if(objectData->instance() != -1 && m_mesh->physXVisualizationMeshes()[objectData->instance()])
-        {
-            auto& meshes = m_mesh->physXVisualizationMeshes()[objectData->instance()];
-
-            for(auto mesh : meshes)
-                new Drawable{*part, m_physXDrawables, mesh, &m_cb};
-        }
-    }
+    for(auto mesh : meshes)
+        new Drawable{m_meshObject, m_physXDrawables, mesh, &m_cb};
 
     m_physicsVisLoaded = true;
 }
@@ -259,9 +235,7 @@ void Object::addPart(Object3D& parent, UnsignedInt i)
         return;
     }
 
-    // Add the object to the scene and set its transformation
     auto* object = new Part{i, &parent};
-    object->setTransformation(objectData->transformation());
 
     m_parts.push_back(object);
 

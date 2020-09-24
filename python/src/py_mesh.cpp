@@ -14,22 +14,20 @@ namespace
 {
     std::shared_ptr<sl::Mesh> Mesh_factory(
         const py::object& filename,
-        std::size_t maxPhysicsTriangles,
         bool visual, bool physics)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
 
         auto mesh = std::make_shared<sl::Mesh>(py::str(filename), sl::python::Context::instance());
-        mesh->load(maxPhysicsTriangles, visual, physics);
+        mesh->load(visual, physics);
 
         return mesh;
     }
 
     std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
         const std::vector<py::object>& filenames,
-        bool visual, bool physics,
-        std::size_t maxPhysicsTriangles)
+        bool visual, bool physics)
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
@@ -38,7 +36,7 @@ namespace
         for(std::size_t i = 0; i < filenames.size(); ++i)
             filenameStrings[i] = py::str(filenames[i]);
 
-        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, maxPhysicsTriangles);
+        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics);
     }
 
     void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -265,18 +263,34 @@ void init(py::module& m)
             obj = sl.Object(mesh)
             scene = sl.Scene((1920, 1080))
             scene.add_object(obj)
+
+        Accessing and manipulating vertex data
+        --------------------------------------
+
+        You can use :ref:`points`, :ref:`faces`, :ref:`colors`, :ref:`normals`
+        to access common vertex attributes. :ref:`update_positions` and friends
+        can be used to write vertex attributes.
+
+        Sub-Meshes
+        ----------
+
+        Some mesh file formats (such as .obj) may contain multiple sub-meshes
+        with different properties and textures. Stillleben fully supports
+        loading and working with such files.
+        If you work with the mesh data itself (see :ref:`points`, :ref:`faces`),
+        it will feel like working with a big concatenated mesh. This is more
+        convenient in most situations and removes a level of indirection
+        when performing vertex updates. All meshes live in the same coordinate
+        system.
     )EOS")
 
         .def(py::init(&Mesh_factory), R"EOS(
             Constructor
 
             :param filename: Mesh filename
-            :param max_physics_triangles: Maximum number of triangles for
-                collision shape. If the mesh is more complex than this, it is
-                simplified using quadric edge decimation.
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
-        )EOS", py::arg("filename"), py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles, py::arg("visual")=true, py::arg("physics")=true)
+        )EOS", py::arg("filename"), py::arg("visual")=true, py::arg("physics")=true)
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
@@ -284,10 +298,8 @@ void init(py::module& m)
             :param filenames: List of file names to load
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
-            :param max_physics_triangles: Maximum number of triangles for
-                    collision shape (see :ref:`__init__`).
             :return: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("max_physics_triangles")=sl::Mesh::DefaultPhysicsTriangles)
+        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true)
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.
@@ -363,29 +375,25 @@ void init(py::module& m)
         )EOS")
 
         .def_property_readonly("points", [&](const std::shared_ptr<sl::Mesh>& mesh){
-            auto points = mesh->meshPoints(-1);
+            auto points = mesh->meshPoints();
             return toTorch<std::decay_t<decltype(points)>>::convert(points);
         },
         R"EOS(
             The mesh vertices as (Nx3) float tensor.
-
-            .. block-warning:: Multiple sub meshes
-
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
-        .def_property_readonly("normals", wrapShared(&sl::Mesh::meshNormals),
+        .def_property_readonly("normals", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshNormals();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
             The mesh normals as (Nx3) float tensor.
-
-            .. block-warning:: Multiple sub meshes
-
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
-        .def_property_readonly("faces", wrapShared(&sl::Mesh::meshFaces),
+        .def_property_readonly("faces", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshFaces();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
             The mesh faces as (N*3) int32 tensor.
 
@@ -393,21 +401,20 @@ void init(py::module& m)
 
                 Because PyTorch does not support unsigned ints, the indices
                 will wrap around at :math:`2^{31}`.
-
-            .. block-warning:: Multiple sub meshes
-
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
         )EOS")
 
-        .def_property_readonly("colors", wrapShared(&sl::Mesh::meshColors),
+        .def_property_readonly("colors", [&](const std::shared_ptr<sl::Mesh>& mesh){
+            auto data = mesh->meshColors();
+            return toTorch<std::decay_t<decltype(data)>>::convert(data);
+        },
         R"EOS(
-            The mesh normals as (Nx4) float tensor.
+            The mesh colors as (Nx4) float tensor.
 
             .. block-warning:: Multiple sub meshes
 
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
+                This returns a view onto all concatenated sub-meshes.
+                Some of them may use vertex coloring, some not. For the former,
+                you will see the vertex colors, for the latter just zeros.
         )EOS")
     ;
 

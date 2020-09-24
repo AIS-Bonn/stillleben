@@ -5,14 +5,19 @@ SL_PATH = pathlib.Path(__file__).parent.parent.absolute()
 
 import stillleben as sl
 import torch
+import sys
 from PIL import Image
 
 sl.init() # use sl.init_cuda() for CUDA interop
 
 # Load a mesh
-mesh = sl.Mesh(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf')
+if len(sys.argv) > 1:
+    mesh = sl.Mesh(sys.argv[1])
+else:
+    mesh = sl.Mesh(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf')
 
 # Meshes can come in strange dimensions - rescale to something reasonable
+mesh.center_bbox()
 mesh.scale_to_bbox_diagonal(0.5)
 
 # Create a scene with a few bunnies
