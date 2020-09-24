@@ -272,6 +272,24 @@ TEST_CASE("render")
         CHECK(instanceCount > 10);
         CHECK(instanceCount < 0.5 * image.size().product());
     }
+
+    Image2D vertexIndexImage = ret->vertexIndex.image({PixelFormat::RGB32UI});
+    {
+        const auto data = Containers::arrayCast<Math::Vector3<UnsignedInt>>(vertexIndexImage.data());
+
+        CHECK(data[0].x() == 0);
+        CHECK(data[0].y() == 0);
+        CHECK(data[0].z() == 0);
+
+        UnsignedInt max = 0;
+        for(auto& v : data)
+        {
+            for(int i = 0; i < 3; ++i)
+                max = std::max(max, v[i]);
+        }
+
+        CHECK(max > 10);
+    }
 }
 
 TEST_CASE("physics")
