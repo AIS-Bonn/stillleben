@@ -280,11 +280,8 @@ void init(py::module& m)
         If you work with the mesh data itself (see :ref:`points`, :ref:`faces`),
         it will feel like working with a big concatenated mesh. This is more
         convenient in most situations and removes a level of indirection
-        when performing vertex updates.
-
-        However, be careful when manipulating data: The vertex data does not
-        live in a common coordinate system, as each sub-mesh may have a separate
-        transformation matrix.
+        when performing vertex updates. All meshes live in the same coordinate
+        system.
     )EOS")
 
         .def(py::init(&Mesh_factory), R"EOS(
@@ -383,11 +380,6 @@ void init(py::module& m)
         },
         R"EOS(
             The mesh vertices as (Nx3) float tensor.
-
-            .. block-warning:: Multiple sub meshes
-
-                This property returns a view on all vertices, concatenated for all sub-meshes.
-                The points do *not* live in a common coordinate system!
         )EOS")
 
         .def_property_readonly("normals", [&](const std::shared_ptr<sl::Mesh>& mesh){
@@ -396,11 +388,6 @@ void init(py::module& m)
         },
         R"EOS(
             The mesh normals as (Nx3) float tensor.
-
-            .. block-warning:: Multiple sub meshes
-
-                This property returns a view on all vertices, concatenated for all sub-meshes.
-                The points do *not* live in a common coordinate system!
         )EOS")
 
         .def_property_readonly("faces", [&](const std::shared_ptr<sl::Mesh>& mesh){
@@ -414,11 +401,6 @@ void init(py::module& m)
 
                 Because PyTorch does not support unsigned ints, the indices
                 will wrap around at :math:`2^{31}`.
-
-            .. block-warning:: Multiple sub meshes
-
-                This property returns a view on all vertices, concatenated for all sub-meshes.
-                The points do *not* live in a common coordinate system!
         )EOS")
 
         .def_property_readonly("colors", [&](const std::shared_ptr<sl::Mesh>& mesh){
@@ -426,12 +408,13 @@ void init(py::module& m)
             return toTorch<std::decay_t<decltype(data)>>::convert(data);
         },
         R"EOS(
-            The mesh normals as (Nx4) float tensor.
+            The mesh colors as (Nx4) float tensor.
 
             .. block-warning:: Multiple sub meshes
 
-                This can only be used on single-submesh meshes for now.
-                On meshes with multiple submeshes this will raise a RuntimeError.
+                This returns a view onto all concatenated sub-meshes.
+                Some of them may use vertex coloring, some not. For the former,
+                you will see the vertex colors, for the latter just zeros.
         )EOS")
     ;
 
