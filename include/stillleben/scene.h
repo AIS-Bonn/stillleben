@@ -154,6 +154,8 @@ public:
 
     void clearObjects();
 
+    void removeObject(const std::shared_ptr<Object>& object);
+
     //! @name Physics
     //@{
     template<class Sampler>

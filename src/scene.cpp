@@ -212,6 +212,11 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
         obj->setInstanceIndex(m_objects.size());
 }
 
+void Scene::removeObject(const std::shared_ptr<Object>& obj)
+{
+    m_objects.erase(std::remove(m_objects.begin(), m_objects.end(), obj), m_objects.end());
+}
+
 template<class Generator>
 Magnum::Quaternion randomQuaternion(Generator& g)
 {
