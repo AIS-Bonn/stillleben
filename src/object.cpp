@@ -183,18 +183,17 @@ void Object::loadPhysics()
         m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
     );
 
+    physx::PxMaterial& material = m_mesh->context()->physxDefaultMaterial();
+
     for(auto& physxMesh : physxMeshes)
     {
-        PhysXHolder<physx::PxMaterial> material{
-            physics.createMaterial(0.5f, 0.5f, 0.0f)
-        };
         physx::PxMeshScale meshScale(m_mesh->pretransformScale());
 
         // FIXME: Ugly const_cast
         physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
 
         PhysXHolder<physx::PxShape> shape{
-            physics.createShape(geometry, *material, true)
+            physics.createShape(geometry, material, true)
         };
 
         shape->setLocalPose(physx::PxTransform{pose});

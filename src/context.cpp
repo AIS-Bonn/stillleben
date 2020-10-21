@@ -243,6 +243,10 @@ public:
         pxCooking.reset(PxCreateCooking(
             PX_PHYSICS_VERSION, *pxFoundation, cookingParams
         ));
+
+        pxDefaultMaterial.reset(
+            pxPhysics->createMaterial(0.5f, 0.5f, 0.0f)
+        );
     }
 
     bool initWithDisplay(const DisplayConfig& displayConfig)
@@ -364,6 +368,7 @@ public:
     PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPhysics> pxPhysics;
     PhysXHolder<physx::PxCooking> pxCooking;
+    PhysXHolder<physx::PxMaterial> pxDefaultMaterial;
 
     bool cudaDebug = false;
 
@@ -643,6 +648,11 @@ physx::PxPhysics& Context::physxPhysics()
 physx::PxCooking& Context::physxCooking()
 {
     return *m_d->pxCooking;
+}
+
+physx::PxMaterial& Context::physxDefaultMaterial()
+{
+    return *m_d->pxDefaultMaterial;
 }
 
 std::string Context::importerPluginPath() const

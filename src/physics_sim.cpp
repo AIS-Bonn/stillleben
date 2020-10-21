@@ -55,6 +55,8 @@ public:
 
     void addScene(const std::shared_ptr<sl::Scene>& scene)
     {
+        scene->loadPhysics();
+
         {
             std::unique_lock lock{m_workQueueMutex};
             m_workQueue.push_back({scene});
