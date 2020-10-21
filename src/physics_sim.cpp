@@ -17,6 +17,16 @@ using namespace Corrade;
 namespace sl
 {
 
+namespace
+{
+    struct Job
+    {
+        std::shared_ptr<sl::Scene> scene;
+        bool done = false;
+        bool taken = false;
+    };
+}
+
 class PhysicsSim::Private
 {
 public:
@@ -24,7 +34,7 @@ public:
     {
         if(numThreads == -1)
         {
-            numThreads = std::thread::hardware_concurrency() / 4;
+            numThreads = std::thread::hardware_concurrency() / 2;
             if(numThreads < 1)
                 numThreads = 1;
         }
@@ -47,21 +57,26 @@ public:
     {
         {
             std::unique_lock lock{m_workQueueMutex};
-            m_workQueue.push(scene);
+            m_workQueue.push_back({scene});
+            m_freeJobs++;
         }
         m_workQueueCond.notify_one();
     }
 
     std::shared_ptr<sl::Scene> retrieveScene()
     {
-        std::unique_lock lock{m_outputQueueMutex};
-        while(m_outputQueue.empty())
-            m_outputQueueCond.wait(lock);
+        std::unique_lock lock{m_workQueueMutex};
 
-        auto scene = std::move(m_outputQueue.front());
-        m_outputQueue.pop();
+        if(m_workQueue.empty())
+            throw std::logic_error{"PhysicsSim::retrieveScene(): No scenes in work queue. You need to add scenes first!"};
 
-        return scene;
+        while(!m_workQueue.front().done)
+            m_workQueueCond.wait(lock);
+
+        auto job = std::move(m_workQueue.front());
+        m_workQueue.pop_front();
+
+        return job.scene;
     }
 
     void stop()
@@ -75,16 +90,19 @@ public:
         m_threads = {};
     }
 
+    std::size_t numThreads() const
+    { return m_threads.size(); }
+
 private:
     void worker()
     {
         while(!m_shouldQuit)
         {
-            std::shared_ptr<sl::Scene> scene;
+            Job* job{};
             {
                 std::unique_lock lock{m_workQueueMutex};
 
-                while(m_workQueue.empty() && !m_shouldQuit)
+                while(m_freeJobs == 0 && !m_shouldQuit)
                 {
                     m_workQueueCond.wait(lock);
                 }
@@ -92,31 +110,35 @@ private:
                 if(m_shouldQuit)
                     break;
 
-                scene = std::move(m_workQueue.front());
-                m_workQueue.pop();
+                auto it = std::find_if(m_workQueue.begin(), m_workQueue.end(), [](auto& job){
+                    return !job.done && !job.taken;
+                });
+                CORRADE_INTERNAL_ASSERT(it != m_workQueue.end());
+
+                job = &*it;
+                job->taken = true;
+                m_freeJobs--;
             }
 
-            scene->simulateTableTopScene();
+            job->scene->simulateTableTopScene();
+            job->done = true;
 
             {
-                std::unique_lock lock{m_outputQueueMutex};
+                std::unique_lock lock{m_workQueueMutex};
 
-                m_outputQueue.push(std::move(scene));
+                if(job == &m_workQueue.front())
+                    m_workQueueCond.notify_all();
             }
-            m_outputQueueCond.notify_all();
         }
     }
 
     Containers::Array<std::thread> m_threads;
     bool m_shouldQuit = false;
 
-    std::queue<std::shared_ptr<sl::Scene>> m_workQueue;
+    std::deque<Job> m_workQueue;
     std::mutex m_workQueueMutex;
     std::condition_variable m_workQueueCond;
-
-    std::queue<std::shared_ptr<sl::Scene>> m_outputQueue;
-    std::mutex m_outputQueueMutex;
-    std::condition_variable m_outputQueueCond;
+    unsigned int m_freeJobs = 0;
 };
 
 PhysicsSim::PhysicsSim(int numThreads)
@@ -142,5 +164,11 @@ void PhysicsSim::stop()
 {
     m_d->stop();
 }
+
+std::size_t PhysicsSim::numThreads() const
+{
+    return m_d->numThreads();
+}
+
 
 }

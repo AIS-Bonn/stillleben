@@ -28,19 +28,23 @@ void init(py::module& m)
 
             :param num_threads: Number of parallel simulations to run. -1
                 indicates that an adaptive number shall be used (currently
-                the number of CPU cores divided by 4).
-        )EOS", py::arg("num_threads"))
+                the number of CPU cores divided by 2).
+        )EOS", py::arg("num_threads")=-1)
 
         .def("add_scene", &sl::PhysicsSim::addScene, R"EOS(
             Add a scene to be simulated.
 
             :param scene: The scene. Take care not to access the scene until
                 it has been retrieved using :ref:`retrieve_scene()`.
-         )EOS", py::arg("scene"))
+        )EOS", py::arg("scene"))
 
         .def("retrieve_scene", &sl::PhysicsSim::retrieveScene, R"EOS(
             Wait until a simulated scene is available and return it.
-         )EOS")
+        )EOS")
+
+        .def_property_readonly("num_threads", &sl::PhysicsSim::numThreads, R"EOS(
+            The number of threads used for physics simulation.
+        )EOS")
     ;
 }
 

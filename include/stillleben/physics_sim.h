@@ -26,6 +26,8 @@ public:
 
     void stop();
 
+    std::size_t numThreads() const;
+
 private:
     class Private;
 
