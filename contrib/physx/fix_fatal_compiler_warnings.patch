@@ -1,0 +1,26 @@
+diff -r -u PhysX_external_orig/physx/source/compiler/cmake/linux/CMakeLists.txt PhysX_external/physx/source/compiler/cmake/linux/CMakeLists.txt
+--- PhysX_external_orig/physx/source/compiler/cmake/linux/CMakeLists.txt	2019-03-20 19:14:49.000000000 +0100
++++ PhysX_external/physx/source/compiler/cmake/linux/CMakeLists.txt	2020-10-22 19:14:11.798213898 +0200
+@@ -28,8 +28,8 @@
+ STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWERCASE)
+ 
+ #TODO: Fix warnings
+-SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -Werror -Wstrict-aliasing=2 -Weverything -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-gnu-anonymous-struct -Wno-undef -Wno-unused-function -Wno-nested-anon-types -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-format-nonliteral -Wno-implicit-fallthrough -Wno-undefined-reinterpret-cast -Wno-disabled-macro-expansion -Wno-zero-as-null-pointer-constant -Wno-shadow -Wno-unknown-warning-option -Wno-atomic-implicit-seq-cst -Wno-extra-semi-stmt")
+-SET(GCC_WARNINGS "-Wall -Werror -Wno-invalid-offsetof -Wno-uninitialized")
++SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -Wstrict-aliasing=2 -Weverything -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-gnu-anonymous-struct -Wno-undef -Wno-unused-function -Wno-nested-anon-types -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-format-nonliteral -Wno-implicit-fallthrough -Wno-undefined-reinterpret-cast -Wno-disabled-macro-expansion -Wno-zero-as-null-pointer-constant -Wno-shadow -Wno-unknown-warning-option -Wno-atomic-implicit-seq-cst -Wno-extra-semi-stmt")
++SET(GCC_WARNINGS "-Wall -Wno-invalid-offsetof -Wno-uninitialized")
+ 
+ IF ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+ 	# using Clang	  
+diff -r -u PhysX_external_orig/physx/source/geomutils/src/gjk/GuGJKType.h PhysX_external/physx/source/geomutils/src/gjk/GuGJKType.h
+--- PhysX_external_orig/physx/source/geomutils/src/gjk/GuGJKType.h	2019-03-20 19:14:49.000000000 +0100
++++ PhysX_external/physx/source/geomutils/src/gjk/GuGJKType.h	2020-10-22 19:17:00.570307205 +0200
+@@ -151,7 +151,7 @@
+ 
+ 		virtual Ps::aos::Vec3V getCenter() const { return mAToB.transform(getConvex<Convex>().getCenter()); }
+ 
+-		PX_FORCE_INLINE Ps::aos::PsMatTransformV& getRelativeTransform(){ return mAToB; }
++		PX_FORCE_INLINE const Ps::aos::PsMatTransformV& getRelativeTransform(){ return mAToB; }
+ 
+ 		//ML: we can't force inline function, otherwise win modern will throw compiler error
+ 		PX_INLINE RelativeConvex<typename ConvexGeom<Convex>::Type > getGjkConvex() const
