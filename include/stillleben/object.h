@@ -194,6 +194,9 @@ public:
     constexpr bool isStatic() const
     { return m_static; }
 
+    constexpr float separation() const
+    { return m_separation; }
+
 private:
     friend class Scene;
 

@@ -133,6 +133,12 @@ void init(py::module& m)
             If set to true, the object is marked as static for physics simulation. This is a good choice
             for containers or supporting planes.
         )EOS")
+
+        .def_property_readonly("separation", &sl::Object::separation, R"EOS(
+            After physics simulation, this contains the minimum separation of
+            this object to other objects in the scene. If the separation is
+            negative, the two objects intersect.
+        )EOS")
     ;
 }
 
