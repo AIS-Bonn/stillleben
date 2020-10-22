@@ -231,8 +231,8 @@ public:
         );
 
         physx::PxTolerancesScale scale;
-        scale.length = 0.25f;
-        scale.speed = 10.0f / 4.0f;
+        scale.length = 0.2f;
+        scale.speed = 10.0f;
 
         pxPhysics.reset(PxCreatePhysics(
             PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
@@ -245,7 +245,7 @@ public:
         ));
 
         pxDefaultMaterial.reset(
-            pxPhysics->createMaterial(0.5f, 0.5f, 0.0f)
+            pxPhysics->createMaterial(0.3f, 0.2f, 0.1f)
         );
     }
 

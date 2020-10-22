@@ -11,6 +11,7 @@
 
 #include <Corrade/Containers/StaticArray.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
+#include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Format.h>
 
 #include <Magnum/GL/RectangleTexture.h>
@@ -34,6 +35,34 @@ using namespace Math::Literals;
 namespace sl
 {
 
+namespace
+{
+    struct FilterShaderData
+    {
+        bool reportContacts = false;
+    };
+
+    using namespace physx;
+    PxFilterFlags filterShader(
+        PxFilterObjectAttributes attributes0,
+        PxFilterData filterData0,
+        PxFilterObjectAttributes attributes1,
+        PxFilterData filterData1,
+        PxPairFlags& pairFlags,
+        const void* constantBlock,
+        PxU32 constantBlockSize)
+    {
+        const auto& params = *reinterpret_cast<const FilterShaderData*>(constantBlock);
+
+        if(params.reportContacts)
+            pairFlags |= PxPairFlag::eCONTACT_DEFAULT | PxPairFlag::eNOTIFY_TOUCH_PERSISTS | PxPairFlag::eNOTIFY_CONTACT_POINTS;
+        else
+            pairFlags |= PxPairFlag::eCONTACT_DEFAULT;
+
+        return PxFilterFlag::eDEFAULT;
+    }
+}
+
 Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSize)
  : m_ctx{ctx}
 {
@@ -54,11 +83,16 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     m_physicsDispatcher.reset(physx::PxDefaultCpuDispatcherCreate(2));
 
+    FilterShaderData shaderParams;
+
     physx::PxSceneDesc desc(physics.getTolerancesScale());
     desc.gravity = physx::PxVec3(0.0f, 0.0f, 9.81f);
     desc.cpuDispatcher = m_physicsDispatcher.get();
-    desc.filterShader = physx::PxDefaultSimulationFilterShader;
-    desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
+    desc.filterShader = filterShader;
+//     desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
+    desc.filterShaderData = &shaderParams;
+    desc.filterShaderDataSize = sizeof(FilterShaderData);
+    desc.flags |= physx::PxSceneFlag::eENABLE_PCM;
 
     m_physicsScene.reset(physics.createScene(desc));
 }
@@ -469,6 +503,68 @@ void Scene::chooseRandomCameraPose()
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
+    class Callback : public physx::PxSimulationEventCallback
+    {
+    public:
+        void onContact(
+            const physx::PxContactPairHeader&,
+            const physx::PxContactPair* pairs, physx::PxU32 nbPairs) override
+        {
+            using namespace physx;
+
+            for(PxU32 i=0; i < nbPairs; i++)
+            {
+                const PxContactPair& cp = pairs[i];
+
+                if(cp.flags & (PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH | PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1))
+                    continue;
+
+                auto obj1 = reinterpret_cast<sl::Object*>(cp.shapes[0]->getActor()->userData);
+                auto obj2 = reinterpret_cast<sl::Object*>(cp.shapes[1]->getActor()->userData);
+
+                if(!obj1 || !obj2)
+                    continue;
+
+                PxContactStreamIterator iter{
+                    cp.contactPatches, cp.contactPoints,
+                    cp.getInternalFaceIndices(),
+                    cp.patchCount, cp.contactCount
+                };
+
+                float minSep = std::numeric_limits<float>::infinity();
+
+                while(iter.hasNextPatch())
+                {
+                    iter.nextPatch();
+                    while(iter.hasNextContact())
+                    {
+                        iter.nextContact();
+                        minSep = std::min(iter.getSeparation(), minSep);
+                    }
+                }
+
+                obj1->m_separation = std::min(obj1->m_separation, minSep);
+                obj2->m_separation = std::min(obj2->m_separation, minSep);
+            }
+        }
+
+        void onWake(physx::PxActor ** actors, physx::PxU32 count) override
+        {}
+
+        void onAdvance(const physx::PxRigidBody *const * bodyBuffer, const physx::PxTransform * poseBuffer, const physx::PxU32 count) override
+        {}
+
+        void onConstraintBreak(physx::PxConstraintInfo * constraints, physx::PxU32 count) override
+        {}
+
+        void onSleep(physx::PxActor ** actors, physx::PxU32 count) override
+        {}
+
+        void onTrigger(physx::PxTriggerPair * pairs, physx::PxU32 count) override
+        {}
+    };
+
+
     loadPhysics();
 
     std::vector<std::shared_ptr<Object>> dynamicObjects;
@@ -536,13 +632,57 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         obj->rigidBody().wakeUp();
     }
 
-    // We simulate a strong fake gravity towards the center
-    const Vector3 gravityCenter = 0.1*normal;
-
     constexpr unsigned int FPS = 25;
     constexpr float TIME_PER_FRAME = 1.0f / FPS;
-    constexpr unsigned int SUBSTEPS_PRECISE = 12;
-    constexpr unsigned int SUBSTEPS_FAST = 2;
+    constexpr unsigned int SUBSTEPS_PRECISE = 4;
+    constexpr unsigned int SUBSTEPS_FAST = 4;
+
+    auto redropObject = [&](std::shared_ptr<sl::Object>& obj){
+        float maxZ = 0.0f;
+
+        for(auto& o : dynamicObjects)
+        {
+            if(o == obj)
+                continue;
+
+            auto bboxCenter = o->pose().transformPoint(o->mesh()->bbox().center());
+            auto bboxR = o->mesh()->bbox().size().length()/2;
+            maxZ = std::max(maxZ, bboxCenter.z() + bboxR);
+        }
+
+        Vector3 bboxOffsetInGlobal = obj->pose().transformVector(obj->mesh()->bbox().center());
+        bboxOffsetInGlobal.z() -= obj->mesh()->bbox().size().length()/2;
+
+        Matrix4 pose = obj->pose();
+        pose.translation() = Vector3{0.0f, 0.0f, maxZ - bboxOffsetInGlobal.z()};
+
+        obj->m_stuckCounter = 0;
+
+        obj->setPose(pose);
+        obj->rigidBody().clearForce(physx::PxForceMode::eACCELERATION);
+        obj->rigidBody().setLinearVelocity(physx::PxVec3{Vector3{}});
+        obj->rigidBody().setAngularVelocity(physx::PxVec3{Vector3{}});
+    };
+
+    // Enable contact reporting
+    Callback cb;
+    m_physicsScene->setSimulationEventCallback(&cb);
+
+    FilterShaderData shaderParams{true};
+    m_physicsScene->setFilterShaderData(&shaderParams, sizeof(shaderParams));
+
+    auto _fin = finally([&](){
+        m_physicsScene->setSimulationEventCallback(nullptr);
+        FilterShaderData shaderParams{false};
+        m_physicsScene->setFilterShaderData(&shaderParams, sizeof(shaderParams));
+    });
+
+    for(auto& obj : dynamicObjects)
+    {
+        obj->rigidBody().wakeUp();
+        m_physicsScene->resetFiltering(obj->rigidBody());
+        obj->m_stuckCounter = 0;
+    }
 
     const int maxIterations = 100;
     for(int i = 0; i < maxIterations; ++i)
@@ -556,16 +696,10 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         {
             for(auto& obj : dynamicObjects)
             {
-                Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
+                obj->m_separation = std::numeric_limits<float>::infinity();
 
-                Magnum::Vector3 dir = diff.normalized();
-
-                float magnitude = 0.5f;
-                if(diff.dot() < 0.05f*0.05f)
-                    magnitude = 0.5f * diff.length() / 0.05f;
-
-                obj->rigidBody().clearForce();
-                obj->rigidBody().addForce(physx::PxVec3{magnitude * dir}, physx::PxForceMode::eACCELERATION, false);
+                if(obj->rigidBody().isSleeping())
+                    continue;
             }
 
             m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS);
@@ -577,51 +711,14 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
             obj->updateFromPhysics();
 
             if(obj->pose().translation().z() < -0.5)
+                redropObject(obj);
+            else if(obj->m_separation < -0.01f)
             {
-                Matrix4 pose = obj->pose();
-                pose.translation() = Vector3{0.0f, 0.0f, 1.0f};
-
-                obj->setPose(pose);
+                if(++obj->m_stuckCounter > 0.4f / TIME_PER_FRAME)
+                    redropObject(obj);
             }
-        }
-    }
-
-    for(auto& obj : dynamicObjects)
-    {
-        obj->rigidBody().clearForce(physx::PxForceMode::eACCELERATION);
-        obj->rigidBody().wakeUp();
-    }
-
-    // Simulate a bit further with only gravity
-    for(int i = 0; i < maxIterations/2; ++i)
-    {
-        if(visCallback)
-            visCallback(maxIterations + i);
-
-        if(std::all_of(dynamicObjects.begin(), dynamicObjects.end(), [](auto& obj){
-            return obj->rigidBody().isSleeping();
-        }))
-            break;
-
-        for(unsigned int j = 0; j < SUBSTEPS_FAST; ++j)
-        {
-            for(auto& obj : dynamicObjects)
-            {
-                Magnum::Vector3 diff = gravityCenter - obj->pose().translation();
-
-                Magnum::Vector3 dir = diff.normalized();
-
-                obj->rigidBody().clearForce();
-                obj->rigidBody().addForce(physx::PxVec3{0.05f * dir}, physx::PxForceMode::eACCELERATION, false);
-            }
-
-            m_physicsScene->simulate(TIME_PER_FRAME / SUBSTEPS_FAST);
-            m_physicsScene->fetchResults(true);
-        }
-
-        for(auto& obj : dynamicObjects)
-        {
-            obj->updateFromPhysics();
+            else if(obj->m_stuckCounter > 0)
+                obj->m_stuckCounter--;
         }
     }
 

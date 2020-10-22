@@ -162,6 +162,7 @@ void Object::loadPhysics()
     );
     m_rigidBody->userData = this;
     m_rigidBody->setGlobalPose(physx::PxTransform{m_sceneObject.transformation()});
+    m_rigidBody->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
 
     if(m_physicsScene)
         m_physicsScene->addActor(*m_rigidBody);
@@ -197,12 +198,13 @@ void Object::loadPhysics()
         };
 
         shape->setLocalPose(physx::PxTransform{pose});
+        shape->setRestOffset(0.0015);
 
         m_rigidBody->attachShape(*shape);
     }
 
     // Calculate mass & inertia
-    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
+    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 1000.0f);
 
     // Synchronize static flag
     setStatic(isStatic());
