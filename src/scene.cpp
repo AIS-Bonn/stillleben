@@ -525,6 +525,9 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
                 if(!obj1 || !obj2)
                     continue;
 
+                if(!cp.contactPatches)
+                    continue;
+
                 PxContactStreamIterator iter{
                     cp.contactPatches, cp.contactPoints,
                     cp.getInternalFaceIndices(),
