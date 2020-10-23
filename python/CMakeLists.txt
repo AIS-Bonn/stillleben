@@ -72,10 +72,13 @@ target_link_libraries(stillleben_python
         Python3::Python
 )
 
-# Error on undefined stuff
-set_target_properties(stillleben_python PROPERTIES
-    LINK_FLAGS "-Wl,--no-undefined"
-)
+# If we link the PyTorch libraries explicitly, we can make sure that there are
+# no undefined references...
+if(${TORCH_VERSION} VERSION_GREATER_EQUAL 1.4.0)
+    set_target_properties(stillleben_python PROPERTIES
+        LINK_FLAGS "-Wl,--no-undefined"
+    )
+endif()
 
 if(TORCH_USE_CUDA)
     target_compile_definitions(stillleben_python PRIVATE HAVE_CUDA=1)
