@@ -32,7 +32,10 @@ __all__ = [
 
     'camera_model',
     'diff',
-    'losses'
+    'losses',
+
+    'quat_to_matrix',
+    'matrix_to_quat',
 ]
 
 

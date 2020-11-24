@@ -31,6 +31,7 @@ namespace sl
 class Context;
 class Mesh;
 class MeshCache;
+class Scene;
 
 class Drawable;
 typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::SceneGraph::Camera3D& camera, Drawable* drawable)> DrawCallback;
@@ -193,7 +194,12 @@ public:
     constexpr bool isStatic() const
     { return m_static; }
 
+    constexpr float separation() const
+    { return m_separation; }
+
 private:
+    friend class Scene;
+
     void populateParts();
     void addPart(Object3D& parent, Magnum::UnsignedInt i);
 
@@ -243,6 +249,9 @@ private:
     Magnum::Quaternion m_stickerRotation{};
 
     bool m_static = false;
+
+    float m_separation = 0.0f;
+    unsigned int m_stuckCounter = 0;
 };
 
 }

@@ -175,6 +175,12 @@ void init(py::module& m)
             :param object: Object to be added
         )EOS", py::arg("object"))
 
+        .def("remove_object", &sl::Scene::removeObject, R"EOS(
+            Removes an object from the scene.
+
+            :param object: Object to be removed
+        )EOS", py::arg("object"))
+
         .def_property_readonly("objects", &sl::Scene::objects, R"EOS(
             All objects added to the scene.
 

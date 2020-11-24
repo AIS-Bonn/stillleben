@@ -162,6 +162,7 @@ void Object::loadPhysics()
     );
     m_rigidBody->userData = this;
     m_rigidBody->setGlobalPose(physx::PxTransform{m_sceneObject.transformation()});
+    m_rigidBody->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
 
     if(m_physicsScene)
         m_physicsScene->addActor(*m_rigidBody);
@@ -183,27 +184,27 @@ void Object::loadPhysics()
         m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
     );
 
+    physx::PxMaterial& material = m_mesh->context()->physxDefaultMaterial();
+
     for(auto& physxMesh : physxMeshes)
     {
-        PhysXHolder<physx::PxMaterial> material{
-            physics.createMaterial(0.5f, 0.5f, 0.0f)
-        };
         physx::PxMeshScale meshScale(m_mesh->pretransformScale());
 
         // FIXME: Ugly const_cast
         physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
 
         PhysXHolder<physx::PxShape> shape{
-            physics.createShape(geometry, *material, true)
+            physics.createShape(geometry, material, true)
         };
 
         shape->setLocalPose(physx::PxTransform{pose});
+        shape->setRestOffset(0.0015);
 
         m_rigidBody->attachShape(*shape);
     }
 
     // Calculate mass & inertia
-    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 500.0f);
+    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 1000.0f);
 
     // Synchronize static flag
     setStatic(isStatic());

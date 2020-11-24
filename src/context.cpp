@@ -231,8 +231,8 @@ public:
         );
 
         physx::PxTolerancesScale scale;
-        scale.length = 0.25f;
-        scale.speed = 10.0f / 4.0f;
+        scale.length = 0.2f;
+        scale.speed = 10.0f;
 
         pxPhysics.reset(PxCreatePhysics(
             PX_PHYSICS_VERSION, *pxFoundation, scale, true, pxPvd.get()
@@ -243,6 +243,10 @@ public:
         pxCooking.reset(PxCreateCooking(
             PX_PHYSICS_VERSION, *pxFoundation, cookingParams
         ));
+
+        pxDefaultMaterial.reset(
+            pxPhysics->createMaterial(0.3f, 0.2f, 0.1f)
+        );
     }
 
     bool initWithDisplay(const DisplayConfig& displayConfig)
@@ -364,6 +368,7 @@ public:
     PhysXHolder<physx::PxPvd> pxPvd;
     PhysXHolder<physx::PxPhysics> pxPhysics;
     PhysXHolder<physx::PxCooking> pxCooking;
+    PhysXHolder<physx::PxMaterial> pxDefaultMaterial;
 
     bool cudaDebug = false;
 
@@ -643,6 +648,11 @@ physx::PxPhysics& Context::physxPhysics()
 physx::PxCooking& Context::physxCooking()
 {
     return *m_d->pxCooking;
+}
+
+physx::PxMaterial& Context::physxDefaultMaterial()
+{
+    return *m_d->pxDefaultMaterial;
 }
 
 std::string Context::importerPluginPath() const

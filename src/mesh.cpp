@@ -89,7 +89,7 @@ namespace
     }
 
     using MeshHash = Corrade::Utility::MurmurHash2;
-    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 2;
+    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 3;
 
     template<class T>
     MeshHash::Digest hashArray(const Corrade::Containers::Array<T>& vec)
@@ -360,33 +360,83 @@ void Mesh::loadPhysics()
         if(!meshIsWatertight(vertices, indices))
             Warning{} << "Mesh is not watertight!";
 
-        // Call V-HACD for convex decomposition
-        VHACD::IVHACD::Parameters params;
-        params.m_concavity = 0.002;
-        params.m_asyncACD = false; // hangs sometimes
+        // First compute a single convex hull (we abuse V-HACD here because
+        // it's nice and robust)
+        auto singleHull = VHACD::CreateVHACD();
+        Containers::ScopeGuard _singleHullDeleter{singleHull, [](VHACD::IVHACD* vhacd){
+            vhacd->Clean();
+            vhacd->Release();
+        }};
 
+        {
+            // Call V-HACD for convex decomposition
+            VHACD::IVHACD::Parameters params;
+            params.m_concavity = 1.0;
+            params.m_asyncACD = false; // hangs sometimes
+
+            singleHull->Compute(
+                reinterpret_cast<const float*>(vertices.data()),
+                vertices.size(),
+                indices.data(),
+                indices.size()/3,
+                params
+            );
+        }
+
+        // Now compute a real convex decomposition
         auto vhacd = VHACD::CreateVHACD();
         Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
             vhacd->Clean();
             vhacd->Release();
         }};
 
-        vhacd->Compute(
-            reinterpret_cast<const float*>(vertices.data()),
-            vertices.size(),
-            indices.data(),
-            indices.size()/3,
-            params
-        );
+        {
+            // Call V-HACD for convex decomposition
+            VHACD::IVHACD::Parameters params;
+            params.m_concavity = 0.002;
+            params.m_asyncACD = false; // hangs sometimes
 
-        Magnum::UnsignedInt n = vhacd->GetNConvexHulls();
+            vhacd->Compute(
+                reinterpret_cast<const float*>(vertices.data()),
+                vertices.size(),
+                indices.data(),
+                indices.size()/3,
+                params
+            );
+        }
+
+        double decompositionVolume = 0.0;
+        for(Magnum::UnsignedInt j = 0; j < vhacd->GetNConvexHulls(); ++j)
+        {
+            VHACD::IVHACD::ConvexHull hull;
+            vhacd->GetConvexHull(j, hull);
+            decompositionVolume += hull.m_volume;
+        }
+
+        double singleHullVolume = 0.0;
+        {
+            VHACD::IVHACD::ConvexHull hull;
+
+            CORRADE_INTERNAL_ASSERT(singleHull->GetNConvexHulls() == 1);
+            singleHull->GetConvexHull(0, hull);
+            singleHullVolume += hull.m_volume;
+        }
+
+        // If the convexity is high enough, we can use a single convex hull,
+        // which makes physics simulation *much* faster.
+        double convexity = decompositionVolume / singleHullVolume;
+//         Debug{} << m_filename << "decomposition has" << decompositionVolume << "m³, single hull has" << singleHullVolume << "m³ => convexity" << convexity;
+
+        VHACD::IVHACD* source = (convexity > 0.75) ? singleHull : vhacd;
+
+        Magnum::UnsignedInt n = source->GetNConvexHulls();
         buf.write(&n, sizeof(n));
 
         bool allOK = true;
         for(Magnum::UnsignedInt j = 0; j < n; ++j)
         {
             VHACD::IVHACD::ConvexHull hull;
-            vhacd->GetConvexHull(j, hull);
+            source->GetConvexHull(j, hull);
             auto hullVerticesD = Containers::arrayView(
                 reinterpret_cast<const Vector3d*>(hull.m_points),
                 hull.m_nPoints

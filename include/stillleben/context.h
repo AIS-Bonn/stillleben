@@ -32,6 +32,7 @@ namespace physx
 {
     class PxPhysics;
     class PxCooking;
+    class PxMaterial;
 }
 
 namespace sl
@@ -60,6 +61,7 @@ public:
 
     physx::PxPhysics& physxPhysics();
     physx::PxCooking& physxCooking();
+    physx::PxMaterial& physxDefaultMaterial();
 
     Magnum::DebugTools::ResourceManager& debugResourceManager();
 

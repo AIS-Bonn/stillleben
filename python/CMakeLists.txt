@@ -36,14 +36,17 @@ if(${TORCH_VERSION} VERSION_GREATER_EQUAL 1.4.0)
     # Find core libraries & link them directly
     find_library(C10_LIBRARY c10 PATHS ${TORCH_LIBRARY_DIRS})
     find_library(TORCH_LIBRARY torch PATHS ${TORCH_LIBRARY_DIRS})
+    find_library(TORCH_CPU_LIBRARY torch_cpu PATHS ${TORCH_LIBRARY_DIRS})
     find_library(TORCH_PYTHON_LIBRARY torch_python PATHS ${TORCH_LIBRARY_DIRS})
     message(STATUS " - c10 lib: ${C10_LIBRARY}")
     message(STATUS " - torch lib: ${TORCH_LIBRARY}")
+    message(STATUS " - torch_cpu lib: ${TORCH_CPU_LIBRARY}")
     message(STATUS " - torch_python lib: ${TORCH_PYTHON_LIBRARY}")
 
     target_link_libraries(torch INTERFACE
         ${C10_LIBRARY}
         ${TORCH_LIBRARY}
+        ${TORCH_CPU_LIBRARY}
         ${TORCH_PYTHON_LIBRARY}
     )
 endif()
@@ -60,12 +63,22 @@ add_library(stillleben_python MODULE
     src/py_light_map.cpp
     src/py_animator.cpp
     src/py_viewer.cpp
+    src/py_physics_sim.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC
         stillleben
         torch
+        Python3::Python
 )
+
+# If we link the PyTorch libraries explicitly, we can make sure that there are
+# no undefined references...
+if(${TORCH_VERSION} VERSION_GREATER_EQUAL 1.4.0)
+    set_target_properties(stillleben_python PROPERTIES
+        LINK_FLAGS "-Wl,--no-undefined"
+    )
+endif()
 
 if(TORCH_USE_CUDA)
     target_compile_definitions(stillleben_python PRIVATE HAVE_CUDA=1)

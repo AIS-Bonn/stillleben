@@ -28,7 +28,7 @@ ExternalProject_Add(PhysX_external
     URL https://github.com/NVIDIAGameWorks/PhysX/archive/4050bbfdc2699dfab7edbf0393df8ff96bbe06c5.zip
     URL_HASH SHA256=f47571fdb732811336703cd4a3db2376855a9430db7ff0f7ea432ab895097da5
 
-    PATCH_COMMAND cd physx && ./generate_projects.sh linux && cd ..
+    PATCH_COMMAND patch -p1 < ${CMAKE_CURRENT_SOURCE_DIR}/fix_fatal_compiler_warnings.patch && cd physx && ./generate_projects.sh linux && cd ..
 
     SOURCE_SUBDIR physx/compiler/public
 
