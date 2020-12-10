@@ -86,7 +86,7 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
     FilterShaderData shaderParams;
 
     physx::PxSceneDesc desc(physics.getTolerancesScale());
-    desc.gravity = physx::PxVec3(0.0f, 0.0f, 9.81f);
+    desc.gravity = physx::PxVec3(0.0f, 0.0f, -9.81f);
     desc.cpuDispatcher = m_physicsDispatcher.get();
     desc.filterShader = filterShader;
 //     desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
