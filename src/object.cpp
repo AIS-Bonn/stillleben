@@ -312,6 +312,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     // FIXME: What about stickerTexture?
     group.setValue("stickerRange", m_stickerRange);
     group.setValue("stickerRotation", m_stickerRotation);
+
+    group.setValue("static", m_static);
 }
 
 void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
@@ -347,6 +349,9 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
         setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
     if(group.hasValue("stickerRotation"))
         setStickerRotation(group.value<Magnum::Quaternion>("stickerRotation"));
+
+    if(group.hasValue("static"))
+        setStatic(group.value<bool>("static"));
 }
 
 void Object::setSpecularColor(const Magnum::Color4& color)
