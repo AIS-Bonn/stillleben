@@ -20,10 +20,10 @@ class ManipulationSim
 public:
     explicit ManipulationSim(const std::shared_ptr<sl::Scene>& scene, const std::shared_ptr<sl::Object>& manipulator, const Magnum::Matrix4& initialPose);
     ~ManipulationSim();
-    
+
     ManipulationSim(const ManipulationSim&) = delete;
     ManipulationSim& operator=(const ManipulationSim&) = delete;
-    
+
     void setSpringParameters(float stiffness, float damping, float forceLimit);
 
     void lockRotationAxes(bool x, bool y, bool z);

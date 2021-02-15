@@ -44,7 +44,7 @@ void init(py::module& m)
             :param force_limit: Limit of the applied force in N
         )EOS", py::arg("stiffness"), py::arg("damping"), py::arg("force_limit"))
         
-        .def("step", &sl::ManipulationSim::step, R"EOS(
+        .def("step", magnum::wrapRef(&sl::ManipulationSim::step), R"EOS(
             Simulate a single step.
             
             Take care to take a small enough dt, otherwise the simulation will get unstable.

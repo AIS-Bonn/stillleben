@@ -14,6 +14,7 @@
 #include "py_animator.h"
 #include "py_viewer.h"
 #include "py_job_queue.h"
+#include "py_manipulation_sim.h"
 
 using namespace sl::python;
 using namespace sl::python::magnum;
@@ -35,4 +36,5 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::Animator::init(m);
     sl::python::Viewer::init(m);
     sl::python::JobQueue::init(m);
+    sl::python::ManipulationSim::init(m);
 }
