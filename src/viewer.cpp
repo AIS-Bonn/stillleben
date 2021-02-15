@@ -121,9 +121,10 @@ public:
     };
 
 
-    explicit Private(const std::shared_ptr<Context>& ctx)
-     : ctx{ctx}
+    explicit Private(const std::shared_ptr<Scene>& scene)
+     : ctx{scene->context()}
      , renderer{std::make_unique<RenderPass>(RenderPass::Type::Phong, false)}
+     , scene{scene}
     {}
 
     void redraw(Magnum::UnsignedInt cnt = 1)
@@ -268,38 +269,9 @@ public:
     bool visualizeRearrangement = true;
 };
 
-Viewer::Viewer(const std::shared_ptr<Context>& ctx)
- : m_d{std::make_unique<Private>(ctx)}
+Viewer::Viewer(const std::shared_ptr<Scene>& scene)
+ : m_d{std::make_unique<Private>(scene)}
 {
-}
-
-Viewer::~Viewer()
-{
-    if(m_d->display && m_d->syncCounter)
-        XSyncDestroyCounter(m_d->display, m_d->syncCounter);
-
-    if(m_d->surface)
-        eglDestroySurface(eglGetCurrentDisplay(), m_d->surface);
-
-    if(m_d->window)
-        XDestroyWindow(m_d->display, m_d->window);
-}
-
-void Viewer::setScene(const std::shared_ptr<Scene>& scene)
-{
-    m_d->scene = scene;
-}
-
-std::shared_ptr<Scene> Viewer::scene() const
-{
-    return m_d->scene;
-}
-
-void Viewer::setup()
-{
-    if(!m_d->scene)
-        throw std::logic_error{"Need to call Viewer::setScene() first"};
-
     m_d->windowSize = {1280, 720};
 
     // X11 stuff for creating a new window
@@ -477,6 +449,29 @@ void Viewer::setup()
 #endif
 
     m_d->redraw();
+
+    // Show window
+    XMapWindow(m_d->display, m_d->window);
+
+    // Switch back to headless EGL state
+    eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, eglGetCurrentContext());
+}
+
+Viewer::~Viewer()
+{
+    if(m_d->display && m_d->syncCounter)
+        XSyncDestroyCounter(m_d->display, m_d->syncCounter);
+
+    if(m_d->surface)
+        eglDestroySurface(eglGetCurrentDisplay(), m_d->surface);
+
+    if(m_d->window)
+        XDestroyWindow(m_d->display, m_d->window);
+}
+
+std::shared_ptr<Scene> Viewer::scene() const
+{
+    return m_d->scene;
 }
 
 void Viewer::draw()
@@ -686,12 +681,21 @@ void Viewer::draw()
 
 void Viewer::run()
 {
-    setup();
-
-    // Show window
-    XMapWindow(m_d->display, m_d->window);
+    // Make current
+    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
 
     while(mainLoopIteration()) {}
+
+    // Switch back to headless EGL state
+    eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, eglGetCurrentContext());
+}
+
+void Viewer::drawFrame()
+{
+    // Make current
+    eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
+
+    mainLoopIteration();
 
     // Switch back to headless EGL state
     eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, eglGetCurrentContext());
@@ -799,10 +803,9 @@ bool Viewer::mainLoopIteration()
     return !(m_d->flags & Private::Flag::Exit);
 }
 
-void Viewer::view(const std::shared_ptr<Context>& ctx, const std::shared_ptr<sl::Scene>& scene)
+void Viewer::view(const std::shared_ptr<sl::Scene>& scene)
 {
-    Viewer viewer{ctx};
-    viewer.setScene(scene);
+    Viewer viewer{scene};
     viewer.run();
 }
 

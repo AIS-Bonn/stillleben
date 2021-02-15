@@ -23,24 +23,30 @@ void init(py::module& m)
             If you do not have special reason not to do so, use the
             :ref:`stillleben.view` shortcut to launch a viewer.
         )EOS")
-        .def(py::init([](){
-            return std::make_shared<sl::Viewer>(sl::python::Context::instance());
-        }), R"EOS(
+        .def(py::init<const std::shared_ptr<sl::Scene>&>(), R"EOS(
             Constructor.
-        )EOS")
-        .def_property("scene", &sl::Viewer::scene, &sl::Viewer::setScene, R"EOS(
+
+            :param scene: Scene to view
+        )EOS", py::arg("scene"))
+        .def_property_readonly("scene", &sl::Viewer::scene, R"EOS(
             Scene to be shown.
         )EOS")
         .def("run", &sl::Viewer::run, R"EOS(
-            Launch the viewer.
+            Draw until the user closes the window.
 
-            You should set the :ref:`scene` property first.
             This call is blocking.
+        )EOS")
+
+        .def("draw_frame", &sl::Viewer::drawFrame, R"EOS(
+            Draw a single frame.
+
+            In most cases, you should call :ref:`run()` instead, which is blocking
+            and easier to use.
         )EOS")
     ;
 
     m.def("view", [](const std::shared_ptr<sl::Scene>& scene){
-        sl::Viewer::view(sl::python::Context::instance(), scene);
+        sl::Viewer::view(scene);
     }, R"EOS(
         Shortcut for viewing a scene interactively.
 
