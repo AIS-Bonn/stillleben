@@ -64,6 +64,7 @@ add_library(stillleben_python MODULE
     src/py_animator.cpp
     src/py_viewer.cpp
     src/py_job_queue.cpp
+    src/py_manipulation_sim.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC

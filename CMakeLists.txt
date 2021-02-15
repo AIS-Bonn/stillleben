@@ -86,6 +86,7 @@ add_library(stillleben SHARED
     src/image_loader.cpp
     src/job_queue.cpp
     src/light_map.cpp
+    src/manipulation_sim.cpp
     src/mesh.cpp
     src/mesh_cache.cpp
     src/object.cpp
