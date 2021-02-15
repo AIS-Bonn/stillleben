@@ -1,8 +1,8 @@
 // Threaded physics simulator
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#ifndef SL_PHYSICS_SIM_H
-#define SL_PHYSICS_SIM_H
+#ifndef SL_JOB_QUEUE_H
+#define SL_JOB_QUEUE_H
 
 #include <Corrade/Containers/Pointer.h>
 
@@ -12,14 +12,14 @@ namespace sl
 {
 class Scene;
 
-class PhysicsSim
+class JobQueue
 {
 public:
-    explicit PhysicsSim(int numThreads = -1);
-    ~PhysicsSim();
+    explicit JobQueue(int numThreads = -1);
+    ~JobQueue();
 
-    PhysicsSim(const PhysicsSim&) = delete;
-    PhysicsSim& operator=(const PhysicsSim&) = delete;
+    JobQueue(const JobQueue&) = delete;
+    JobQueue& operator=(const JobQueue&) = delete;
 
     void addScene(const std::shared_ptr<sl::Scene>& scene);
     std::shared_ptr<sl::Scene> retrieveScene();

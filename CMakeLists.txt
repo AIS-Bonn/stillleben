@@ -84,12 +84,12 @@ add_library(stillleben SHARED
     src/debug.cpp
     src/exception.cpp
     src/image_loader.cpp
+    src/job_queue.cpp
     src/light_map.cpp
     src/mesh.cpp
     src/mesh_cache.cpp
     src/object.cpp
     src/phong_pass.cpp
-    src/physics_sim.cpp
     src/pose.cpp
     src/render_pass.cpp
     src/scene.cpp
