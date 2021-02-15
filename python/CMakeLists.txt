@@ -73,6 +73,12 @@ target_link_libraries(stillleben_python
         Python3::Python
 )
 
+# Enable OpenMP if available (ATen uses it)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(stillleben_python PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 # If we link the PyTorch libraries explicitly, we can make sure that there are
 # no undefined references...
 if(${TORCH_VERSION} VERSION_GREATER_EQUAL 1.4.0)
