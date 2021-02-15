@@ -12,14 +12,24 @@ using namespace sl::python::magnum;
 
 namespace
 {
+    // Stolen from magnum-bindings until we properly integrate with it
+    template<class T> void enumOperators(pybind11::enum_<T>& e) {
+        e
+            .def("__or__", [](const T& a, const T& b) { return T(typename std::underlying_type<T>::type(a | b)); })
+            .def("__and__", [](const T& a, const T& b) { return T(typename std::underlying_type<T>::type(a & b)); })
+            .def("__xor__", [](const T& a, const T& b) { return T(typename std::underlying_type<T>::type(a ^ b)); })
+            .def("__invert__", [](const T& a) { return T(typename std::underlying_type<T>::type(~a)); })
+            .def("__bool__", [](const T& a) { return bool(typename std::underlying_type<T>::type(a)); });
+    }
+
     std::shared_ptr<sl::Mesh> Mesh_factory(
         const py::object& filename,
-        bool visual, bool physics)
+        bool visual, bool physics, sl::Mesh::Flag flags = {})
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
 
-        auto mesh = std::make_shared<sl::Mesh>(py::str(filename), sl::python::Context::instance());
+        auto mesh = std::make_shared<sl::Mesh>(py::str(filename), sl::python::Context::instance(), flags);
         mesh->load(visual, physics);
 
         return mesh;
@@ -241,7 +251,7 @@ namespace Mesh
 
 void init(py::module& m)
 {
-    py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
+    auto mesh = py::class_<sl::Mesh, std::shared_ptr<sl::Mesh>>(m, "Mesh", R"EOS(
         Represents a mesh shape.
 
         Represents a loaded mesh file. A mesh can be seen as an object template.
@@ -282,15 +292,26 @@ void init(py::module& m)
         convenient in most situations and removes a level of indirection
         when performing vertex updates. All meshes live in the same coordinate
         system.
-    )EOS")
+    )EOS");
 
+    py::enum_<sl::Mesh::Flag> flag{mesh, "Flag", "Mesh flags"};
+    flag
+        .value("NONE", sl::Mesh::Flag{})
+        .value("PHYSICS_FORCE_CONVEX_HULL", sl::Mesh::Flag::PhysicsForceConvexHull, R"EOS(
+            Always use a convex hull for physics simulation, even if the object is highly concave.
+        )EOS")
+    ;
+    enumOperators(flag);
+
+    mesh
         .def(py::init(&Mesh_factory), R"EOS(
             Constructor
 
             :param filename: Mesh filename
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
-        )EOS", py::arg("filename"), py::arg("visual")=true, py::arg("physics")=true)
+            :param flags: Flags
+        )EOS", py::arg("filename"), py::arg("visual")=true, py::arg("physics")=true, py::arg("flags")=sl::Mesh::Flag{})
 
         .def_static("load_threaded", &Mesh_loadThreaded, R"EOS(
             Load multiple meshes using a thread pool.
