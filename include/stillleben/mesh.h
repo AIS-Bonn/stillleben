@@ -122,7 +122,8 @@ public:
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
         const std::shared_ptr<Context>& ctx,
         const std::vector<std::string>& filenames,
-        bool visual = true, bool physics = true
+        bool visual = true, bool physics = true,
+        Flags flags = {}
     );
 
     /**

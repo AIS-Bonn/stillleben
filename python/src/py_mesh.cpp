@@ -37,7 +37,7 @@ namespace
 
     std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
         const std::vector<py::object>& filenames,
-        bool visual, bool physics)
+        bool visual, bool physics, sl::Mesh::Flag flags = {})
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
@@ -46,7 +46,7 @@ namespace
         for(std::size_t i = 0; i < filenames.size(); ++i)
             filenameStrings[i] = py::str(filenames[i]);
 
-        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics);
+        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, flags);
     }
 
     void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -319,8 +319,9 @@ void init(py::module& m)
             :param filenames: List of file names to load
             :param visual: Should we load visual components?
             :param physics: Should we load collision meshes?
+            :param flags: Flags
             :return: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true)
+        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("flags")=sl::Mesh::Flag{})
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.
@@ -437,6 +438,8 @@ void init(py::module& m)
                 Some of them may use vertex coloring, some not. For the former,
                 you will see the vertex colors, for the latter just zeros.
         )EOS")
+
+        .def_property_readonly("filename", &sl::Mesh::filename, "The mesh filename")
     ;
 
     py::class_<sl::MeshCache>(m, "MeshCache", R"EOS(
