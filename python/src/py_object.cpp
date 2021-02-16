@@ -139,6 +139,20 @@ void init(py::module& m)
             this object to other objects in the scene. If the separation is
             negative, the two objects intersect.
         )EOS")
+
+        .def_property("mass", &sl::Object::mass, &sl::Object::setMass, R"EOS(
+            Mass of the object in kg.
+        )EOS")
+        .def_property_readonly("volume", &sl::Object::volume, R"EOS(
+            Volume of the object in m^3.
+        )EOS")
+        .def_property("density", &sl::Object::density, &sl::Object::setDensity, R"EOS(
+            Density of the object in kg / m^3.
+        )EOS")
+
+        .def_property("linear_velocity_limit", &sl::Object::linearVelocityLimit, &sl::Object::setLinearVelocityLimit, R"EOS(
+            Linear velocity limit in m/s.
+        )EOS")
     ;
 }
 
