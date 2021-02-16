@@ -695,6 +695,7 @@ void Viewer::drawFrame()
     // Make current
     eglMakeCurrent(eglGetCurrentDisplay(), m_d->surface, m_d->surface, eglGetCurrentContext());
 
+    m_d->redraw();
     mainLoopIteration();
 
     // Switch back to headless EGL state
