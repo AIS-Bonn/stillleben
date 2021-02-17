@@ -177,7 +177,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .setMagnificationFilter(GL::SamplerFilter::Nearest)
             .setMinificationFilter(GL::SamplerFilter::Nearest);
 
-	result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
+        result->normals.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
 
         result->vertexIndex.setStorage(GL::TextureFormat::RGBA32UI, 4 * sizeof(std::uint32_t), viewport);
         result->barycentricCoeffs.setStorage(GL::TextureFormat::RGBA32F, 4 * sizeof(float), viewport);
