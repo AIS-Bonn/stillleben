@@ -13,6 +13,6 @@ def load(**kwargs):
     kwargs['extra_cflags'] = ['-DNDEBUG', '-O3', '-std=c++17'] + cflags
 
     ldflags = kwargs.get('extra_ldflags', [])
-    kwargs['extra_ldflags'] = [f'-L{SL_PATH}/lib', '-lstillleben', '-lstillleben_python']
+    kwargs['extra_ldflags'] = [f'-L{SL_PATH}/lib', '-lstillleben', '-lstillleben_python'] + ldflags
 
     return torch.utils.cpp_extension.load(**kwargs)
