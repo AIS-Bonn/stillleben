@@ -93,27 +93,12 @@ cmdclass = {
 
 MAGNUM_SUFFIX = '-d' if DEBUG else ''
 
-def package_files(directory):
-    paths = []
-    for (path, directories, filenames) in os.walk(directory):
-        for filename in filenames:
-            if filename.endswith('.py'):
-                continue
-
-            paths.append(os.path.relpath(os.path.join(path, filename), directory))
-    return paths
-
-extra_files = package_files('python/stillleben')
-print(extra_files)
-
 setuptools.setup(
     name='stillleben',
     cmdclass=cmdclass,
     packages=['stillleben'],
     package_dir={'':'python'},
-    package_data={
-        'stillleben': extra_files
-    },
+    include_package_data=True,
     ext_modules=[],
     options={
         'build': {
