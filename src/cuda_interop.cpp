@@ -35,9 +35,9 @@ public:
 #if HAVE_CUDA
         if(cuda_resource)
         {
-            if(cudaGraphicsUnregisterResource(cuda_resource) != cudaSuccess)
+            if(auto err = cudaGraphicsUnregisterResource(cuda_resource))
             {
-                Error{} << "Could not unregister texture with CUDA";
+                Error{} << "Could not unregister texture with CUDA:" << cudaGetErrorString(err);
                 std::abort();
             }
         }
