@@ -8,6 +8,7 @@ import os
 from . import camera_model
 from . import diff
 from . import losses
+from . import extension
 from .lib.libstillleben_python import *
 from .lib.libstillleben_python import _set_install_prefix
 
@@ -32,6 +33,7 @@ __all__ = [
 
     'camera_model',
     'diff',
+    'extension',
     'losses',
 
     'quat_to_matrix',

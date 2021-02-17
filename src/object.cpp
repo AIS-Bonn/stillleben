@@ -6,6 +6,7 @@
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
 #include <stillleben/mesh_cache.h>
+#include <stillleben/physx_impl.h>
 
 #include <limits>
 
@@ -28,8 +29,6 @@
 
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/MeshObjectData3D.h>
-
-#include "physx_impl.h"
 
 using namespace Magnum;
 using namespace Math::Literals;

@@ -95,6 +95,11 @@ install(TARGETS stillleben_python
     LIBRARY DESTINATION lib
 )
 
+install(DIRECTORY src/
+    DESTINATION include/stillleben
+    FILES_MATCHING PATTERN "src/*.h"
+)
+
 # diff packages
 if(TORCH_USE_CUDA)
     find_package(CUDA QUIET)

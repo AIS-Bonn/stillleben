@@ -7,8 +7,7 @@
 #include <stillleben/scene.h>
 #include <stillleben/object.h>
 #include <stillleben/physx.h>
-
-#include "physx_impl.h"
+#include <stillleben/physx_impl.h>
 
 using namespace physx;
 using namespace Magnum;

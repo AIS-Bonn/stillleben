@@ -11,6 +11,7 @@
 #include <foundation/PxSimpleTypes.h>
 
 #include <utility>
+#include <vector>
 
 namespace sl
 {

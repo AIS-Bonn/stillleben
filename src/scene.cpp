@@ -8,6 +8,7 @@
 #include <stillleben/light_map.h>
 #include <stillleben/mesh.h>
 #include <stillleben/mesh_cache.h>
+#include <stillleben/physx_impl.h>
 
 #include <Corrade/Containers/StaticArray.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
@@ -26,8 +27,6 @@
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
 
 #include <sstream>
-
-#include "physx_impl.h"
 
 using namespace Magnum;
 using namespace Math::Literals;

@@ -6,6 +6,7 @@
 #include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/mesh_tools/consolidate.h>
 #include <stillleben/physx.h>
+#include <stillleben/physx_impl.h>
 
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/GrowableArray.h>
@@ -52,7 +53,6 @@
 #include <thread>
 
 #include "shaders/render_shader.h"
-#include "physx_impl.h"
 #include "utils/os.h"
 
 using namespace Magnum;
