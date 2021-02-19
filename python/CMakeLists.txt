@@ -63,7 +63,8 @@ add_library(stillleben_python MODULE
     src/py_light_map.cpp
     src/py_animator.cpp
     src/py_viewer.cpp
-    src/py_physics_sim.cpp
+    src/py_job_queue.cpp
+    src/py_manipulation_sim.cpp
 )
 target_link_libraries(stillleben_python
     PUBLIC
@@ -71,6 +72,12 @@ target_link_libraries(stillleben_python
         torch
         Python3::Python
 )
+
+# Enable OpenMP if available (ATen uses it)
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(stillleben_python PUBLIC OpenMP::OpenMP_CXX)
+endif()
 
 # If we link the PyTorch libraries explicitly, we can make sure that there are
 # no undefined references...
@@ -86,6 +93,11 @@ endif()
 
 install(TARGETS stillleben_python
     LIBRARY DESTINATION lib
+)
+
+install(DIRECTORY src/
+    DESTINATION include/stillleben
+    FILES_MATCHING PATTERN "src/*.h"
 )
 
 # diff packages

@@ -145,6 +145,19 @@ public:
 
     void drawPhysics(Magnum::SceneGraph::Camera3D& camera, const DrawCallback& cb);
 
+    float mass();
+    void setMass(float mass);
+
+    constexpr float density()
+    { return m_density; }
+    void setDensity(float density);
+
+    float volume();
+
+    void setLinearVelocityLimit(float velLimit);
+    float linearVelocityLimit();
+
+
     void setInstanceIndex(unsigned int instanceIndex);
     unsigned int instanceIndex() const
     { return m_instanceIndex; }
@@ -249,6 +262,8 @@ private:
     Magnum::Quaternion m_stickerRotation{};
 
     bool m_static = false;
+
+    float m_density = 1000.0f;
 
     float m_separation = 0.0f;
     unsigned int m_stuckCounter = 0;

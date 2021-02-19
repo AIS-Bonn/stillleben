@@ -98,14 +98,7 @@ setuptools.setup(
     cmdclass=cmdclass,
     packages=['stillleben'],
     package_dir={'':'python'},
-    package_data={
-        'stillleben': [
-            '*.so',
-            'lib/*.so*',
-            'lib/magnum{}/importers/*'.format(MAGNUM_SUFFIX),
-            'lib/magnum{}/imageconverters/*'.format(MAGNUM_SUFFIX),
-        ]
-    },
+    include_package_data=True,
     ext_modules=[],
     options={
         'build': {

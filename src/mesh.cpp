@@ -6,6 +6,7 @@
 #include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/mesh_tools/consolidate.h>
 #include <stillleben/physx.h>
+#include <stillleben/physx_impl.h>
 
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Containers/GrowableArray.h>
@@ -52,7 +53,6 @@
 #include <thread>
 
 #include "shaders/render_shader.h"
-#include "physx_impl.h"
 #include "utils/os.h"
 
 using namespace Magnum;
@@ -89,7 +89,7 @@ namespace
     }
 
     using MeshHash = Corrade::Utility::MurmurHash2;
-    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 3;
+    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 4;
 
     template<class T>
     MeshHash::Digest hashArray(const Corrade::Containers::Array<T>& vec)
@@ -99,12 +99,12 @@ namespace
         return hash(view.data(), view.size());
     }
 
-    Corrade::Containers::Optional<std::vector<uint8_t>> readCacheFile(const std::string& cacheFile, const std::string& sourceFile, const Magnum::Trade::MeshData& meshData)
+    Corrade::Containers::Optional<std::vector<uint8_t>> readCacheFile(const std::string& cacheFile, const std::string& sourceFile, const Magnum::Trade::MeshData& meshData, Mesh::Flags flags)
     {
         auto readHash = [](std::istream& stream) -> Corrade::Containers::Optional<MeshHash::Digest>{
             std::array<char, MeshHash::DigestSize> hashBytes;
             stream.read(hashBytes.data(), hashBytes.size());
-            if(stream.gcount() != hashBytes.size())
+            if(static_cast<std::size_t>(stream.gcount()) != hashBytes.size())
                 return {};
 
             return MeshHash::Digest::fromByteArray(hashBytes.data());
@@ -115,6 +115,13 @@ namespace
             if(stream.gcount() != sizeof(version))
                 return 0;
             return version;
+        };
+        auto readFlags = [](std::istream& stream) -> Mesh::Flags {
+            Magnum::UnsignedInt flags;
+            stream.read(reinterpret_cast<char*>(&flags), sizeof(flags));
+            if(stream.gcount() != sizeof(flags))
+                return {};
+            return Mesh::Flags{Mesh::Flag(flags)};
         };
 
         if(!Corrade::Utility::Directory::exists(cacheFile))
@@ -132,6 +139,9 @@ namespace
 
         auto version = readVersion(stream);
         if(version != FILE_FORMAT_VERSION)
+            return {};
+
+        if(readFlags(stream) != flags)
             return {};
 
         auto cacheVertexHash = readHash(stream);
@@ -185,9 +195,10 @@ namespace
     }
 }
 
-Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx)
+Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx, Flags flags)
  : m_ctx{ctx}
  , m_filename{filename}
+ , m_flags{flags}
 {
 }
 
@@ -345,7 +356,7 @@ void Mesh::loadPhysics()
     // We want to cache the simplified & cooked PhysX mesh.
     std::string cacheFile = Corrade::Utility::formatString("{}.sl_mesh", m_filename);
 
-    auto buffer = readCacheFile(cacheFile, m_filename, meshData);
+    auto buffer = readCacheFile(cacheFile, m_filename, meshData, m_flags);
 
     if(buffer)
     {
@@ -383,51 +394,56 @@ void Mesh::loadPhysics()
             );
         }
 
-        // Now compute a real convex decomposition
+        VHACD::IVHACD* source = singleHull;
+
+        // Now compute a real convex decomposition and see if it's better
         auto vhacd = VHACD::CreateVHACD();
         Containers::ScopeGuard deleter{vhacd, [](VHACD::IVHACD* vhacd){
             vhacd->Clean();
             vhacd->Release();
         }};
 
+        if(!(m_flags & Flag::PhysicsForceConvexHull))
         {
-            // Call V-HACD for convex decomposition
-            VHACD::IVHACD::Parameters params;
-            params.m_concavity = 0.002;
-            params.m_asyncACD = false; // hangs sometimes
+            {
+                // Call V-HACD for convex decomposition
+                VHACD::IVHACD::Parameters params;
+                params.m_concavity = 0.002;
+                params.m_asyncACD = false; // hangs sometimes
 
-            vhacd->Compute(
-                reinterpret_cast<const float*>(vertices.data()),
-                vertices.size(),
-                indices.data(),
-                indices.size()/3,
-                params
-            );
+                vhacd->Compute(
+                    reinterpret_cast<const float*>(vertices.data()),
+                    vertices.size(),
+                    indices.data(),
+                    indices.size()/3,
+                    params
+                );
+            }
+
+            double decompositionVolume = 0.0;
+            for(Magnum::UnsignedInt j = 0; j < vhacd->GetNConvexHulls(); ++j)
+            {
+                VHACD::IVHACD::ConvexHull hull;
+                vhacd->GetConvexHull(j, hull);
+                decompositionVolume += hull.m_volume;
+            }
+
+            double singleHullVolume = 0.0;
+            {
+                VHACD::IVHACD::ConvexHull hull;
+
+                CORRADE_INTERNAL_ASSERT(singleHull->GetNConvexHulls() == 1);
+                singleHull->GetConvexHull(0, hull);
+                singleHullVolume += hull.m_volume;
+            }
+
+            // If the convexity is high enough, we can use a single convex hull,
+            // which makes physics simulation *much* faster.
+            double convexity = decompositionVolume / singleHullVolume;
+
+            if(convexity < 0.75)
+                source = vhacd;
         }
-
-        double decompositionVolume = 0.0;
-        for(Magnum::UnsignedInt j = 0; j < vhacd->GetNConvexHulls(); ++j)
-        {
-            VHACD::IVHACD::ConvexHull hull;
-            vhacd->GetConvexHull(j, hull);
-            decompositionVolume += hull.m_volume;
-        }
-
-        double singleHullVolume = 0.0;
-        {
-            VHACD::IVHACD::ConvexHull hull;
-
-            CORRADE_INTERNAL_ASSERT(singleHull->GetNConvexHulls() == 1);
-            singleHull->GetConvexHull(0, hull);
-            singleHullVolume += hull.m_volume;
-        }
-
-        // If the convexity is high enough, we can use a single convex hull,
-        // which makes physics simulation *much* faster.
-        double convexity = decompositionVolume / singleHullVolume;
-//         Debug{} << m_filename << "decomposition has" << decompositionVolume << "m³, single hull has" << singleHullVolume << "m³ => convexity" << convexity;
-
-        VHACD::IVHACD* source = (convexity > 0.75) ? singleHull : vhacd;
 
         Magnum::UnsignedInt n = source->GetNConvexHulls();
         buf.write(&n, sizeof(n));
@@ -465,6 +481,10 @@ void Mesh::loadPhysics()
 
         // Write version
         ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
+
+        // Write flags
+        Magnum::UnsignedInt flagsValue = Containers::enumCastUnderlyingType(m_flags);
+        ostream.write(reinterpret_cast<const char*>(&flagsValue), sizeof(flagsValue));
 
         // Write hashes
         MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
@@ -862,7 +882,8 @@ void Mesh::loadPretransform(const std::string& filename)
 std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
-    bool visual, bool physics)
+    bool visual, bool physics,
+    Flags flags)
 {
     std::queue<int> workQueue;
     std::mutex workQueueMutex;
@@ -896,7 +917,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
 
             try
             {
-                auto mesh = std::make_shared<Mesh>(filename, ctx);
+                auto mesh = std::make_shared<Mesh>(filename, ctx, flags);
 
                 mesh->openFile();
 

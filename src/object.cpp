@@ -6,6 +6,7 @@
 #include <stillleben/context.h>
 #include <stillleben/mesh.h>
 #include <stillleben/mesh_cache.h>
+#include <stillleben/physx_impl.h>
 
 #include <limits>
 
@@ -28,8 +29,6 @@
 
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/MeshObjectData3D.h>
-
-#include "physx_impl.h"
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -204,11 +203,56 @@ void Object::loadPhysics()
     }
 
     // Calculate mass & inertia
-    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, 1000.0f);
+    setDensity(m_density);
 
     // Synchronize static flag
     setStatic(isStatic());
 }
+
+void Object::setDensity(float density)
+{
+    loadPhysics();
+
+    physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, density);
+}
+
+void Object::setMass(float mass)
+{
+    loadPhysics();
+
+    float factor = mass / m_rigidBody->getMass();
+    setDensity(m_density * factor);
+}
+
+float Object::mass()
+{
+    loadPhysics();
+
+    return m_rigidBody->getMass();
+}
+
+float Object::volume()
+{
+    loadPhysics();
+
+    return m_rigidBody->getMass() / m_density;
+}
+
+void Object::setLinearVelocityLimit(float limit)
+{
+    loadPhysics();
+
+    m_rigidBody->setMaxLinearVelocity(limit);
+}
+
+float Object::linearVelocityLimit()
+{
+    loadPhysics();
+
+    return m_rigidBody->getMaxLinearVelocity();
+}
+
+
 
 void Object::loadPhysicsVisualization()
 {
@@ -314,6 +358,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("stickerRotation", m_stickerRotation);
 
     group.setValue("static", m_static);
+    group.setValue("density", m_density);
+    group.setValue("linear_velocity_limit", linearVelocityLimit());
 }
 
 void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache& cache)
@@ -352,6 +398,12 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
 
     if(group.hasValue("static"))
         setStatic(group.value<bool>("static"));
+
+    if(group.hasValue("density"))
+        setDensity(group.value<float>("density"));
+
+    if(group.hasValue("linearVelocityLimit"))
+        setLinearVelocityLimit(group.value<float>("linearVelocityLimit"));
 }
 
 void Object::setSpecularColor(const Magnum::Color4& color)

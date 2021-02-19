@@ -116,7 +116,7 @@ layout(location = BARYCENTRIC_COEFFS_OUTPUT_ATTRIBUTE_LOCATION)
 out vec3 barycentricCoeffs;
 
 layout(location = CAM_COORDINATES_OUTPUT_ATTRIBUTE_LOCATION)
-out highp vec3 camCoordinatesOut;
+out highp vec4 camCoordinatesOut;
 
 vec2 dirToSpherical(vec3 dir)
 {
@@ -214,7 +214,7 @@ void main()
         discard;
 
     objectCoordinatesOut = fragmentData.objectCoordinates;
-    camCoordinatesOut = fragmentData.camCoordinates;
+    camCoordinatesOut = vec4(fragmentData.camCoordinates, 1.0);
     classIndexOut = classIndex;
     instanceIndexOut = instanceIndex;
 

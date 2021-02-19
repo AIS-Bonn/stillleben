@@ -11,25 +11,25 @@
 namespace sl
 {
 
-class Context;
 class Scene;
 
 class Viewer
 {
 public:
-    explicit Viewer(const std::shared_ptr<Context>& ctx);
+    explicit Viewer(const std::shared_ptr<Scene>& scene);
     ~Viewer();
 
     // no funny stuff
     Viewer(const Viewer&) = delete;
     Viewer& operator=(const Viewer&) = delete;
 
-    void setScene(const std::shared_ptr<Scene>& scene);
     std::shared_ptr<Scene> scene() const;
 
     void run();
 
-    static void view(const std::shared_ptr<Context>& ctx, const std::shared_ptr<Scene>& scene);
+    void drawFrame();
+
+    static void view(const std::shared_ptr<Scene>& scene);
 
 private:
     class Private;

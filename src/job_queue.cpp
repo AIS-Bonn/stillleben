@@ -1,7 +1,7 @@
 // Threaded physics simulator
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include <stillleben/physics_sim.h>
+#include <stillleben/job_queue.h>
 
 #include <stillleben/scene.h>
 
@@ -27,7 +27,7 @@ namespace
     };
 }
 
-class PhysicsSim::Private
+class JobQueue::Private
 {
 public:
     Private(int numThreads)
@@ -143,31 +143,31 @@ private:
     unsigned int m_freeJobs = 0;
 };
 
-PhysicsSim::PhysicsSim(int numThreads)
+JobQueue::JobQueue(int numThreads)
  : m_d{Containers::InPlaceInit, numThreads}
 {
 }
 
-PhysicsSim::~PhysicsSim()
+JobQueue::~JobQueue()
 {
 }
 
-void PhysicsSim::addScene(const std::shared_ptr<sl::Scene>& scene)
+void JobQueue::addScene(const std::shared_ptr<sl::Scene>& scene)
 {
     m_d->addScene(scene);
 }
 
-std::shared_ptr<sl::Scene> PhysicsSim::retrieveScene()
+std::shared_ptr<sl::Scene> JobQueue::retrieveScene()
 {
     return m_d->retrieveScene();
 }
 
-void PhysicsSim::stop()
+void JobQueue::stop()
 {
     m_d->stop();
 }
 
-std::size_t PhysicsSim::numThreads() const
+std::size_t JobQueue::numThreads() const
 {
     return m_d->numThreads();
 }

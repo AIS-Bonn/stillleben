@@ -3,6 +3,7 @@
 
 #include <stillleben/context.h>
 #include <stillleben/physx.h>
+#include <stillleben/physx_impl.h>
 
 #include <algorithm>
 
@@ -40,8 +41,6 @@ T getExtension(const char* name)
 {
     return reinterpret_cast<T>(eglGetProcAddress(name));
 }
-
-#include "physx_impl.h"
 
 using namespace Magnum;
 

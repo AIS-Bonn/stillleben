@@ -98,3 +98,8 @@ install(FILES
     ${OUT_DIR}/libPhysXCommon_64.so
     DESTINATION lib
 )
+
+install(DIRECTORY
+    ${INSTALL_DIR}/include/
+    DESTINATION include
+)

@@ -91,7 +91,14 @@ public:
         OrderOfMagnitude,
     };
 
-    Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx);
+    enum class Flag
+    {
+        PhysicsForceConvexHull = 1 << 0
+    };
+
+    using Flags = Corrade::Containers::EnumSet<Flag>;
+
+    Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx, Flags flags = {});
     Mesh(const Mesh& other) = delete;
     Mesh(Mesh&& other);
     ~Mesh();
@@ -115,7 +122,8 @@ public:
     static std::vector<std::shared_ptr<Mesh>> loadThreaded(
         const std::shared_ptr<Context>& ctx,
         const std::vector<std::string>& filenames,
-        bool visual = true, bool physics = true
+        bool visual = true, bool physics = true,
+        Flags flags = {}
     );
 
     /**
@@ -256,6 +264,8 @@ private:
 
     std::string m_filename;
 
+    Flags m_flags;
+
     bool m_opened = false;
     bool m_visualLoaded = false;
     bool m_physicsLoaded = false;
@@ -289,6 +299,8 @@ private:
     Magnum::GL::Buffer m_vertexBuffer{Magnum::NoCreate};
     Magnum::GL::Buffer m_indexBuffer{Magnum::NoCreate};
 };
+
+CORRADE_ENUMSET_OPERATORS(Mesh::Flags)
 
 }
 
