@@ -3,6 +3,7 @@ import unittest
 
 import torch
 import stillleben as sl
+import numpy as np
 
 from stillleben.camera_model import process_image
 from stillleben.profiling import Timer
@@ -87,6 +88,25 @@ class PythonTest(unittest.TestCase):
 
         self.assertLess((scene.objects[0].pose() - scene2.objects[0].pose()).norm(), 1e-9)
         self.assertLess((scene.objects[0].mesh.pretransform - scene2.objects[0].mesh.pretransform).norm(), 1e-5)
+
+    def test_image_saver(self):
+        with sl.ImageSaver() as saver:
+            saver.save(torch.zeros(640,480,3, dtype=torch.uint8), '/tmp/test_color.png')
+            saver.save(torch.zeros(640,480, dtype=torch.uint8), '/tmp/test_gray8.png')
+
+            saver.save(torch.zeros(640,480, dtype=torch.int16), '/tmp/test_gray16.png')
+
+        color = np.array(Image.open('/tmp/test_color.png'))
+        self.assertEqual(color.shape, (640,480,3))
+        self.assertEqual(color.dtype, np.uint8)
+
+        gray8 = np.array(Image.open('/tmp/test_gray8.png'))
+        self.assertEqual(gray8.shape, (640,480))
+        self.assertEqual(gray8.dtype, np.uint8)
+
+        gray16 = np.array(Image.open('/tmp/test_gray16.png'))
+        self.assertEqual(gray16.shape, (640,480))
+        self.assertEqual(gray16.dtype, np.int32)
 
 
 if __name__ == "__main__":

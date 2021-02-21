@@ -60,6 +60,7 @@ add_library(stillleben_python MODULE
     src/py_scene.cpp
     src/py_render_pass.cpp
     src/py_image_loader.cpp
+    src/py_image_saver.cpp
     src/py_light_map.cpp
     src/py_animator.cpp
     src/py_viewer.cpp

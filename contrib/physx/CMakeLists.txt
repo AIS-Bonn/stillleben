@@ -73,6 +73,7 @@ else()
 endif()
 
 set(LIBRARIES
+    pthread
     ${OUT_DIR}/libPhysX_64.so
     ${OUT_DIR}/libPhysXPvdSDK_static_64.a
     ${OUT_DIR}/libPhysXExtensions_static_64.a

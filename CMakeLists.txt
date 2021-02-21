@@ -84,6 +84,7 @@ add_library(stillleben SHARED
     src/debug.cpp
     src/exception.cpp
     src/image_loader.cpp
+    src/image_saver.cpp
     src/job_queue.cpp
     src/light_map.cpp
     src/manipulation_sim.cpp

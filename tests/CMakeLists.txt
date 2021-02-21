@@ -2,6 +2,7 @@
 add_executable(tests
     basic.cpp
     image_loader.cpp
+    image_saver.cpp
     runner.cpp
 )
 
