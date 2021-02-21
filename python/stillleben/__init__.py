@@ -18,6 +18,7 @@ __all__ = [
     'render_debug_image',
     'Animator',
     'ImageLoader',
+    'ImageSaver',
     'LightMap',
     'Mesh',
     'MeshCache',

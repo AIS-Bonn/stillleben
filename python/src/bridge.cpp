@@ -10,6 +10,7 @@
 #include "py_scene.h"
 #include "py_render_pass.h"
 #include "py_image_loader.h"
+#include "py_image_saver.h"
 #include "py_light_map.h"
 #include "py_animator.h"
 #include "py_viewer.h"
@@ -33,6 +34,7 @@ PYBIND11_MODULE(libstillleben_python, m)
     sl::python::Scene::init(m);
     sl::python::RenderPass::init(m);
     sl::python::ImageLoader::init(m);
+    sl::python::ImageSaver::init(m);
     sl::python::Animator::init(m);
     sl::python::Viewer::init(m);
     sl::python::JobQueue::init(m);
