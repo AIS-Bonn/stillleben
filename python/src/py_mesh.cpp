@@ -37,7 +37,7 @@ namespace
 
     std::vector<std::shared_ptr<sl::Mesh>> Mesh_loadThreaded(
         const std::vector<py::object>& filenames,
-        bool visual, bool physics, sl::Mesh::Flag flags = {})
+        bool visual, bool physics, const std::vector<sl::Mesh::Flag> flags = {})
     {
         if(!sl::python::Context::instance())
             throw std::logic_error("You need to call init() first!");
@@ -46,7 +46,11 @@ namespace
         for(std::size_t i = 0; i < filenames.size(); ++i)
             filenameStrings[i] = py::str(filenames[i]);
 
-        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, flags);
+        std::vector<sl::Mesh::Flags> meshFlags(flags.size());
+        for(std::size_t i = 0; i < flags.size(); ++i)
+            meshFlags[i] = flags[i];
+
+        return sl::Mesh::loadThreaded(sl::python::Context::instance(), filenameStrings, visual, physics, meshFlags);
     }
 
     void Mesh_scaleToBBoxDiagonal(const std::shared_ptr<sl::Mesh>& mesh, float diagonal, const std::string& modeStr)
@@ -321,7 +325,7 @@ void init(py::module& m)
             :param physics: Should we load collision meshes?
             :param flags: Flags
             :return: List of mesh instances
-        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("flags")=sl::Mesh::Flag{})
+        )EOS", py::arg("filenames"), py::arg("visual")=true, py::arg("physics")=true, py::arg("flags")=std::vector<sl::Mesh::Flag>{})
 
         .def_property_readonly("bbox", &sl::Mesh::bbox, R"EOS(
             Mesh bounding box.

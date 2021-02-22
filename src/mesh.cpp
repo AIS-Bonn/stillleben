@@ -883,7 +883,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
     const std::shared_ptr<Context>& ctx,
     const std::vector<std::string>& filenames,
     bool visual, bool physics,
-    Flags flags)
+    const std::vector<Flags>& flags)
 {
     std::queue<int> workQueue;
     std::mutex workQueueMutex;
@@ -915,9 +915,13 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
 
             std::string filename = filenames[index];
 
+            Mesh::Flags meshFlags{};
+            if(!flags.empty())
+                meshFlags = flags[index];
+
             try
             {
-                auto mesh = std::make_shared<Mesh>(filename, ctx, flags);
+                auto mesh = std::make_shared<Mesh>(filename, ctx, meshFlags);
 
                 mesh->openFile();
 
