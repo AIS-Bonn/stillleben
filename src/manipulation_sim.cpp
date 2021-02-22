@@ -57,6 +57,8 @@ ManipulationSim::ManipulationSim(const std::shared_ptr<sl::Scene>& scene, const 
 
 ManipulationSim::~ManipulationSim()
 {
+    m_d->joint->release();
+    m_d->joint.release();
 }
 
 void ManipulationSim::lockRotationAxes(bool x, bool y, bool z)
