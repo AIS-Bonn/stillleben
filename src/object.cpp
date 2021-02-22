@@ -214,6 +214,7 @@ void Object::setDensity(float density)
     loadPhysics();
 
     physx::PxRigidBodyExt::updateMassAndInertia(*m_rigidBody, density);
+    m_density = density;
 }
 
 void Object::setMass(float mass)
