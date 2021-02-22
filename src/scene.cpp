@@ -213,7 +213,14 @@ void Scene::addObject(const std::shared_ptr<Object>& obj)
 
 void Scene::removeObject(const std::shared_ptr<Object>& obj)
 {
+    auto it = std::find(m_objects.begin(), m_objects.end(), obj);
+
+    if(it == m_objects.end())
+        return;
+
     m_objects.erase(std::remove(m_objects.begin(), m_objects.end(), obj), m_objects.end());
+    obj->setParentSceneObject(nullptr);
+    obj->setPhysicsScene(nullptr);
 }
 
 template<class Generator>
