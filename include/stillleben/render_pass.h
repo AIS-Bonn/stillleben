@@ -13,6 +13,7 @@
 
 #include <stillleben/cuda_interop.h>
 
+#include <functional>
 #include <memory>
 
 namespace sl
@@ -24,6 +25,7 @@ class RenderShader;
 class Scene;
 class SSAOShader;
 class SSAOApplyShader;
+class Object;
 
 class RenderPass
 {
@@ -89,7 +91,9 @@ public:
     constexpr DrawBounding drawBounding() const
     { return m_drawBounding; }
 
-    std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr);
+    using DrawPredicate = std::function<bool(const std::shared_ptr<sl::Object>)>;
+
+    std::shared_ptr<Result> render(Scene& scene, const std::shared_ptr<Result>& result = {}, RenderPass::Result* depthBufferResult = nullptr, const DrawPredicate& drawPredicate = {});
 
     Type type() const
     { return m_type; }

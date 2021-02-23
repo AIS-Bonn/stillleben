@@ -122,7 +122,7 @@ RenderPass::~RenderPass()
 {
 }
 
-std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::shared_ptr<Result>& preAllocatedResult, RenderPass::Result* depthBufferResult)
+std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::shared_ptr<Result>& preAllocatedResult, RenderPass::Result* depthBufferResult, const DrawPredicate& predicate)
 {
     scene.loadVisual();
 
@@ -389,6 +389,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     // Let the fun begin!
     for(auto& object : scene.objects())
     {
+        if(predicate && !predicate(object))
+            continue;
+
         Matrix4 objectToWorld = object->pose();
 
         Matrix4 objectToCam = scene.camera().cameraMatrix() * object->pose();

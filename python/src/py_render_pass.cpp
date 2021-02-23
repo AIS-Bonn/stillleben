@@ -11,6 +11,8 @@
 
 #include <Magnum/Image.h>
 
+#include <pybind11/functional.h>
+
 using namespace sl::python::magnum;
 
 namespace
@@ -251,8 +253,9 @@ void init(py::module& m)
             [](const ContextSharedPtr<sl::RenderPass>& pass,
                 const std::shared_ptr<sl::Scene>& scene,
                 std::shared_ptr<sl::RenderPass::Result> result,
-                std::shared_ptr<sl::RenderPass::Result> depthBufferResult){
-                return ContextSharedPtr<sl::RenderPass::Result>{pass->render(*scene, result, depthBufferResult.get())};
+                std::shared_ptr<sl::RenderPass::Result> depthBufferResult,
+                const sl::RenderPass::DrawPredicate& predicate){
+                return ContextSharedPtr<sl::RenderPass::Result>{pass->render(*scene, result, depthBufferResult.get(), predicate)};
             }, R"EOS(
             Render a scene.
 
@@ -263,13 +266,15 @@ void init(py::module& m)
             :param depth_peel: If you want to retrieve the layer behind the last
                 rendered one, pass in the result of the previous render here
                 (depth peeling).
+            :param predicate: A function that decides whether a particular
+                object should be rendered.
             :return: A RenderPassResult instance with the resulting data.
 
             .. block-info :: Internal result instance
 
                 A second render with `result=None` will overwrite
                 the results of the first render.
-        )EOS", py::arg("scene"), py::arg("result")=nullptr, py::arg("depth_peel")=nullptr)
+        )EOS", py::arg("scene"), py::arg("result")=nullptr, py::arg("depth_peel")=nullptr, py::arg("predicate")=sl::RenderPass::DrawPredicate{})
 
         .def_property("ssao_enabled", &sl::RenderPass::ssaoEnabled, &sl::RenderPass::setSSAOEnabled, "SSAO enable")
     ;
