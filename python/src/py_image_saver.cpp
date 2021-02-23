@@ -34,20 +34,17 @@ public:
         return *this;
     }
 
-    void save(at::Tensor& tensor, const std::string& path)
+    void save(at::Tensor& input, const std::string& path)
     {
         if(!m_imageSaver)
             throw std::logic_error{"Call __enter__() first"};
 
+        // Magnum has reversed images
+        at::Tensor tensor = input.flipud();
+
         sl::ImageSaver::Job job;
         job.path = path;
         job.deleter = [tensor](){};
-
-        if(!tensor.device().is_cpu())
-            throw std::invalid_argument{"image needs to be on CPU"};
-
-        if(!tensor.is_contiguous())
-            throw std::invalid_argument{"image needs to be contiguous"};
 
         if(tensor.dim() == 3)
         {
