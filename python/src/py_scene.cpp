@@ -20,6 +20,9 @@ namespace
 {
     std::shared_ptr<sl::Scene> Scene_factory(const std::tuple<int, int>& viewportSize)
     {
+        if(!sl::python::Context::instance())
+            throw std::logic_error{"Call sl.init() first"};
+
         return std::make_shared<sl::Scene>(sl::python::Context::instance(), sl::ViewportSize{
             std::get<0>(viewportSize),
             std::get<1>(viewportSize)
