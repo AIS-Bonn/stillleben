@@ -1,4 +1,3 @@
-
 .. role:: sh(code)
     :language: sh
 
@@ -13,7 +12,7 @@ requires EGL, which did not work reliably in earlier Ubuntu versions.
 Your mileage on other Linux distributions may vary. Other platforms have never
 been tested and are unlikely to work.
 
-If you want to use the Python API (you probably do), you will need PyTorch 1.5.
+If you want to use the Python API (you probably do), you will need PyTorch 1.8.1.
 If you want to use CUDA, please install it first.
 Then install PyTorch from source to avoid compiler ABI issues.
 Here is a short guide:
@@ -30,11 +29,11 @@ Here is a short guide:
     # Otherwise, source anaconda/bin/activate.
 
     # Install PyTorch requirements
-    conda install numpy ninja pyyaml mkl mkl-include setuptools cmake cffi
+    conda install astunparse numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
     conda install -c pytorch magma-cuda101 # adapt the 101 to your CUDA version!
 
-    # Install PyTorch 1.5.0
-    git clone --recursive --depth 1 -b v1.5.0 https://github.com/pytorch/pytorch.git
+    # Install PyTorch 1.8.1
+    git clone --recursive --depth 1 -b v1.8.1 https://github.com/pytorch/pytorch.git
     cd pytorch
     export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
     python setup.py install
