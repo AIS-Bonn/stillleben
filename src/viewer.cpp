@@ -279,6 +279,14 @@ Viewer::Viewer(const std::shared_ptr<Scene>& scene)
         // Get default X display
         m_d->display = reinterpret_cast<Display*>(m_d->ctx->x11Display());
 
+        if(!m_d->display)
+        {
+            throw std::runtime_error{"Stillleben was not initialized with X11. "
+                "A reason may be that your DISPLAY environment variable is not set "
+                "or that you requested CUDA during stillleben initialization, "
+                "but your CUDA-capable card is not connected to X11."};
+        }
+
         VisualId visualId = m_d->ctx->visualID();
 
         /* Get visual info */
