@@ -162,6 +162,8 @@ public:
     bool findNonCollidingPose(Object& object, Sampler& poseSampler, int maxIterations = 10);
 
     void simulateTableTopScene(const std::function<void(int)>& visCallback = {});
+
+    void simulate(float dt);
     //@}
 
     //! @name Lighting
