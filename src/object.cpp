@@ -470,4 +470,29 @@ void Object::setStatic(bool isStatic)
         m_rigidBody->setRigidBodyFlag(physx::PxRigidBodyFlag::eKINEMATIC, isStatic);
 }
 
+void Object::setLinearVelocity(const Magnum::Vector3& velocity)
+{
+    loadPhysics();
+    m_rigidBody->setLinearVelocity(physx::PxVec3{velocity});
+}
+
+Magnum::Vector3 Object::linearVelocity()
+{
+    loadPhysics();
+    return Vector3{m_rigidBody->getLinearVelocity()};
+}
+
+
+void Object::setAngularVelocity(const Magnum::Vector3& velocity)
+{
+    loadPhysics();
+    m_rigidBody->setAngularVelocity(physx::PxVec3{velocity});
+}
+
+Magnum::Vector3 Object::angularVelocity()
+{
+    loadPhysics();
+    return Vector3{m_rigidBody->getAngularVelocity()};
+}
+
 }
