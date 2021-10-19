@@ -153,6 +153,14 @@ void init(py::module& m)
         .def_property("linear_velocity_limit", &sl::Object::linearVelocityLimit, &sl::Object::setLinearVelocityLimit, R"EOS(
             Linear velocity limit in m/s.
         )EOS")
+
+        .def_property("linear_velocity", wrapShared(&sl::Object::linearVelocity), wrapShared(&sl::Object::setLinearVelocity), R"EOS(
+            Linear velocity in m/s (in global frame).
+        )EOS")
+
+        .def_property("angular_velocity", wrapShared(&sl::Object::angularVelocity), wrapShared(&sl::Object::setAngularVelocity), R"EOS(
+            Angular velocity in rad/s (in global frame).
+        )EOS")
     ;
 }
 
