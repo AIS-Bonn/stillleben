@@ -108,6 +108,27 @@ class PythonTest(unittest.TestCase):
         self.assertEqual(gray16.shape, (640,480))
         self.assertEqual(gray16.dtype, np.int32)
 
+    def test_physics(self):
+        scene = sl.Scene((640,480))
+
+        mesh = sl.Mesh(os.path.join(TESTS_PATH, 'stanford_bunny', 'scene.gltf'))
+        mesh.center_bbox()
+        mesh.scale_to_bbox_diagonal(0.5)
+        object = sl.Object(mesh)
+
+        object.linear_velocity = torch.tensor([100.0, 0.0, 0.0])
+
+        scene.add_object(object)
+
+        scene.simulate(0.002)
+
+        # The horizontal velocity should not have changed
+        self.assertAlmostEqual(object.linear_velocity[0], 100.0)
+        self.assertAlmostEqual(object.linear_velocity[1], 0.0)
+
+        # And we should have accelerated downwards (gravity)
+        self.assertLess(object.linear_velocity[2], -0.0001)
+
 
 if __name__ == "__main__":
     Timer.enabled = True

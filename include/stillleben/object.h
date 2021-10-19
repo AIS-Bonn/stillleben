@@ -157,6 +157,12 @@ public:
     void setLinearVelocityLimit(float velLimit);
     float linearVelocityLimit();
 
+    void setLinearVelocity(const Magnum::Vector3& velocity);
+    Magnum::Vector3 linearVelocity();
+
+    void setAngularVelocity(const Magnum::Vector3& velocity);
+    Magnum::Vector3 angularVelocity();
+
 
     void setInstanceIndex(unsigned int instanceIndex);
     unsigned int instanceIndex() const

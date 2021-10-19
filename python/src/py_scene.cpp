@@ -283,6 +283,12 @@ void init(py::module& m)
                 timestep.
         )EOS", py::arg("vis_cb")=std::function<void()>{})
 
+        .def("simulate", &sl::Scene::simulate, R"EOS(
+            Runs the physics simulation for a single timestep of size :p:dt.
+
+            :param dt: The timestep (usually something small like 0.002 is used)
+        )EOS", py::arg("dt"))
+
         .def("choose_random_camera_pose", &sl::Scene::chooseRandomCameraPose, R"EOS(
             Choose a random camera pose in the upper hemisphere (Z up) under the constraint
             that all objects in the scene should be within the camera frustum.

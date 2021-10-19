@@ -13,7 +13,7 @@ build:
     - echo "Using CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} and LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
     - python setup.py install
     - python setup.py bdist_wheel
-    - python/cpp_build/RelWithDebInfo/bin/tests
+    - STILLLEBEN_CUDA_DEBUG=1 python/cpp_build/RelWithDebInfo/bin/tests
     - python tests/test_python.py
     - python tests/test_grad.py
   artifacts:
@@ -30,7 +30,7 @@ cpp_debug:
     - mkdir build_debug && cd build_debug
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS=-fsanitize=address -GNinja ..
     - ninja install
-    - ASAN_OPTIONS=alloc_dealloc_mismatch=0 LSAN_OPTIONS=suppressions=../tests/asan_suppressions.txt Debug/bin/tests
+    - STILLLEBEN_CUDA_DEBUG=1 ASAN_OPTIONS=alloc_dealloc_mismatch=0 LSAN_OPTIONS=suppressions=../tests/asan_suppressions.txt Debug/bin/tests
 
 pages:
   stage: pages
