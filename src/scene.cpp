@@ -852,6 +852,8 @@ void Scene::setBackgroundPlaneTexture(const std::shared_ptr<Magnum::GL::Texture2
 
 void Scene::simulate(float dt)
 {
+    loadPhysics();
+
     m_physicsScene->simulate(dt);
     m_physicsScene->fetchResults(true);
 
