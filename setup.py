@@ -30,6 +30,10 @@ def build_stillleben():
             '../..'
         ]
 
+        # if CUDA_HOME is available, respect it to use non-default CUDA versions
+        if 'CUDA_HOME' in env:
+            cmd.append('-DCUDA_TOOLKIT_ROOT_DIR={}'.format(env['CUDA_HOME']))
+
         # are we installing inside anaconda?
         # if so, try to be helpful.
         if 'CONDA_PREFIX' in env:
