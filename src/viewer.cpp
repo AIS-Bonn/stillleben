@@ -31,6 +31,7 @@
 
 #include <Magnum/MeshTools/Compile.h>
 #include <Magnum/Primitives/Square.h>
+#include <Magnum/Timeline.h>
 #include <Magnum/Trade/MeshData.h>
 
 #include <Magnum/ImGuiIntegration/Context.h>
@@ -267,6 +268,9 @@ public:
     int simIteration = -1;
     bool rearrangeRequested = false;
     bool visualizeRearrangement = true;
+    bool runSimulation = false;
+
+    Timeline timeline;
 };
 
 Viewer::Viewer(const std::shared_ptr<Scene>& scene)
@@ -463,6 +467,8 @@ Viewer::Viewer(const std::shared_ptr<Scene>& scene)
 
     // Switch back to headless EGL state
     eglMakeCurrent(eglGetCurrentDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, eglGetCurrentContext());
+
+    m_d->timeline.start();
 }
 
 Viewer::~Viewer()
@@ -484,6 +490,19 @@ std::shared_ptr<Scene> Viewer::scene() const
 
 void Viewer::draw()
 {
+    if(m_d->runSimulation)
+    {
+        float elapsed = m_d->timeline.previousFrameDuration();
+        constexpr float SUBSTEP_DT = 0.002f;
+
+        while(elapsed > 0.0f)
+        {
+            float delta = std::min(SUBSTEP_DT, elapsed);
+            m_d->scene->simulate(delta);
+            elapsed = std::max(0.0f, elapsed - SUBSTEP_DT);
+        }
+    }
+
     m_d->arcBall->updateTransformation();
     m_d->scene->setCameraPose(m_d->arcBall->transformationMatrix());
 
@@ -605,6 +624,8 @@ void Viewer::draw()
 
         if(ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::Checkbox("Run physics freely", &m_d->runSimulation);
+
             if(m_d->simIteration >= 0)
             {
                 ImGui::Button(Utility::formatString("Running: {}", m_d->simIteration).c_str());
@@ -612,6 +633,7 @@ void Viewer::draw()
             else if(ImGui::Button("Rearrange"))
             {
                 m_d->rearrangeRequested = true;
+                m_d->runSimulation = false;
             }
 
             ImGui::Checkbox("Draw sim steps", &m_d->visualizeRearrangement);
@@ -685,6 +707,7 @@ void Viewer::draw()
     GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     eglSwapBuffers(eglGetCurrentDisplay(), m_d->surface);
+    m_d->timeline.nextFrame();
 }
 
 void Viewer::run()
@@ -774,6 +797,9 @@ bool Viewer::mainLoopIteration()
         m_d->imgui.relayout(m_d->windowSize);
         m_d->redraw(2);
     }
+
+    if(m_d->runSimulation)
+        m_d->redraw();
 
     if(m_d->redrawCount > 0)
     {
