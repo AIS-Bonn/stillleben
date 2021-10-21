@@ -222,6 +222,8 @@ private:
     void populateParts();
     void addPart(Object3D& parent, Magnum::UnsignedInt i);
 
+    void setPhysicsPose();
+
     std::shared_ptr<Mesh> m_mesh;
     InstantiationOptions m_options;
 
