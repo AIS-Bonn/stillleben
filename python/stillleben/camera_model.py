@@ -49,7 +49,7 @@ def chromatic_aberration(rgb, translations, scaling):
     Introduces chromatic aberration effects.
 
     :param rgb: 3xHxW input RGB image
-    :param translation: 3x2 translation tensor (tx, ty) for each of R, G, B
+    :param translations: 3x2 translation tensor (tx, ty) for each of R, G, B
     :param scaling: [sr, sg, sb] scaling factor for each of R, G, B
     :return: 3xHxW output tensor
     """

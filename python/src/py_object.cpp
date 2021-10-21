@@ -77,6 +77,13 @@ void init(py::module& m)
                 p = obj.pose()
                 p[:3,3] = torch.tensor([0, 1, 0])
                 obj.set_pose(p)
+
+            .. block-info:: Supported poses
+
+                The stillleben renderer supports arbitrary 4x4 pose matrices.
+                However, if you use the physics engine (e.g. via
+                :ref:`Scene.simulate`), you are restricted to proper rigid transforms,
+                i.e. pure rotations and translations.
         )EOS", py::arg("pose"))
 
         .def_property("instance_index", &sl::Object::instanceIndex, &sl::Object::setInstanceIndex, R"EOS(

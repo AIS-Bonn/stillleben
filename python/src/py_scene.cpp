@@ -284,7 +284,7 @@ void init(py::module& m)
         )EOS", py::arg("vis_cb")=std::function<void()>{})
 
         .def("simulate", &sl::Scene::simulate, R"EOS(
-            Runs the physics simulation for a single timestep of size :p:dt.
+            Runs the physics simulation for a single timestep of size :p:`dt`.
 
             :param dt: The timestep (usually something small like 0.002 is used)
         )EOS", py::arg("dt"))
