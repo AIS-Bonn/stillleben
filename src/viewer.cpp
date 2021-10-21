@@ -23,6 +23,7 @@
 #include <Corrade/Utility/System.h>
 #include <Corrade/Utility/FormatStl.h>
 
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/StaticArray.h>
 
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -271,6 +272,10 @@ public:
     bool runSimulation = false;
 
     Timeline timeline;
+
+    Containers::Array<Matrix4> initialPoses;
+    Containers::Array<Vector3> initialLinearVelocities;
+    Containers::Array<Vector3> initialAngularVelocities;
 };
 
 Viewer::Viewer(const std::shared_ptr<Scene>& scene)
@@ -425,6 +430,20 @@ Viewer::Viewer(const std::shared_ptr<Scene>& scene)
         camPosition, viewCenter, upDir, fov,
         m_d->scene->viewport()
     );
+
+    // Record initial state
+    std::size_t numObjects = m_d->scene->objects().size();
+    Containers::arrayResize(m_d->initialPoses, numObjects);
+    Containers::arrayResize(m_d->initialLinearVelocities, numObjects);
+    Containers::arrayResize(m_d->initialAngularVelocities, numObjects);
+
+    for(std::size_t i = 0; i < numObjects; ++i)
+    {
+        auto& obj = m_d->scene->objects()[i];
+        m_d->initialPoses[i] = obj->pose();
+        m_d->initialLinearVelocities[i] = obj->linearVelocity();
+        m_d->initialAngularVelocities[i] = obj->angularVelocity();
+    }
 
 #if HAVE_XCURSOR
     // Load cursors
@@ -624,13 +643,30 @@ void Viewer::draw()
 
         if(ImGui::CollapsingHeader("Scene", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            if(ImGui::Button("Reset objects"))
+            {
+                if(m_d->scene->objects().size() != m_d->initialPoses.size())
+                    Warning{} << "Number of objects changed, cannot reset poses";
+                else
+                {
+                    std::size_t numObjects = m_d->initialPoses.size();
+                    for(std::size_t i = 0; i < numObjects; ++i)
+                    {
+                        auto& obj = m_d->scene->objects()[i];
+                        obj->setPose(m_d->initialPoses[i]);
+                        obj->setLinearVelocity(m_d->initialLinearVelocities[i]);
+                        obj->setAngularVelocity(m_d->initialAngularVelocities[i]);
+                    }
+                }
+            }
+
             ImGui::Checkbox("Run physics freely", &m_d->runSimulation);
 
             if(m_d->simIteration >= 0)
             {
                 ImGui::Button(Utility::formatString("Running: {}", m_d->simIteration).c_str());
             }
-            else if(ImGui::Button("Rearrange"))
+            else if(ImGui::Button("Tabletop sim"))
             {
                 m_d->rearrangeRequested = true;
                 m_d->runSimulation = false;
