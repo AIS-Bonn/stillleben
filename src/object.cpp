@@ -9,6 +9,7 @@
 #include <stillleben/physx_impl.h>
 
 #include <limits>
+#include <sstream>
 
 #include <Corrade/Utility/ConfigurationGroup.h>
 
@@ -160,8 +161,18 @@ void Object::loadPhysics()
         m_mesh->context()->physxPhysics().createRigidDynamic(physx::PxTransform(physx::PxIdentity))
     );
     m_rigidBody->userData = this;
-    m_rigidBody->setGlobalPose(physx::PxTransform{m_sceneObject.transformation()});
     m_rigidBody->setRigidBodyFlag(physx::PxRigidBodyFlag::eENABLE_SPECULATIVE_CCD, true);
+
+    try
+    {
+        setPhysicsPose(); // may throw if the pose is not proper
+    }
+    catch(...)
+    {
+        // so make sure we reset m_rigidBody if that happens so the user may retry.
+        m_rigidBody.reset();
+        throw;
+    }
 
     if(m_physicsScene)
         m_physicsScene->addActor(*m_rigidBody);
@@ -324,9 +335,29 @@ void Object::setPhysicsScene(physx::PxScene* scene)
 void Object::setPose(const Magnum::Matrix4& matrix)
 {
     m_sceneObject.setTransformation(matrix);
+    setPhysicsPose();
+}
 
-    if(m_rigidBody)
-        m_rigidBody->setGlobalPose(physx::PxTransform{matrix});
+void Object::setPhysicsPose()
+{
+    if(!m_rigidBody)
+        return;
+
+    float det = m_sceneObject.transformation().rotationScaling().determinant();
+
+    if(std::abs(det - 1.0f) > 0.01f)
+    {
+        std::stringstream ss;
+        Debug dbg{&ss};
+        dbg << "You provided a pose which is not a pure rotation / translation:\n";
+        dbg << m_sceneObject.transformation();
+        dbg << "\n(determinant:" << det << dbg.nospace << ")\n";
+        dbg << "This is not supported when using the physics engine.";
+
+        throw std::runtime_error{ss.str()};
+    }
+
+    m_rigidBody->setGlobalPose(physx::PxTransform{m_sceneObject.transformation()});
 }
 
 void Object::updateFromPhysics()
