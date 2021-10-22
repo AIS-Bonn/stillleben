@@ -31,6 +31,8 @@
 #include <Magnum/Trade/ObjectData3D.h>
 #include <Magnum/Trade/MeshObjectData3D.h>
 
+#include <PxMaterial.h>
+
 using namespace Magnum;
 using namespace Math::Literals;
 
@@ -194,7 +196,7 @@ void Object::loadPhysics()
         m_mesh->pretransformScale() * poseInSceneObjectRigid.translation()
     );
 
-    physx::PxMaterial& material = m_mesh->context()->physxDefaultMaterial();
+    m_material = &m_mesh->context()->physxDefaultMaterial();
 
     for(auto& physxMesh : physxMeshes)
     {
@@ -204,7 +206,7 @@ void Object::loadPhysics()
         physx::PxConvexMeshGeometry geometry(const_cast<physx::PxConvexMesh*>(physxMesh.get()), meshScale);
 
         PhysXHolder<physx::PxShape> shape{
-            physics.createShape(geometry, material, true)
+            physics.createShape(geometry, *m_material, true)
         };
 
         shape->setLocalPose(physx::PxTransform{pose});
@@ -524,6 +526,66 @@ Magnum::Vector3 Object::angularVelocity()
 {
     loadPhysics();
     return Vector3{m_rigidBody->getAngularVelocity()};
+}
+
+float Object::staticFriction()
+{
+    loadPhysics();
+    return m_material->getStaticFriction();
+}
+
+float Object::dynamicFriction()
+{
+    loadPhysics();
+    return m_material->getDynamicFriction();
+}
+
+float Object::restitution()
+{
+    loadPhysics();
+    return m_material->getRestitution();
+}
+
+void Object::customizeMaterial()
+{
+    if(m_customMaterial)
+        return;
+
+    loadPhysics();
+    m_customMaterial.reset(m_mesh->context()->physxPhysics().createMaterial(
+        m_material->getStaticFriction(), m_material->getDynamicFriction(), m_material->getRestitution()
+    ));
+
+    std::vector<physx::PxShape*> shapes(m_rigidBody->getNbShapes());
+    m_rigidBody->getShapes(shapes.data(), shapes.size());
+
+    std::vector<physx::PxMaterial*> materials;
+
+    for(auto& shape : shapes)
+    {
+        materials.resize(shape->getNbMaterials(), m_customMaterial.get());
+        shape->setMaterials(materials.data(), materials.size());
+    }
+
+    m_material = m_customMaterial.get();
+}
+
+void Object::setStaticFriction(float friction)
+{
+    customizeMaterial();
+    m_customMaterial->setStaticFriction(friction);
+}
+
+void Object::setDynamicFriction(float friction)
+{
+    customizeMaterial();
+    m_customMaterial->setDynamicFriction(friction);
+}
+
+void Object::setRestitution(float restitution)
+{
+    customizeMaterial();
+    m_customMaterial->setRestitution(restitution);
 }
 
 }

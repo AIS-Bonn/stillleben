@@ -23,6 +23,7 @@ namespace physx
 {
     class PxScene;
     class PxRigidDynamic;
+    class PxMaterial;
 }
 
 namespace sl
@@ -216,6 +217,15 @@ public:
     constexpr float separation() const
     { return m_separation; }
 
+    float staticFriction();
+    void setStaticFriction(float friction);
+
+    float dynamicFriction();
+    void setDynamicFriction(float friction);
+
+    float restitution();
+    void setRestitution(float restitution);
+
 private:
     friend class Scene;
 
@@ -223,6 +233,7 @@ private:
     void addPart(Object3D& parent, Magnum::UnsignedInt i);
 
     void setPhysicsPose();
+    void customizeMaterial();
 
     std::shared_ptr<Mesh> m_mesh;
     InstantiationOptions m_options;
@@ -275,6 +286,9 @@ private:
 
     float m_separation = 0.0f;
     unsigned int m_stuckCounter = 0;
+
+    physx::PxMaterial* m_material = nullptr;
+    PhysXHolder<physx::PxMaterial> m_customMaterial;
 };
 
 }
