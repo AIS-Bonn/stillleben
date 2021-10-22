@@ -62,6 +62,70 @@ namespace
     }
 }
 
+class Scene::SimulationCallback : public physx::PxSimulationEventCallback
+{
+public:
+    void onContact(
+        const physx::PxContactPairHeader&,
+        const physx::PxContactPair* pairs, physx::PxU32 nbPairs) override
+    {
+        using namespace physx;
+
+        for(PxU32 i=0; i < nbPairs; i++)
+        {
+            const PxContactPair& cp = pairs[i];
+
+            if(cp.flags & (PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH | PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1))
+                continue;
+
+            auto obj1 = reinterpret_cast<sl::Object*>(cp.shapes[0]->getActor()->userData);
+            auto obj2 = reinterpret_cast<sl::Object*>(cp.shapes[1]->getActor()->userData);
+
+            if(!obj1 || !obj2)
+                continue;
+
+            if(!cp.contactPatches)
+                continue;
+
+            PxContactStreamIterator iter{
+                cp.contactPatches, cp.contactPoints,
+                cp.getInternalFaceIndices(),
+                cp.patchCount, cp.contactCount
+            };
+
+            float minSep = std::numeric_limits<float>::infinity();
+
+            while(iter.hasNextPatch())
+            {
+                iter.nextPatch();
+                while(iter.hasNextContact())
+                {
+                    iter.nextContact();
+                    minSep = std::min(iter.getSeparation(), minSep);
+                }
+            }
+
+            obj1->m_separation = std::min(obj1->m_separation, minSep);
+            obj2->m_separation = std::min(obj2->m_separation, minSep);
+        }
+    }
+
+    void onWake(physx::PxActor ** actors, physx::PxU32 count) override
+    {}
+
+    void onAdvance(const physx::PxRigidBody *const * bodyBuffer, const physx::PxTransform * poseBuffer, const physx::PxU32 count) override
+    {}
+
+    void onConstraintBreak(physx::PxConstraintInfo * constraints, physx::PxU32 count) override
+    {}
+
+    void onSleep(physx::PxActor ** actors, physx::PxU32 count) override
+    {}
+
+    void onTrigger(physx::PxTriggerPair * pairs, physx::PxU32 count) override
+    {}
+};
+
 Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSize)
  : m_ctx{ctx}
 {
@@ -82,7 +146,7 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     m_physicsDispatcher.reset(physx::PxDefaultCpuDispatcherCreate(2));
 
-    FilterShaderData shaderParams;
+    FilterShaderData shaderParams{true};
 
     physx::PxSceneDesc desc(physics.getTolerancesScale());
     desc.gravity = physx::PxVec3(0.0f, 0.0f, -9.81f);
@@ -94,6 +158,10 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
     desc.flags |= physx::PxSceneFlag::eENABLE_PCM;
 
     m_physicsScene.reset(physics.createScene(desc));
+
+    // Enable contact reporting
+    m_simCallback = std::make_unique<SimulationCallback>();
+    m_physicsScene->setSimulationEventCallback(m_simCallback.get());
 }
 
 Scene::~Scene()
@@ -514,71 +582,6 @@ void Scene::chooseRandomCameraPose()
 
 void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
 {
-    class Callback : public physx::PxSimulationEventCallback
-    {
-    public:
-        void onContact(
-            const physx::PxContactPairHeader&,
-            const physx::PxContactPair* pairs, physx::PxU32 nbPairs) override
-        {
-            using namespace physx;
-
-            for(PxU32 i=0; i < nbPairs; i++)
-            {
-                const PxContactPair& cp = pairs[i];
-
-                if(cp.flags & (PxContactPairFlag::eACTOR_PAIR_LOST_TOUCH | PxContactPairFlag::eREMOVED_SHAPE_0 | PxContactPairFlag::eREMOVED_SHAPE_1))
-                    continue;
-
-                auto obj1 = reinterpret_cast<sl::Object*>(cp.shapes[0]->getActor()->userData);
-                auto obj2 = reinterpret_cast<sl::Object*>(cp.shapes[1]->getActor()->userData);
-
-                if(!obj1 || !obj2)
-                    continue;
-
-                if(!cp.contactPatches)
-                    continue;
-
-                PxContactStreamIterator iter{
-                    cp.contactPatches, cp.contactPoints,
-                    cp.getInternalFaceIndices(),
-                    cp.patchCount, cp.contactCount
-                };
-
-                float minSep = std::numeric_limits<float>::infinity();
-
-                while(iter.hasNextPatch())
-                {
-                    iter.nextPatch();
-                    while(iter.hasNextContact())
-                    {
-                        iter.nextContact();
-                        minSep = std::min(iter.getSeparation(), minSep);
-                    }
-                }
-
-                obj1->m_separation = std::min(obj1->m_separation, minSep);
-                obj2->m_separation = std::min(obj2->m_separation, minSep);
-            }
-        }
-
-        void onWake(physx::PxActor ** actors, physx::PxU32 count) override
-        {}
-
-        void onAdvance(const physx::PxRigidBody *const * bodyBuffer, const physx::PxTransform * poseBuffer, const physx::PxU32 count) override
-        {}
-
-        void onConstraintBreak(physx::PxConstraintInfo * constraints, physx::PxU32 count) override
-        {}
-
-        void onSleep(physx::PxActor ** actors, physx::PxU32 count) override
-        {}
-
-        void onTrigger(physx::PxTriggerPair * pairs, physx::PxU32 count) override
-        {}
-    };
-
-
     loadPhysics();
 
     std::vector<std::shared_ptr<Object>> dynamicObjects;
@@ -677,19 +680,6 @@ void Scene::simulateTableTopScene(const std::function<void(int)>& visCallback)
         obj->rigidBody().setLinearVelocity(physx::PxVec3{Vector3{}});
         obj->rigidBody().setAngularVelocity(physx::PxVec3{Vector3{}});
     };
-
-    // Enable contact reporting
-    Callback cb;
-    m_physicsScene->setSimulationEventCallback(&cb);
-
-    FilterShaderData shaderParams{true};
-    m_physicsScene->setFilterShaderData(&shaderParams, sizeof(shaderParams));
-
-    auto _fin = finally([&](){
-        m_physicsScene->setSimulationEventCallback(nullptr);
-        FilterShaderData shaderParams{false};
-        m_physicsScene->setFilterShaderData(&shaderParams, sizeof(shaderParams));
-    });
 
     for(auto& obj : dynamicObjects)
     {
@@ -859,6 +849,19 @@ void Scene::simulate(float dt)
 
     for(auto& obj : m_objects)
         obj->updateFromPhysics();
+}
+
+void Scene::checkCollisions()
+{
+    loadPhysics();
+
+    for(auto& obj : m_objects)
+    {
+        if(isObjectColliding(*obj))
+            obj->m_separation = -std::numeric_limits<float>::max();
+        else
+            obj->m_separation = 0.0f;
+    }
 }
 
 }
