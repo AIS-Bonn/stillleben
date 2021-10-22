@@ -168,6 +168,17 @@ void init(py::module& m)
         .def_property("angular_velocity", wrapShared(&sl::Object::angularVelocity), wrapShared(&sl::Object::setAngularVelocity), R"EOS(
             Angular velocity in rad/s (in global frame).
         )EOS")
+
+        .def_property("static_friction", &sl::Object::staticFriction, &sl::Object::setStaticFriction, R"EOS(
+            Static friction coefficient (should be in range 0-1).
+        )EOS")
+        .def_property("dynamic_friction", &sl::Object::dynamicFriction, &sl::Object::setDynamicFriction, R"EOS(
+            Dynamic friction coefficient (should be in range 0-1).
+        )EOS")
+        .def_property("restitution", &sl::Object::restitution, &sl::Object::setRestitution, R"EOS(
+            Coefficient of restitution.
+            A coefficient of 0 makes the object bounce as little as possible, higher values up to 1.0 result in more bounce.
+        )EOS")
     ;
 }
 
