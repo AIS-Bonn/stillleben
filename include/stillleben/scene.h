@@ -164,6 +164,8 @@ public:
     void simulateTableTopScene(const std::function<void(int)>& visCallback = {});
 
     void simulate(float dt);
+
+    void checkCollisions();
     //@}
 
     //! @name Lighting
@@ -184,6 +186,8 @@ public:
     //@}
 
 private:
+    class SimulationCallback;
+
     bool isObjectColliding(Object& object);
 
     std::shared_ptr<Context> m_ctx;
@@ -201,6 +205,7 @@ private:
 
     PhysXUnique<physx::PxDefaultCpuDispatcher> m_physicsDispatcher;
     PhysXUnique<physx::PxScene> m_physicsScene;
+    std::unique_ptr<SimulationCallback> m_simCallback;
 
     Magnum::Vector3 m_lightPosition;
     Magnum::Color3 m_ambientLight;

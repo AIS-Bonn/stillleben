@@ -145,6 +145,12 @@ void init(py::module& m)
             After physics simulation, this contains the minimum separation of
             this object to other objects in the scene. If the separation is
             negative, the two objects intersect.
+
+            .. block-warning:: Caveats
+
+                This functionality is work-in-progress. Currently, you can only
+                rely on the following: If and only if the separation is
+                negative, the objects intersect.
         )EOS")
 
         .def_property("mass", &sl::Object::mass, &sl::Object::setMass, R"EOS(
