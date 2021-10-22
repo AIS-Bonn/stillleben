@@ -289,6 +289,11 @@ void init(py::module& m)
             :param dt: The timestep (usually something small like 0.002 is used)
         )EOS", py::arg("dt"))
 
+        .def("check_collisions", &sl::Scene::checkCollisions, R"EOS(
+            Checks the scene for collisions. The results will be available in
+            :ref:`Object.separation`.
+        )EOS")
+
         .def("choose_random_camera_pose", &sl::Scene::chooseRandomCameraPose, R"EOS(
             Choose a random camera pose in the upper hemisphere (Z up) under the constraint
             that all objects in the scene should be within the camera frustum.
