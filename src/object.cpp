@@ -218,6 +218,8 @@ void Object::loadPhysics()
     // Calculate mass & inertia
     setDensity(m_density);
 
+    m_rigidBody->setSolverIterationCounts(4,4);
+
     // Synchronize static flag
     setStatic(isStatic());
 }

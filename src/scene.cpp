@@ -155,9 +155,11 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 //     desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
     desc.filterShaderData = &shaderParams;
     desc.filterShaderDataSize = sizeof(FilterShaderData);
-    desc.flags |= physx::PxSceneFlag::eENABLE_PCM;
+    desc.flags |= physx::PxSceneFlag::eENABLE_STABILIZATION;
 
     m_physicsScene.reset(physics.createScene(desc));
+
+    m_physicsScene->getScenePvdClient()->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
 
     // Enable contact reporting
     m_simCallback = std::make_unique<SimulationCallback>();
