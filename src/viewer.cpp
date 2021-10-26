@@ -514,6 +514,8 @@ void Viewer::draw()
         float elapsed = m_d->timeline.previousFrameDuration();
         constexpr float SUBSTEP_DT = 0.002f;
 
+        elapsed = std::min(elapsed, 1.0f/30.0f);
+
         while(elapsed > 0.0f)
         {
             float delta = std::min(SUBSTEP_DT, elapsed);
