@@ -159,7 +159,8 @@ Scene::Scene(const std::shared_ptr<Context>& ctx, const ViewportSize& viewportSi
 
     m_physicsScene.reset(physics.createScene(desc));
 
-    m_physicsScene->getScenePvdClient()->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
+    if(auto client = m_physicsScene->getScenePvdClient())
+        client->setScenePvdFlag(PxPvdSceneFlag::eTRANSMIT_CONTACTS, true);
 
     // Enable contact reporting
     m_simCallback = std::make_unique<SimulationCallback>();
