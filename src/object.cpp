@@ -254,6 +254,20 @@ float Object::volume()
     return m_rigidBody->getMass() / m_density;
 }
 
+Vector3 Object::inertia()
+{
+    loadPhysics();
+
+    return Vector3{m_rigidBody->getMassSpaceInertiaTensor()};
+}
+
+Matrix4 Object::inertialFrame()
+{
+    loadPhysics();
+
+    return Matrix4{m_rigidBody->getCMassLocalPose()};
+}
+
 void Object::setLinearVelocityLimit(float limit)
 {
     loadPhysics();
