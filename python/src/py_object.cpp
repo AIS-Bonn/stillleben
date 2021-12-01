@@ -162,6 +162,15 @@ void init(py::module& m)
         .def_property("density", &sl::Object::density, &sl::Object::setDensity, R"EOS(
             Density of the object in kg / m^3.
         )EOS")
+        .def_property_readonly("inertia", wrapShared(&sl::Object::inertia), R"EOS(
+            Inertia around the axes of the inertial frame (see :ref:`inertial_frame`).
+        )EOS")
+        .def_property_readonly("inertial_frame", wrapShared(&sl::Object::inertialFrame), R"EOS(
+            Inertial frame. The center of mass is at the origin in the intertial frame,
+            and its axes are aligned with the principal axes of inertia (see :ref:`inertia`).
+
+            The pose is given relative to the object's coordinate system.
+        )EOS")
 
         .def_property("linear_velocity_limit", &sl::Object::linearVelocityLimit, &sl::Object::setLinearVelocityLimit, R"EOS(
             Linear velocity limit in m/s.

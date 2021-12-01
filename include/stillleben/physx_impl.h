@@ -109,6 +109,21 @@ template<> struct RectangularMatrixConverter<4, 4, float, physx::PxTransform>
     }
 };
 
+template<> struct RectangularMatrixConverter<3, 3, float, physx::PxMat33>
+{
+    static RectangularMatrix<3, 3, Float> from(const physx::PxMat33& other)
+    {
+        return RectangularMatrix<3, 3, Float>::from(other.front());
+    }
+
+    static physx::PxMat33 to(const RectangularMatrix<3, 3, Float>& other)
+    {
+        // physx::PxMat33(float[]) makes a copy, but does not take a const
+        // pointer *sigh*
+        return physx::PxMat33(const_cast<float*>(other.data()));
+    }
+};
+
 }}}
 
 #endif

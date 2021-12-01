@@ -155,6 +155,9 @@ public:
 
     float volume();
 
+    Magnum::Vector3 inertia();
+    Magnum::Matrix4 inertialFrame();
+
     void setLinearVelocityLimit(float velLimit);
     float linearVelocityLimit();
 

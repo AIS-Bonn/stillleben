@@ -20,6 +20,15 @@ else:
 mesh.center_bbox()
 mesh.scale_to_bbox_diagonal(0.5)
 
+# Dump some object statistics
+obj = sl.Object(mesh)
+print("Object properties:")
+print(f" - mass: {obj.mass} kg")
+print(f" - density: {obj.density} kg/m^3")
+print(f" - volume: {obj.volume} m^3")
+print(f" - inertial frame:\n{obj.inertial_frame}")
+print(f" - inertia in inertial frame: {obj.inertia}")
+
 # Create a scene with a few bunnies
 scene = sl.Scene((1920,1080))
 
