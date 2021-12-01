@@ -468,7 +468,8 @@ void Mesh::loadPhysics()
             Magnum::UnsignedInt n = source->GetNConvexHulls();
             buf.write(&n, sizeof(n));
 
-            bool allOK = true;
+            Magnum::UnsignedInt numValid = 0;
+
             for(Magnum::UnsignedInt j = 0; j < n; ++j)
             {
                 VHACD::IVHACD::ConvexHull hull;
@@ -489,16 +490,17 @@ void Mesh::loadPhysics()
                 );
 
                 if(!ok)
-                {
-                    allOK = false;
-                    break;
-                }
+                    continue;
+
+                numValid++;
             }
 
-            if(!allOK)
+            if(numValid != n)
             {
-                Warning{} << "Could not compute convex hull for convex sub-part of mesh" << m_filename << ". This object will not participate in physics simulation.";
-                return;
+                Warning{} << "Some parts of the convex decomposition of mesh" << m_filename << "failed to load, the physics simulation might not be accurate (got" << numValid << "of" << n << ").";
+
+                // Patch the number of actually written hulls
+                std::memcpy(buf.data(), &numValid, sizeof(numValid));
             }
         }
         else
