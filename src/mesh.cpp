@@ -81,7 +81,7 @@ namespace
         bool status = cooking.cookConvexMesh(meshDesc, buffer, &result);
         if(!status)
         {
-            Error{} << "PhysX cooking failed, ignoring submesh";
+            Error{} << "PhysX cooking failed: " << result;
             return false;
         }
 
@@ -89,7 +89,7 @@ namespace
     }
 
     using MeshHash = Corrade::Utility::MurmurHash2;
-    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 4;
+    constexpr Magnum::UnsignedInt FILE_FORMAT_VERSION = 5;
 
     template<class T>
     MeshHash::Digest hashArray(const Corrade::Containers::Array<T>& vec)
@@ -379,11 +379,14 @@ void Mesh::loadPhysics()
             vhacd->Release();
         }};
 
+        bool giveRawMeshToPhysX = false;
         {
             // Call V-HACD for convex decomposition
             VHACD::IVHACD::Parameters params;
             params.m_concavity = 1.0;
             params.m_asyncACD = false; // hangs sometimes
+            params.m_convexhullApproximation = false;
+            params.m_maxConvexHulls = 1;
 
             singleHull->Compute(
                 reinterpret_cast<const float*>(vertices.data()),
@@ -392,6 +395,21 @@ void Mesh::loadPhysics()
                 indices.size()/3,
                 params
             );
+
+            double volume = 0;
+            for(std::size_t i = 0; i < singleHull->GetNConvexHulls(); ++i)
+            {
+                VHACD::IVHACD::ConvexHull hull;
+                singleHull->GetConvexHull(i, hull);
+                volume += hull.m_volume;
+            }
+
+            if(volume < 1e-9)
+            {
+                // We could not compute a sensible convex hull using V-HACD, let
+                // PhysX try from the raw vertices.
+                giveRawMeshToPhysX = true;
+            }
         }
 
         VHACD::IVHACD* source = singleHull;
@@ -403,7 +421,7 @@ void Mesh::loadPhysics()
             vhacd->Release();
         }};
 
-        if(!(m_flags & Flag::PhysicsForceConvexHull))
+        if(!giveRawMeshToPhysX && !(m_flags & Flag::PhysicsForceConvexHull))
         {
             {
                 // Call V-HACD for convex decomposition
@@ -445,37 +463,61 @@ void Mesh::loadPhysics()
                 source = vhacd;
         }
 
-        Magnum::UnsignedInt n = source->GetNConvexHulls();
-        buf.write(&n, sizeof(n));
-
-        bool allOK = true;
-        for(Magnum::UnsignedInt j = 0; j < n; ++j)
+        if(!giveRawMeshToPhysX)
         {
-            VHACD::IVHACD::ConvexHull hull;
-            source->GetConvexHull(j, hull);
-            auto hullVerticesD = Containers::arrayView(
-                reinterpret_cast<const Vector3d*>(hull.m_points),
-                hull.m_nPoints
-            );
-            Array<Vector3> hullVertices{hullVerticesD.size()};
-            for(std::size_t k = 0; k < hullVertices.size(); ++k)
-                hullVertices[k] = Vector3{hullVerticesD[k]};
+            Magnum::UnsignedInt n = source->GetNConvexHulls();
+            buf.write(&n, sizeof(n));
+
+            bool allOK = true;
+            for(Magnum::UnsignedInt j = 0; j < n; ++j)
+            {
+                VHACD::IVHACD::ConvexHull hull;
+                source->GetConvexHull(j, hull);
+                auto hullVerticesD = Containers::arrayView(
+                    reinterpret_cast<const Vector3d*>(hull.m_points),
+                    hull.m_nPoints
+                );
+
+                Array<Vector3> hullVertices{hullVerticesD.size()};
+                for(std::size_t k = 0; k < hullVertices.size(); ++k)
+                    hullVertices[k] = Vector3{hullVerticesD[k]};
+
+                bool ok = cookForPhysX(
+                    m_ctx->physxCooking(),
+                    hullVertices,
+                    buf
+                );
+
+                if(!ok)
+                {
+                    allOK = false;
+                    break;
+                }
+            }
+
+            if(!allOK)
+            {
+                Warning{} << "Could not compute convex hull for convex sub-part of mesh" << m_filename << ". This object will not participate in physics simulation.";
+                return;
+            }
+        }
+        else
+        {
+            Magnum::UnsignedInt n = 1;
+            buf.write(&n, sizeof(n));
 
             bool ok = cookForPhysX(
                 m_ctx->physxCooking(),
-                hullVertices,
+                vertices,
                 buf
             );
 
             if(!ok)
             {
-                allOK = false;
-                break;
+                Warning{} << "Could not compute convex hull at all for mesh" << m_filename << ". This object will not participate in physics simulation.";
+                return;
             }
         }
-
-        if(!allOK)
-            return;
 
         os::AtomicFileStream ostream(cacheFile);
 
