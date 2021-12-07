@@ -12,6 +12,8 @@
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/ScopeGuard.h>
 
+#include <Corrade/PluginManager/Manager.h>
+
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
@@ -42,6 +44,7 @@
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
 #include <Magnum/Trade/TextureData.h>
+#include <Magnum/Trade/AbstractSceneConverter.h>
 #include <Magnum/Image.h>
 
 #include <VHACD.h>
@@ -558,6 +561,7 @@ void Mesh::loadPhysicsVisualization()
 
     loadPhysics();
 
+    m_physXVisMeshData = PhysXVisDataArray{};
     m_physXVisMeshes = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes.size()};
 
     for(std::size_t j = 0; j < m_physXMeshes.size(); ++j)
@@ -609,6 +613,33 @@ void Mesh::loadPhysicsVisualization()
         }};
 
         m_physXVisMeshes[j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
+        Containers::arrayAppend(m_physXVisMeshData, std::move(meshData));
+    }
+}
+
+Mesh::PhysXVisDataArray& Mesh::physicsMeshData()
+{
+    loadPhysicsVisualization();
+    return m_physXVisMeshData;
+}
+
+void Mesh::dumpPhysicsMeshes(const std::string& path)
+{
+    loadPhysicsVisualization();
+
+    if(!Utility::Directory::isDirectory(path))
+        throw std::runtime_error{Utility::formatString("Path {} is not a directory", path)};
+
+    PluginManager::Manager<Trade::AbstractSceneConverter> manager{m_ctx->sceneConverterPluginPath()};
+
+    auto converter = manager.loadAndInstantiate("StanfordSceneConverter");
+    if(!converter)
+        throw std::runtime_error{"Could not load StanfordSceneConverter"};
+
+    unsigned int idx = 0;
+    for(auto& mesh : m_physXVisMeshData)
+    {
+        converter->convertToFile(mesh, Utility::Directory::join(path, Utility::formatString("{:.4}.ply", idx++)));
     }
 }
 

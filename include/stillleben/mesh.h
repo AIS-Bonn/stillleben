@@ -77,6 +77,7 @@ public:
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
     using PhysXMeshArray = Array<PhysXHolder<physx::PxConvexMesh>>;
+    using PhysXVisDataArray = Array<Magnum::Trade::MeshData>;
     using PhysXVisArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
 
     class LoadException : public Exception
@@ -186,6 +187,8 @@ public:
         const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
     );
 
+    PhysXVisDataArray& physicsMeshData();
+    void dumpPhysicsMeshes(const std::string& path);
     //@}
 
     Magnum::Range3D bbox() const;
@@ -281,6 +284,7 @@ private:
     MaterialArray m_materials;
     Pointer<sl::PhysXOutputBuffer> m_physXBuffer;
     PhysXMeshArray m_physXMeshes;
+    PhysXVisDataArray m_physXVisMeshData;
     PhysXVisArray m_physXVisMeshes;
 
     Magnum::Range3D m_bbox{

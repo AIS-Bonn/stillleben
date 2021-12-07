@@ -207,9 +207,11 @@ public:
 #ifndef NDEBUG
             importerPath = installPrefix + "/lib/magnum-d/importers";
             imageConverterPath = installPrefix + "/lib/magnum-d/imageconverters";
+            sceneConverterPath = installPrefix + "/lib/magnum-d/sceneconverters";
 #else
             importerPath = installPrefix + "/lib/magnum/importers";
             imageConverterPath = installPrefix + "/lib/magnum/imageconverters";
+            sceneConverterPath = installPrefix + "/lib/magnum/sceneconverters";
 #endif
         }
 
@@ -373,6 +375,7 @@ public:
 
     std::string importerPath;
     std::string imageConverterPath;
+    std::string sceneConverterPath;
 };
 
 Context::Context(const std::string& installPrefix)
@@ -662,6 +665,11 @@ std::string Context::importerPluginPath() const
 std::string Context::imageConverterPluginPath() const
 {
     return m_d->imageConverterPath;
+}
+
+std::string Context::sceneConverterPluginPath() const
+{
+    return m_d->sceneConverterPath;
 }
 
 Magnum::DebugTools::ResourceManager& Context::debugResourceManager()
