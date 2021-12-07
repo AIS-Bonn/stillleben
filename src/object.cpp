@@ -143,10 +143,25 @@ void Object::loadVisual()
                 else
                     drawable->setColor(m_options.color);
             }
-            else
+            else if(auto textureID = material->tryAttribute<UnsignedInt>(Trade::MaterialAttribute::DiffuseTexture))
+            {
+                // Textured material. If the texture failed to load, again just use a
+                // default colored material.
+                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[*textureID];
+                if(texture)
+                    drawable->setTexture(&*texture);
+                else
+                    drawable->setColor(m_options.color);
+            }
+            else if(auto baseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::BaseColor))
             {
                 // Color-only material
-                drawable->setColor(material->attribute<Color4>(Trade::MaterialAttribute::BaseColor));
+                drawable->setColor(*baseColor);
+            }
+            else if(auto diffuseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::DiffuseColor))
+            {
+                // Color-only material
+                drawable->setColor(*diffuseColor);
             }
         }
     }

@@ -117,7 +117,7 @@ TEST_CASE("basic")
         auto converter = manager.loadAndInstantiate("PngImageConverter");
         if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
-        CHECK(converter->exportToFile(image, "/tmp/stillleben.png"));
+        CHECK(converter->convertToFile(image, "/tmp/stillleben.png"));
     }
 
     {
@@ -201,7 +201,7 @@ TEST_CASE("render")
     if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
     Image2D image = buffer->image({PixelFormat::RGBA8Unorm});
-    CHECK(converter->exportToFile(image, "/tmp/stillleben_render.png"));
+    CHECK(converter->convertToFile(image, "/tmp/stillleben_render.png"));
 
     {
         unsigned int nonTransparent = 0;
@@ -220,7 +220,7 @@ TEST_CASE("render")
     }
 
     Image2D coordImage = ret->objectCoordinates.image({PixelFormat::RGBA8Unorm});
-    CHECK(converter->exportToFile(coordImage, "/tmp/stillleben_coords.png"));
+    CHECK(converter->convertToFile(coordImage, "/tmp/stillleben_coords.png"));
 
     Image2D classImage = ret->classIndex.image({PixelFormat::R16UI});
     {
@@ -437,7 +437,7 @@ TEST_CASE("vertex indices")
     if(!converter) Fatal{} << "Cannot load the PngImageConverter plugin";
 
     Image2D image = ret->rgb.image({PixelFormat::RGBA8Unorm});
-    CHECK(converter->exportToFile(image, "/tmp/stillleben_cube.png"));
+    CHECK(converter->convertToFile(image, "/tmp/stillleben_cube.png"));
 
     Containers::Array<bool> visible(25);
 

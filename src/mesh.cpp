@@ -969,7 +969,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
         }
     };
 
-    Containers::Array<std::thread> workers{Containers::DirectInit,
+    Containers::Array<std::thread> workers{DirectInit,
         std::thread::hardware_concurrency(),
         worker
     };
@@ -1043,9 +1043,9 @@ void Mesh::setPretransform(const Magnum::Matrix4& m)
     // We need to separate the transformation matrix into a homogenous scaling
     // and a rotation+translation.
 
-    Matrix3x3 u{Math::NoInit};
-    Vector3 w{Math::NoInit};
-    Matrix3x3 v{Math::NoInit};
+    Matrix3x3 u{NoInit};
+    Vector3 w{NoInit};
+    Matrix3x3 v{NoInit};
     std::tie(u, w, v) = Math::Algorithms::svd(m.rotationScaling());
 
     float minScale = w.min();

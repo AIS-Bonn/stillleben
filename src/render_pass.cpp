@@ -108,7 +108,7 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
- , m_meshShader{std::make_unique<Magnum::Shaders::MeshVisualizer3D>(Shaders::MeshVisualizer3D::Flag::Wireframe)}
+ , m_meshShader{std::make_unique<Magnum::Shaders::MeshVisualizerGL3D>(Shaders::MeshVisualizerGL3D::Flag::Wireframe)}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid());
     m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
@@ -203,7 +203,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
         m_ssaoApplyFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
-        Corrade::Containers::Array<Magnum::Float> data(Corrade::Containers::ValueInit, 4 * viewport.x()*viewport.y());
+        Corrade::Containers::Array<Magnum::Float> data(Corrade::ValueInit, 4 * viewport.x()*viewport.y());
         ImageView2D zeroImage{Magnum::PixelFormat::RGBA32F, {viewport.x(), viewport.y()}, data};
         m_zeroMinDepth.setMagnificationFilter(GL::SamplerFilter::Linear)
             .setMagnificationFilter(GL::SamplerFilter::Linear)

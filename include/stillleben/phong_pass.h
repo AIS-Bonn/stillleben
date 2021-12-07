@@ -6,7 +6,7 @@
 
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/RectangleTexture.h>
-#include <Magnum/Shaders/Phong.h>
+#include <Magnum/Shaders/PhongGL.h>
 
 #include <memory>
 
@@ -24,8 +24,8 @@ private:
     Magnum::GL::Renderbuffer m_msaa_rgb;
     Magnum::GL::Renderbuffer m_msaa_depth;
 
-    Magnum::Shaders::Phong m_shaderTextured{Magnum::Shaders::Phong::Flag::DiffuseTexture};
-    Magnum::Shaders::Phong m_shaderUniform;
+    Magnum::Shaders::PhongGL m_shaderTextured{Magnum::Shaders::PhongGL::Flag::DiffuseTexture};
+    Magnum::Shaders::PhongGL m_shaderUniform;
 };
 
 }
