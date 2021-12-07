@@ -8,6 +8,7 @@
 #include "shaders/brdf_shader.h"
 
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/StringStl.h>
 
 #include <Corrade/PluginManager/PluginManager.h>
 #include <Corrade/Utility/Configuration.h>
@@ -339,22 +340,22 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
 
             Image2D image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_xp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_xn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_xn.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_yp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_yn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_yn.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_zp.png");
 
             image = hdrCubeMap.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/cubemap_zn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/cubemap_zn.png");
         }
     }
 

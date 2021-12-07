@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <stillleben/exception.h>
-#include <stillleben/mesh_tools/pbr_material_data.h>
 
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
@@ -74,10 +73,11 @@ public:
     using ImageDataArray = Array<Optional<Magnum::Trade::ImageData2D>>;
     using TextureDataArray = Array<Optional<Magnum::Trade::TextureData>>;
     using TextureArray = Array<Optional<Magnum::GL::Texture2D>>;
-    using MaterialArray = Array<Optional<PBRMaterialData>>;
+    using MaterialArray = Array<Optional<Magnum::Trade::MaterialData>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
     using PhysXMeshArray = Array<PhysXHolder<physx::PxConvexMesh>>;
+    using PhysXVisDataArray = Array<Magnum::Trade::MeshData>;
     using PhysXVisArray = Array<std::shared_ptr<Magnum::GL::Mesh>>;
 
     class LoadException : public Exception
@@ -187,6 +187,8 @@ public:
         const Corrade::Containers::ArrayView<Magnum::Color4>& newColors
     );
 
+    PhysXVisDataArray& physicsMeshData();
+    void dumpPhysicsMeshes(const std::string& path);
     //@}
 
     Magnum::Range3D bbox() const;
@@ -282,6 +284,7 @@ private:
     MaterialArray m_materials;
     Pointer<sl::PhysXOutputBuffer> m_physXBuffer;
     PhysXMeshArray m_physXMeshes;
+    PhysXVisDataArray m_physXVisMeshData;
     PhysXVisArray m_physXVisMeshes;
 
     Magnum::Range3D m_bbox{

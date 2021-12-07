@@ -244,6 +244,62 @@ namespace
         );
         mesh->setVertexColors(newColorView);
     }
+
+    py::list Mesh_physicsMeshData(const std::shared_ptr<sl::Mesh>& mesh)
+    {
+        auto& meshDataArray = mesh->physicsMeshData();
+
+        py::list ret;
+
+        // The deleter just holds a reference to the mesh until the tensor is deleted.
+        struct Deleter
+        {
+            std::shared_ptr<sl::Mesh> mesh;
+
+            void operator()(void*)
+            {}
+        };
+        Deleter deleter{mesh};
+
+        for(auto& data : meshDataArray)
+        {
+            if(!data.hasAttribute(Magnum::Trade::MeshAttribute::Position))
+                throw std::logic_error{"Physics mesh has no positions"};
+            if(data.attributeFormat(Magnum::Trade::MeshAttribute::Position) != Magnum::VertexFormat::Vector3)
+                throw std::logic_error{"Physics mesh has wrong position attribute type"};
+
+            if(data.indexType() != Magnum::MeshIndexType::UnsignedInt)
+                throw std::logic_error{"Physics mesh has wrong index type"};
+            if(data.primitive() != Magnum::MeshPrimitive::Triangles)
+                throw std::logic_error{"Physics mesh has wrong primitive type"};
+
+            auto positionData = data.mutableAttribute(Magnum::Trade::MeshAttribute::Position, 0);
+
+            auto positionTensor = torch::from_blob(
+                positionData.data(),
+                {data.vertexCount(), 3},
+                {long(positionData.stride()[0] / sizeof(float)), long(positionData.stride()[1] / sizeof(float))},
+                deleter,
+                at::kFloat
+            );
+
+            auto indexData = data.mutableIndexData();
+
+            auto indexTensor = torch::from_blob(
+                indexData.data(),
+                {data.indexCount()},
+                deleter,
+                at::kInt
+            ).view({-1, 3});
+
+            py::dict entry;
+            entry["positions"] = positionTensor;
+            entry["indices"] = indexTensor;
+            ret.append(entry);
+        }
+
+        return ret;
+    }
 }
 
 namespace sl
@@ -441,6 +497,17 @@ void init(py::module& m)
                 This returns a view onto all concatenated sub-meshes.
                 Some of them may use vertex coloring, some not. For the former,
                 you will see the vertex colors, for the latter just zeros.
+        )EOS")
+
+        .def_property_readonly("physics_mesh_data", &Mesh_physicsMeshData,
+        R"EOS(
+            The convex decomposition used for physics simulation. This is a list
+            of dicts, with the keys `positions` and `indices`.
+        )EOS")
+
+        .def("dump_physics_meshes", &sl::Mesh::dumpPhysicsMeshes,
+        R"EOS(
+            Write physics meshes in PLY format into the given directory.
         )EOS")
 
         .def_property_readonly("filename", &sl::Mesh::filename, "The mesh filename")

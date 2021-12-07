@@ -126,22 +126,42 @@ void Object::loadVisual()
 
             const auto& material = m_mesh->materials()[materialId];
 
-            drawable->setMetallicRoughness(material->metallic(), material->roughness());
+            auto metalness = material->tryAttribute<Float>(Trade::MaterialAttribute::Metalness);
+            auto roughness = material->tryAttribute<Float>(Trade::MaterialAttribute::Roughness);
+            if(metalness && roughness)
+                drawable->setMetallicRoughness(*metalness, *roughness);
+            else
+                drawable->setMetallicRoughness(0.04f, 0.5f);
 
-            if(material->flags() & PBRMaterialData::Flag::BaseColorTexture)
+            if(auto textureID = material->tryAttribute<UnsignedInt>(Trade::MaterialAttribute::BaseColorTexture))
             {
                 // Textured material. If the texture failed to load, again just use a
                 // default colored material.
-                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[material->baseColorTexture()];
+                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[*textureID];
                 if(texture)
                     drawable->setTexture(&*texture);
                 else
                     drawable->setColor(m_options.color);
             }
-            else
+            else if(auto textureID = material->tryAttribute<UnsignedInt>(Trade::MaterialAttribute::DiffuseTexture))
+            {
+                // Textured material. If the texture failed to load, again just use a
+                // default colored material.
+                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[*textureID];
+                if(texture)
+                    drawable->setTexture(&*texture);
+                else
+                    drawable->setColor(m_options.color);
+            }
+            else if(auto baseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::BaseColor))
             {
                 // Color-only material
-                drawable->setColor(m_mesh->materials()[materialId]->baseColor());
+                drawable->setColor(*baseColor);
+            }
+            else if(auto diffuseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::DiffuseColor))
+            {
+                // Color-only material
+                drawable->setColor(*diffuseColor);
             }
         }
     }

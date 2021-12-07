@@ -5,6 +5,9 @@
 
 #include <stillleben/context.h>
 
+#include <Corrade/Containers/StringView.h>
+#include <Corrade/Containers/StringStl.h>
+
 #include <Corrade/PluginManager/Manager.h>
 #include <Corrade/Utility/FormatStl.h>
 
@@ -82,7 +85,7 @@ void ImageSaver::thread()
             m_inputFreeCond.notify_all();
         }
 
-        if(!converter->exportToFile(image.image, image.path))
+        if(!converter->convertToFile(image.image, image.path))
             throw std::runtime_error{Utility::formatString("Could not write image {}", image.path)};
 
         {

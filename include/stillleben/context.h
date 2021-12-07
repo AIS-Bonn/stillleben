@@ -55,6 +55,7 @@ public:
 
     std::string importerPluginPath() const;
     std::string imageConverterPluginPath() const;
+    std::string sceneConverterPluginPath() const;
 
     Magnum::GL::RectangleTexture loadTexture(const std::string& path);
     Magnum::GL::Texture2D loadTexture2D(const std::string& path);

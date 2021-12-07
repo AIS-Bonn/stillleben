@@ -269,7 +269,7 @@ struct fromTorch<Magnum::Matrix4>
 
         const float* data = cpuTensor.data_ptr<float>();
 
-        Magnum::Matrix4 mat{Magnum::Math::NoInit};
+        Magnum::Matrix4 mat{Magnum::NoInit};
 
         memcpy(mat.data(), data, 16*sizeof(float));
 
@@ -289,7 +289,7 @@ struct fromTorch<Magnum::Matrix3>
 
         const float* data = cpuTensor.data_ptr<float>();
 
-        Magnum::Matrix3 mat{Magnum::Math::NoInit};
+        Magnum::Matrix3 mat{Magnum::NoInit};
 
         memcpy(mat.data(), data, 9*sizeof(float));
 
@@ -308,7 +308,7 @@ struct fromTorch<Magnum::Vector2>
             throw std::invalid_argument("A 2D vector tensor must have size 2");
 
         const float* data = cpuTensor.data_ptr<float>();
-        Magnum::Vector2 vec{Magnum::Math::NoInit};
+        Magnum::Vector2 vec{Magnum::NoInit};
         memcpy(vec.data(), data, 2*sizeof(float));
 
         return vec;
@@ -326,7 +326,7 @@ struct fromTorch<Magnum::Vector3>
             throw std::invalid_argument("A vector tensor must have size 3");
 
         const float* data = cpuTensor.data_ptr<float>();
-        Magnum::Vector3 vec{Magnum::Math::NoInit};
+        Magnum::Vector3 vec{Magnum::NoInit};
         memcpy(vec.data(), data, 3*sizeof(float));
 
         return vec;
@@ -344,7 +344,7 @@ struct fromTorch<Magnum::Vector4>
             throw std::invalid_argument("A vector4 tensor must have size 4");
 
         const float* data = cpuTensor.data_ptr<float>();
-        Magnum::Vector4 vec{Magnum::Math::NoInit};
+        Magnum::Vector4 vec{Magnum::NoInit};
         memcpy(vec.data(), data, 4*sizeof(float));
 
         return vec;

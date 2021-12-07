@@ -12,6 +12,8 @@
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/ScopeGuard.h>
 
+#include <Corrade/PluginManager/Manager.h>
+
 #include <Corrade/Utility/Configuration.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <Corrade/Utility/Directory.h>
@@ -42,6 +44,7 @@
 #include <Magnum/Trade/PhongMaterialData.h>
 #include <Magnum/Trade/SceneData.h>
 #include <Magnum/Trade/TextureData.h>
+#include <Magnum/Trade/AbstractSceneConverter.h>
 #include <Magnum/Image.h>
 
 #include <VHACD.h>
@@ -291,7 +294,7 @@ void Mesh::openFile()
     {
         // Format has no support for objects, create a dummy one.
         m_objectData = ObjectDataArray{1};
-        m_objectData[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0});
+        m_objectData[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0, 0});
     }
 
     // Consolidate mesh data into one buffer
@@ -316,19 +319,7 @@ void Mesh::openFile()
     // Load materials.
     m_materials = MaterialArray{importer->materialCount()};
     for(UnsignedInt i = 0; i != importer->materialCount(); ++i)
-    {
-        auto materialData = importer->material(i);
-        if(!materialData || materialData->type() != Trade::MaterialType::Phong)
-        {
-            Warning{} << "Cannot load material, skipping";
-            continue;
-        }
-
-        m_materials[i] = PBRMaterialData::parse(
-            *static_cast<Trade::PhongMaterialData*>(materialData.get()),
-            haveTinyGltf
-        );
-    }
+        m_materials[i] = importer->material(i);
 
     // Compute bounding box
     updateBoundingBox();
@@ -570,6 +561,7 @@ void Mesh::loadPhysicsVisualization()
 
     loadPhysics();
 
+    m_physXVisMeshData = PhysXVisDataArray{};
     m_physXVisMeshes = Array<std::shared_ptr<GL::Mesh>>{m_physXMeshes.size()};
 
     for(std::size_t j = 0; j < m_physXMeshes.size(); ++j)
@@ -621,6 +613,33 @@ void Mesh::loadPhysicsVisualization()
         }};
 
         m_physXVisMeshes[j] = std::make_shared<GL::Mesh>(MeshTools::compile(meshData));
+        Containers::arrayAppend(m_physXVisMeshData, std::move(meshData));
+    }
+}
+
+Mesh::PhysXVisDataArray& Mesh::physicsMeshData()
+{
+    loadPhysicsVisualization();
+    return m_physXVisMeshData;
+}
+
+void Mesh::dumpPhysicsMeshes(const std::string& path)
+{
+    loadPhysicsVisualization();
+
+    if(!Utility::Directory::isDirectory(path))
+        throw std::runtime_error{Utility::formatString("Path {} is not a directory", path)};
+
+    PluginManager::Manager<Trade::AbstractSceneConverter> manager{m_ctx->sceneConverterPluginPath()};
+
+    auto converter = manager.loadAndInstantiate("StanfordSceneConverter");
+    if(!converter)
+        throw std::runtime_error{"Could not load StanfordSceneConverter"};
+
+    unsigned int idx = 0;
+    for(auto& mesh : m_physXVisMeshData)
+    {
+        converter->convertToFile(mesh, Utility::Directory::join(path, Utility::formatString("{:.4}.ply", idx++)));
     }
 }
 
@@ -981,7 +1000,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::loadThreaded(
         }
     };
 
-    Containers::Array<std::thread> workers{Containers::DirectInit,
+    Containers::Array<std::thread> workers{DirectInit,
         std::thread::hardware_concurrency(),
         worker
     };
@@ -1055,9 +1074,9 @@ void Mesh::setPretransform(const Magnum::Matrix4& m)
     // We need to separate the transformation matrix into a homogenous scaling
     // and a rotation+translation.
 
-    Matrix3x3 u{Math::NoInit};
-    Vector3 w{Math::NoInit};
-    Matrix3x3 v{Math::NoInit};
+    Matrix3x3 u{NoInit};
+    Vector3 w{NoInit};
+    Matrix3x3 v{NoInit};
     std::tie(u, w, v) = Math::Algorithms::svd(m.rotationScaling());
 
     float minScale = w.min();
