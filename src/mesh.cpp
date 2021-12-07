@@ -291,7 +291,7 @@ void Mesh::openFile()
     {
         // Format has no support for objects, create a dummy one.
         m_objectData = ObjectDataArray{1};
-        m_objectData[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0});
+        m_objectData[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0, 0});
     }
 
     // Consolidate mesh data into one buffer
@@ -316,19 +316,7 @@ void Mesh::openFile()
     // Load materials.
     m_materials = MaterialArray{importer->materialCount()};
     for(UnsignedInt i = 0; i != importer->materialCount(); ++i)
-    {
-        auto materialData = importer->material(i);
-        if(!materialData || materialData->type() != Trade::MaterialType::Phong)
-        {
-            Warning{} << "Cannot load material, skipping";
-            continue;
-        }
-
-        m_materials[i] = PBRMaterialData::parse(
-            *static_cast<Trade::PhongMaterialData*>(materialData.get()),
-            haveTinyGltf
-        );
-    }
+        m_materials[i] = importer->material(i);
 
     // Compute bounding box
     updateBoundingBox();

@@ -9,13 +9,16 @@
 #include <X11/Xatom.h>
 #include <X11/extensions/sync.h>
 
+#include "utils/x11_events.h"
+
+#undef Bool
+
 #include <stillleben/context.h>
 #include <stillleben/render_pass.h>
 #include <stillleben/scene.h>
 #include <stillleben/mesh.h>
 
 #include "utils/arc_ball.h"
-#include "utils/x11_events.h"
 
 #include "shaders/viewer/viewer_shader.h"
 
@@ -118,6 +121,7 @@ public:
         ResizeNWSE,
         ResizeNESW,
         Hand,
+        Hidden,
 
         NumCursors
     };
@@ -473,6 +477,20 @@ Viewer::Viewer(const std::shared_ptr<Scene>& scene)
             case Private::Cursor::ResizeNWSE:
                 m_d->cursors[i] = XcursorLibraryLoadCursor(m_d->display, "size_fdiag");
                 break;
+            case Private::Cursor::Hidden:
+            {
+                Pixmap bitmapNoData;
+                XColor black;
+                static char noData[] = { 0,0,0,0,0,0,0,0 };
+                black.red = black.green = black.blue = 0;
+
+                bitmapNoData = XCreateBitmapFromData(m_d->display, m_d->window, noData, 8, 8);
+                m_d->cursors[i] = XCreatePixmapCursor(m_d->display, bitmapNoData, bitmapNoData,
+                    &black, &black, 0, 0);
+
+                XFreePixmap(m_d->display, bitmapNoData);
+                break;
+            }
             case Private::Cursor::NumCursors:
                 break;
         }

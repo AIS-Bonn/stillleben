@@ -9,7 +9,7 @@
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
-#include <Magnum/Shaders/MeshVisualizer.h>
+#include <Magnum/Shaders/MeshVisualizerGL.h>
 
 #include <stillleben/cuda_interop.h>
 
@@ -122,7 +122,7 @@ private:
     std::unique_ptr<SSAOShader> m_ssaoShader;
     std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
 
-    std::unique_ptr<Magnum::Shaders::MeshVisualizer3D> m_meshShader;
+    std::unique_ptr<Magnum::Shaders::MeshVisualizerGL3D> m_meshShader;
 
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;

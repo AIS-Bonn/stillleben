@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <stillleben/exception.h>
-#include <stillleben/mesh_tools/pbr_material_data.h>
 
 #include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/ArrayView.h>
@@ -74,7 +73,7 @@ public:
     using ImageDataArray = Array<Optional<Magnum::Trade::ImageData2D>>;
     using TextureDataArray = Array<Optional<Magnum::Trade::TextureData>>;
     using TextureArray = Array<Optional<Magnum::GL::Texture2D>>;
-    using MaterialArray = Array<Optional<PBRMaterialData>>;
+    using MaterialArray = Array<Optional<Magnum::Trade::MaterialData>>;
 
     using CookedPhysXMeshArray = Array<Optional<PhysXOutputBuffer>>;
     using PhysXMeshArray = Array<PhysXHolder<physx::PxConvexMesh>>;
