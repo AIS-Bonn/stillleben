@@ -48,21 +48,30 @@ public:
 
         if(tensor.dim() == 3)
         {
-            if(tensor.size(2) != 3)
-                throw std::invalid_argument{"Color images need to have shape HxWx3"};
+            if((tensor.size(2) != 3) && (tensor.size(2) != 4))
+                throw std::invalid_argument{"Color images need to have shape HxWx3 or HxWx4"};
 
             int H = tensor.size(0);
-            int W = tensor.size(1);
-
+            int W = tensor.size(1);            
+            
             if(tensor.scalar_type() == at::kByte)
             {
-                job.image = ImageView2D{PixelFormat::RGB8Unorm,
-                    {W, H},
-                    Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
-                };
+                if(tensor.size(2) == 3) {
+                    job.image = ImageView2D{PixelFormat::RGB8Unorm,
+                        {W, H},
+                        Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
+                    };
+                }
+                else if(tensor.size(2) == 4) {
+                    job.image = ImageView2D{PixelFormat::RGBA8Unorm,
+                        {W, H},
+                        Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
+                    };
+                }
             }
             else
                 throw std::invalid_argument{"Color images need to have type uint8"};
+            
         }
         else if(tensor.dim() == 2)
         {
