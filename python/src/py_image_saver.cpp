@@ -48,18 +48,26 @@ public:
 
         if(tensor.dim() == 3)
         {
-            if(tensor.size(2) != 3)
-                throw std::invalid_argument{"Color images need to have shape HxWx3"};
+            if(tensor.size(2) != 3 && tensor.size(2) != 4)
+                throw std::invalid_argument{"Color images need to have shape HxWx3 or HxWx4"};
 
             int H = tensor.size(0);
             int W = tensor.size(1);
 
             if(tensor.scalar_type() == at::kByte)
             {
-                job.image = ImageView2D{PixelFormat::RGB8Unorm,
-                    {W, H},
-                    Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
-                };
+                if(tensor.size(2) == 3) {
+                    job.image = ImageView2D{PixelFormat::RGB8Unorm,
+                        {W, H},
+                        Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
+                    };
+                }
+                else if(tensor.size(2) == 4) {
+                    job.image = ImageView2D{PixelFormat::RGBA8Unorm,
+                        {W, H},
+                        Containers::arrayCast<char>(Containers::arrayView(tensor.data_ptr<uint8_t>(), tensor.numel()))
+                    };
+                }
             }
             else
                 throw std::invalid_argument{"Color images need to have type uint8"};
@@ -129,7 +137,7 @@ void init(py::module& m)
             Note: This call is asynchronous. You can only assume the image
             has been written once :ref:`__exit__()` has been called.
 
-            :param image: Image tensor. Needs to have uint8 type and shape HxWx3 or HxW (grayscale). Grayscale images can also be uint16.
+            :param image: Image tensor. Needs to have uint8 type and shape HxWx4 (RGBA), HxWx3 (RGB), or HxW (grayscale). Grayscale images can also be uint16.
         )EOS", py::arg("image"), py::arg("path"))
     ;
 }
