@@ -101,9 +101,7 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_framebuffer{Magnum::NoCreate}
  , m_ssaoFramebuffer{Magnum::NoCreate}
  , m_ssaoApplyFramebuffer{Magnum::NoCreate}
- , m_shaderTextured{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::DiffuseTexture)}
- , m_shaderVertexColors{std::make_unique<RenderShader>(flagsForType(type) | RenderShader::Flag::VertexColors)}
- , m_shaderUniform{std::make_unique<RenderShader>(flagsForType(type))}
+ , m_renderShader{std::make_unique<RenderShader>()}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
  , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
@@ -320,16 +318,12 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     m_framebuffer.clearColor(6, 0x00000000_rgbf);
     m_framebuffer.clearColor(7, invalid);
 
-    for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
-    {
-        shader.get()->bindDepthTexture(*minDepth);
+    if(scene.lightMap())
+        m_renderShader->setLightMap(*scene.lightMap());
+    else
+        Error{} << "Scenes without light maps are currently not supported";
 
-        // Setup image-based lighting if required
-        if(scene.lightMap())
-            shader.get()->bindLightMap(*scene.lightMap());
-        else
-            shader.get()->disableLightMap();
-    }
+    m_renderShader->bindDepthTexture(*minDepth);
 
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
@@ -341,49 +335,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             1.0f
         });
 
-        auto texture = scene.backgroundPlaneTexture();
-        if(texture)
-        {
-            (*m_shaderTextured)
-                .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
-                .setObjectToWorldMatrix(scaledPoseInWorld)
-                .setWorldToCamMatrix(scene.camera().cameraMatrix())
-                .setProjectionMatrix(scene.camera().projectionMatrix())
-                .setCamPosition(scene.camera().object().absoluteTransformationMatrix().translation())
-                .setClassIndex(0)
-                .setInstanceIndex(0)
-                .setAmbientColor(scene.ambientLight())
-                .setSpecularColor(Magnum::Color4{1.0f})
-                .setShininess(80.0f)
-                .setMetalness(0.04f)
-                .setRoughness(0.5f)
-                .setStickerRange({})
-                .setLightPosition(scene.lightPosition())
-                .bindDiffuseTexture(*texture)
-                .draw(m_backgroundPlaneMesh)
-            ;
-        }
-        else
-        {
-            (*m_shaderUniform)
-                .setMeshToObjectMatrix(Matrix4{Magnum::Math::IdentityInit})
-                .setObjectToWorldMatrix(scaledPoseInWorld)
-                .setWorldToCamMatrix(scene.camera().cameraMatrix())
-                .setProjectionMatrix(scene.camera().projectionMatrix())
-                .setCamPosition(scene.camera().object().absoluteTransformationMatrix().translation())
-                .setClassIndex(0)
-                .setInstanceIndex(0)
-                .setAmbientColor(scene.ambientLight())
-                .setSpecularColor(Magnum::Color4{1.0f})
-                .setShininess(80.0f)
-                .setMetalness(0.04f)
-                .setRoughness(0.5f)
-                .setStickerRange({})
-                .setLightPosition(scene.lightPosition())
-                .setDiffuseColor({0.0f, 0.8f, 0.0f, 1.0f})
-                .draw(m_backgroundPlaneMesh)
-            ;
-        }
+        Error{} << "Background plane is not supported";
     }
 
     // Let the fun begin!
@@ -395,75 +347,36 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         Matrix4 objectToWorld = object->pose();
 
         Matrix4 objectToCam = scene.camera().cameraMatrix() * object->pose();
-        Matrix4 objectToCamInv = objectToCam.inverted();
+        Matrix4 objectToCamInv = objectToCam.invertedRigid();
 
-        Vector3 camPosition = scene.camera().object().absoluteTransformationMatrix().translation();
+        Matrix4 worldToCam = scene.camera().object().absoluteTransformationMatrix().invertedRigid();
 
-        for(auto& shader : {std::ref(m_shaderTextured), std::ref(m_shaderUniform), std::ref(m_shaderVertexColors)})
-        {
-            (*shader.get())
-                .setObjectToWorldMatrix(objectToWorld)
-                .setWorldToCamMatrix(scene.camera().cameraMatrix())
-                .setProjectionMatrix(scene.camera().projectionMatrix())
-                .setCamPosition(camPosition)
+        (*m_renderShader)
+            .setProjectionMatrix(scene.camera().projectionMatrix())
 
-                .setClassIndex(object->mesh()->classIndex())
-                .setInstanceIndex(object->instanceIndex())
-                .setAmbientColor(scene.ambientLight())
-                .setSpecularColor(object->specularColor())
-                .setShininess(object->shininess())
+            .setClassIndex(object->mesh()->classIndex())
+            .setInstanceIndex(object->instanceIndex())
 
-                .setLightPosition(scene.lightPosition())
+            .setStickerProjection(object->stickerViewProjection())
+            .setStickerRange(object->stickerRange())
+        ;
 
-                .setStickerProjection(object->stickerViewProjection())
-                .setStickerRange(object->stickerRange())
-            ;
+        if(object->stickerTexture())
+            m_renderShader->bindStickerTexture(*object->stickerTexture());
 
-            if(object->stickerTexture())
-                shader.get()->bindStickerTexture(*object->stickerTexture());
-
-            if(scene.lightMap() && m_type == Type::PBR)
-                shader.get()->bindLightMap(*scene.lightMap());
-            else
-                shader.get()->disableLightMap();
-        }
+        auto materialOverride = MaterialOverride{}
+            .metallic(object->metallic())
+            .roughness(object->roughness())
+        ;
 
         object->draw(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
             Matrix4 meshToObject = objectToCamInv * meshToCam;
 
-            double metalness = (object->metallic() >= 0) ? object->metallic() : drawable->metallic();
-            double roughness = (object->roughness() >= 0) ? object->roughness() : drawable->roughness();
-
-            if(drawable->texture())
-            {
-                (*m_shaderTextured)
-                    .setMeshToObjectMatrix(meshToObject)
-                    .bindDiffuseTexture(*drawable->texture())
-                    .setMetalness(metalness)
-                    .setRoughness(roughness)
-                    .draw(drawable->mesh())
-                ;
-            }
-            else if(drawable->hasVertexColors())
-            {
-                (*m_shaderVertexColors)
-                    .setMeshToObjectMatrix(meshToObject)
-                    .setDiffuseColor(drawable->color())
-                    .setMetalness(metalness)
-                    .setRoughness(roughness)
-                    .draw(drawable->mesh())
-                ;
-            }
-            else
-            {
-                (*m_shaderUniform)
-                    .setMeshToObjectMatrix(meshToObject)
-                    .setDiffuseColor(drawable->color())
-                    .setMetalness(metalness)
-                    .setRoughness(roughness)
-                    .draw(drawable->mesh())
-                ;
-            }
+            (*m_renderShader)
+                .setMaterial(drawable->material(), object->mesh()->textures(), materialOverride)
+                .setTransformations(meshToObject, objectToWorld, worldToCam)
+                .draw(drawable->mesh())
+            ;
         });
     }
 

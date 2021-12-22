@@ -112,9 +112,7 @@ private:
     Magnum::GL::Framebuffer m_ssaoApplyFramebuffer;
     Magnum::GL::RectangleTexture m_ssaoRGBInputTexture;
 
-    std::unique_ptr<RenderShader> m_shaderTextured;
-    std::unique_ptr<RenderShader> m_shaderVertexColors;
-    std::unique_ptr<RenderShader> m_shaderUniform;
+    std::unique_ptr<RenderShader> m_renderShader;
 
     std::unique_ptr<BackgroundShader> m_backgroundShader;
     std::unique_ptr<BackgroundCubeShader> m_backgroundCubeShader;

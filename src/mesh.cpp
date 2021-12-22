@@ -234,16 +234,12 @@ void Mesh::openFile()
     Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(m_ctx->importerPluginPath());
     Pointer<Magnum::Trade::AbstractImporter> importer;
 
-    bool haveTinyGltf = false;
-
     // Load a scene importer plugin
     if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
     {
-        importer = manager.loadAndInstantiate("TinyGltfImporter");
+        importer = manager.loadAndInstantiate("CgltfImporter");
         if(!importer)
             std::abort();
-
-        haveTinyGltf = true;
     }
     else
     {

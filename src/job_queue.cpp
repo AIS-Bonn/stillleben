@@ -42,7 +42,7 @@ public:
         CORRADE_INTERNAL_ASSERT(numThreads >= 1);
 
         m_threads = Containers::Array<std::thread>{
-            Containers::DirectInit, static_cast<std::size_t>(numThreads), [&](){
+            DirectInit, static_cast<std::size_t>(numThreads), [&](){
                 worker();
             }
         };
@@ -144,7 +144,7 @@ private:
 };
 
 JobQueue::JobQueue(int numThreads)
- : m_d{Containers::InPlaceInit, numThreads}
+ : m_d{InPlaceInit, numThreads}
 {
 }
 

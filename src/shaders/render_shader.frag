@@ -1,99 +1,71 @@
-// Most of the code taken from Magnum engine
+// Fragment shader
 
-#ifndef RUNTIME_CONST
-#define const
-#endif
+// Texture samplers
+//@{
+layout(binding = BASE_COLOR_TEXTURE)
+uniform lowp sampler2D baseColorTexture;
 
+layout(binding = NORMAL_TEXTURE)
+uniform lowp sampler2D normalTexture;
 
+layout(binding = METALLIC_ROUGHNESS_TEXTURE)
+uniform lowp sampler2D metallicRoughnessTexture;
 
-#ifdef AMBIENT_TEXTURE
-layout(binding = 0)
-uniform lowp sampler2D ambientTexture;
-#endif
+layout(binding = EMISSIVE_TEXTURE)
+uniform lowp sampler2D emissiveTexture;
 
-layout(location = 5)
-uniform lowp vec4 ambientColor
-    #ifndef AMBIENT_TEXTURE
-    = vec4(0.0)
-    #else
-    = vec4(1.0)
-    #endif
-    ;
+layout(binding = OCCLUSION_TEXTURE)
+uniform lowp sampler2D occlusionTexture;
 
-#ifdef DIFFUSE_TEXTURE
-layout(binding = 1)
-uniform lowp sampler2D diffuseTexture;
-#endif
-
-layout(location = 6)
-uniform lowp vec4 diffuseColor = vec4(1.0);
-
-#ifdef SPECULAR_TEXTURE
-layout(binding = 2)
-uniform lowp sampler2D specularTexture;
-#endif
-
-layout(location = 4)
-uniform highp vec3 lightPosition; /* in world coordinates, defaults to zero */
-
-layout(location = 7)
-uniform lowp vec4 specularColor = vec4(1.0);
-
-layout(location = 8)
-uniform lowp vec4 lightColor = vec4(1.0);
-
-layout(location = 9)
-uniform mediump float shininess = 80.0;
-
-#ifdef ALPHA_MASK
-layout(location = 10)
-uniform lowp float alphaMask = 0.5;
-#endif
-
-// Segmentation information
-layout(location = 11)
-uniform uint classIndex = 0u;
-
-layout(location = 12)
-uniform uint instanceIndex = 0u;
-
-
-// Do we use a light map?
-layout(location = 13)
-uniform bool useLightMap = false;
-
-// Material parameters
-layout(location = 14)
-uniform float metallic = 0.04;
-
-layout(location = 15)
-uniform float roughness = 0.5;
-
-layout(location = 18)
-uniform vec3 camPosition;
-
-layout(binding = 3)
+layout(binding = LIGHTMAP_IRRADIANCE_TEXTURE)
 uniform highp samplerCube lightMapIrradiance;
 
-layout(binding = 4)
+layout(binding = LIGHTMAP_PREFILTER_TEXTURE)
 uniform highp samplerCube lightMapPrefilter;
 
-layout(binding = 5)
+layout(binding = LIGHTMAP_BRDF_LUT_TEXTURE)
 uniform highp sampler2D lightMapBRDFLUT;
 
-// Sticker simulator
-layout(binding = 6)
+layout(binding = STICKER_TEXTURE)
 uniform highp sampler2DRect stickerTexture;
 
-layout(binding = 7)
+layout(binding = DEPTH_TEXTURE)
 uniform highp sampler2DRect depthTexture;
+//@}
 
+// Uniform parameters
+//@{
+layout(location = UNIFORM_MATERIAL)
+uniform vec4 materialParameters[3];
+
+#define baseColorFactor materialParameters[0]
+#define emissiveFactor materialParameters[1]
+#define alphaCutoff materialParameters[2].x
+#define metallicFactor materialParameters[2].y
+#define roughnessFactor materialParameters[2].z
+
+layout(location = UNIFORM_AVAILABLE_TEXTURES)
+uniform uint availableTextures = 0u;
+
+// Segmentation information
+layout(location = UNIFORM_CLASS_INDEX)
+uniform uint classIndex = 0u;
+
+layout(location = UNIFORM_INSTANCE_INDEX)
+uniform uint instanceIndex = 0u;
+
+layout(location = UNIFORM_CAM_POSITION)
+uniform vec3 camPosition;
+//@}
+
+// Inputs from vertex or geometry shader
 in DataBridge fragmentData;
 
 flat in centroid uvec3 g_vertexIndices;
 in centroid vec3 g_barycentricCoeffs;
 
 // Outputs!
+//@{
 layout(location = COLOR_OUTPUT_ATTRIBUTE_LOCATION)
 out lowp vec4 color;
 
@@ -117,6 +89,11 @@ out vec3 barycentricCoeffs;
 
 layout(location = CAM_COORDINATES_OUTPUT_ATTRIBUTE_LOCATION)
 out highp vec4 camCoordinatesOut;
+//@}
+
+
+#define DIELECTRIC_SPECULAR 0.04
+#define MIN_ROUGHNESS 0.045
 
 vec2 dirToSpherical(vec3 dir)
 {
@@ -149,61 +126,30 @@ vec4 toLinear(vec4 v, float gamma)
     return vec4(toLinear(v.rgb, gamma), v.a);
 }
 
-const vec3 plastic_F0 = vec3(0.04);
-
-const float PI = 3.14159265359;
-
-float DistributionGGX(vec3 N, vec3 H, float roughness)
+vec3 Tonemap_ACES(vec3 x)
 {
-    float a = roughness*roughness;
-    float a2 = a*a;
-    float NdotH = max(dot(N, H), 0.0);
-    float NdotH2 = NdotH*NdotH;
-
-    float nom   = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-
-    return nom / denom;
+    // Narkowicz 2015, "ACES Filmic Tone Mapping Curve"
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return (x * (a * x + vec3(b))) / (x * (c * x + vec3(d)) + vec3(e));
 }
 
-float GeometrySchlickGGX(float NdotV, float roughness)
+vec3 diffuseColor(vec3 baseColor, float metallic)
 {
-    float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
-
-    float nom   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
+    return baseColor * (1.0 - DIELECTRIC_SPECULAR) * (1.0 - metallic);
 }
 
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+bool haveTexture(uint tex_code)
 {
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
+    return (availableTextures & (1 << tex_code)) != 0;
 }
 
-vec3 fresnelSchlick(float cosTheta, vec3 F0)
+float clampDot(vec3 v1, vec3 v2)
 {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-vec3 cubemapCoord(vec3 camSpaceCoord)
-{
-    // camera coordinates are in y-down frame.
-    // FIXME: We should use world coordinates here!
-//     return vec3(camSpaceCoord.z, -camSpaceCoord.x, -camSpaceCoord.y);
-    return camSpaceCoord;
+    return clamp(dot(v1, v2), 0.0, 1.0);
 }
 
 void main()
@@ -211,129 +157,113 @@ void main()
     // Depth peeling operation
     // discard fragments that closer to the camera than the current depth.
     if(fragmentData.objectCoordinates.w - 0.00001 <= texelFetch(depthTexture, ivec2(gl_FragCoord.xy)).w)
+    {
         discard;
+        return;
+    }
 
-    objectCoordinatesOut = fragmentData.objectCoordinates;
-    camCoordinatesOut = vec4(fragmentData.camCoordinates, 1.0);
-    classIndexOut = classIndex;
-    instanceIndexOut = instanceIndex;
+    float gamma = 2.2;
 
-    lowp vec4 finalAmbientColor =
-        #ifdef AMBIENT_TEXTURE
-        texture(ambientTexture, fragmentData.interpolatedTextureCoords)*
-        #elif defined(DIFFUSE_TEXTURE)
-        texture(diffuseTexture, fragmentData.interpolatedTextureCoords)*
-        #endif
-        ambientColor;
-    lowp vec4 finalDiffuseColor =
-        #ifdef DIFFUSE_TEXTURE
-        texture(diffuseTexture, fragmentData.interpolatedTextureCoords)*
-        #endif
-        #ifdef VERTEX_COLORS
-        fragmentData.interpolatedVertexColors;
-        #else
-        diffuseColor;
-        #endif
-    lowp vec4 finalSpecularColor =
-        #ifdef SPECULAR_TEXTURE
-        texture(specularTexture, fragmentData.interpolatedTextureCoords)*
-        #endif
-        specularColor;
+    vec4 baseColor = baseColorFactor;
 
-    /* Are we inside the simulated sticker? */
+    if(haveTexture(BASE_COLOR_TEXTURE))
+        baseColor *= toLinear(texture2D(baseColorTexture, fragmentData.interpolatedTextureCoords), gamma);
+
+    if(baseColor.w < alphaCutoff)
+    {
+        discard;
+        return;
+    }
+
+    // Are we inside the simulated sticker?
     if(fragmentData.stickerCoordinates.x >= 0 &&
        fragmentData.stickerCoordinates.y >= 0 &&
        fragmentData.stickerCoordinates.x < 1 &&
        fragmentData.stickerCoordinates.y < 1)
     {
         lowp vec4 stickerColor = texture(stickerTexture, fragmentData.stickerCoordinates * textureSize(stickerTexture));
-        finalDiffuseColor = mix(finalDiffuseColor, stickerColor, stickerColor.a);
+        baseColor = mix(baseColor, stickerColor, stickerColor.a);
     }
 
-    highp vec3 cameraDirection = normalize(camPosition - fragmentData.worldCoordinates);
-    highp vec3 lightDirection = normalize(lightPosition - fragmentData.worldCoordinates);
+    // Compute normal
+    vec3 normal;
 
-    mediump vec3 N = normalize(fragmentData.normalInWorld);
-    /* Output the normal and dot product with camera ray */
-    normalOut.xyz = normalize(fragmentData.normalInCam);
-    normalOut.w = dot(N, cameraDirection);
-
-    #ifdef FLAT
-    color = finalDiffuseColor;
-    #else
-    // Start with ambient color
-    color = finalAmbientColor;
-
-    if(!gl_FrontFacing)
-        N = -N;
-
-    if(useLightMap)
+    if(haveTexture(NORMAL_TEXTURE))
     {
-        float gamma = 1.8;
-
-        vec3 V = cameraDirection; // cameraDirection: camera - object
-        vec3 R = reflect(-V, N);
-
-        color = toLinear(color, gamma);
-
-        // HACK: the diffuse textures we load are not designed for PBR
-        // and usually result in very dark results.
-        vec3 albedo = 1.0 * toLinear(finalDiffuseColor.rgb, gamma);
-
-        // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
-        // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
-        vec3 F0 = vec3(0.04);
-        F0 = mix(F0, albedo, metallic);
-
-        // ambient lighting (we now use IBL as the ambient term)
-        vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
-        vec3 kS = F;
-        vec3 kD = 1.0 - kS;
-        kD *= 1.0 - metallic;
-
-        vec3 irradiance = texture(lightMapIrradiance, cubemapCoord(N)).rgb;
-        vec3 diffuse      = irradiance * albedo;
-
-        // sample both the pre-filter map and the BRDF lut and combine them together as per the Split-Sum approximation to get the IBL specular part.
-        const float MAX_REFLECTION_LOD = 4.0;
-        vec3 prefilteredColor = textureLod(lightMapPrefilter, cubemapCoord(R), roughness * MAX_REFLECTION_LOD).rgb;
-        vec2 brdf  = texture(lightMapBRDFLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-        vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-
-        vec3 ambient = (kD * diffuse + specular); // FIXME: * ao
-
-        color += vec4(ambient, 1.0);
-
-        // HDR tonemapping (Reinhard operator)
-        color = color / (color + vec4(1.0));
-
-        color = toGamma(color, gamma);
+        normal = texture2D(normalTexture, fragmentData.interpolatedTextureCoords).xyz * 2.0 - 1.0;
+        normal = normalize(normal.x * fragmentData.tangentInWorld + normal.y * fragmentData.bitangentInWorld + normal.z * fragmentData.normalInWorld);
     }
     else
+        normal = fragmentData.normalInWorld;
+
+    if(!gl_FrontFacing)
+        normal = -normal;
+
+    highp vec3 cameraDirection = normalize(camPosition - fragmentData.worldCoordinates);
+    vec3 lightDir = reflect(-cameraDirection, normal);
+    vec3 H = normalize(lightDir + cameraDirection);
+    float VoH = clampDot(cameraDirection, H);
+    float NoV = clamp(dot(normal, cameraDirection), 1e-5, 1.0);
+
+
+    // Retrieve material parameters
+    float roughness = roughnessFactor;
+    float metallic = metallicFactor;
+
+    if(haveTexture(METALLIC_ROUGHNESS_TEXTURE))
     {
-        highp vec3 normalizedLightDirection = lightDirection;
-
-        /* Add diffuse color */
-        lowp float intensity = max(0.0, dot(N, normalizedLightDirection));
-        color += finalDiffuseColor*lightColor*intensity;
-
-        /* Add specular color, if needed */
-        if(intensity > 0.001) {
-            highp vec3 reflection = reflect(-normalizedLightDirection, N);
-            mediump float specularity = pow(max(0.0, dot(cameraDirection, reflection)), shininess);
-            color += finalSpecularColor*specularity;
-        }
+        vec2 roughnessMetal = texture2D(metallicRoughnessTexture, fragmentData.interpolatedTextureCoords).yz;
+        roughness *= roughnessMetal.x;
+        metallic *= roughnessMetal.y;
     }
-    #endif
 
-    color.a = 1.0;
+    roughness = max(roughness, MIN_ROUGHNESS);
 
-    #ifdef ALPHA_MASK
-    if(color.a < alphaMask) discard;
-    #endif
+    float occlusion = 1.0f;
+    if(haveTexture(OCCLUSION_TEXTURE))
+        occlusion = texture2D(occlusionTexture, fragmentData.interpolatedTextureCoords).x;
 
+    vec3 emissive = vec3(emissiveFactor);
+    if(haveTexture(EMISSIVE_TEXTURE))
+        emissive *= toLinear(texture2D(emissiveTexture, fragmentData.interpolatedTextureCoords), gamma).xyz;
 
+    // Load env texture data
+    vec2 f_ab = texture2D(lightMapBRDFLUT, vec2(NoV, roughness)).xy;
+    float lodLevel = roughness * 4.0;
+    vec3 radiance = textureLod(lightMapPrefilter, lightDir, lodLevel).xyz;
+    vec3 irradiance = textureLod(lightMapIrradiance, normal, 0).xyz;
+
+    // From GLTF spec
+    vec3 c_diff = diffuseColor(baseColor.rgb, metallic);
+    vec3 F0 = mix(vec3(DIELECTRIC_SPECULAR), baseColor.xyz, metallic);
+
+    // Roughness dependent fresnel, from Fdez-Aguera
+    vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
+    vec3 k_S = F0 + Fr * pow(1.0 - NoV, 5.0);
+
+    vec3 FssEss = k_S * f_ab.x + f_ab.y;
+
+    // Multiple scattering, from Fdez-Aguera
+    float Ems = (1.0 - (f_ab.x + f_ab.y));
+    vec3 F_avg = F0 + (1.0 - F0) / 21.0;
+    vec3 FmsEms = Ems * FssEss * F_avg / (1.0 - F_avg * Ems);
+    vec3 k_D = c_diff * (1.0 - FssEss - FmsEms);
+    vec3 selfColor = FssEss * radiance + (FmsEms + k_D) * irradiance;
+
+    // RGB output (linear space/HDR!)
+    color = vec4(selfColor * occlusion + emissive, baseColor.w);
+
+    // Simple semantic information outputs
+    objectCoordinatesOut = fragmentData.objectCoordinates;
+    camCoordinatesOut = vec4(fragmentData.camCoordinates, 1.0);
+    classIndexOut = classIndex;
+    instanceIndexOut = instanceIndex;
+
+    // Output the normal and dot product with camera ray
+    normalOut.xyz = normalize(fragmentData.normalInCam);
+    normalOut.w = dot(normal, cameraDirection);
+
+    // Outputs for the differentiable renderer
     vertexIndices = g_vertexIndices;
     barycentricCoeffs = g_barycentricCoeffs;
 }

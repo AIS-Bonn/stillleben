@@ -21,6 +21,7 @@ namespace Magnum
     {
         class AbstractImporter;
         class AbstractImageConverter;
+        class MaterialData;
     }
     namespace GL
     {
@@ -63,6 +64,8 @@ public:
     physx::PxPhysics& physxPhysics();
     physx::PxCooking& physxCooking();
     physx::PxMaterial& physxDefaultMaterial();
+
+    const Magnum::Trade::MaterialData& defaultMaterial() const;
 
     Magnum::DebugTools::ResourceManager& debugResourceManager();
 

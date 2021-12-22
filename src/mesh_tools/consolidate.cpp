@@ -112,7 +112,7 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
     {
         // Format has no support for objects, create a dummy one.
         objects = ObjectDataArray{1};
-        objects[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0});
+        objects[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0, 0});
     }
 
     UnsignedInt objectCount = objects.size();
