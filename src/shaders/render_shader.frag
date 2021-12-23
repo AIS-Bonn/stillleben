@@ -56,6 +56,9 @@ uniform uint instanceIndex = 0u;
 
 layout(location = UNIFORM_CAM_POSITION)
 uniform vec3 camPosition;
+
+layout(location = UNIFORM_WORLD_TO_CAM)
+uniform mediump mat4 worldToCam = mat4(1.0);
 //@}
 
 // Inputs from vertex or geometry shader
@@ -260,7 +263,7 @@ void main()
     instanceIndexOut = instanceIndex;
 
     // Output the normal and dot product with camera ray
-    normalOut.xyz = normalize(fragmentData.normalInCam);
+    normalOut.xyz = normalize(mat3(worldToCam) * normal);
     normalOut.w = dot(normal, cameraDirection);
 
     // Outputs for the differentiable renderer

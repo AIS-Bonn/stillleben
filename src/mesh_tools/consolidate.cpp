@@ -3,11 +3,14 @@
 // adapted from Magnum::MeshTools::concatenate()
 
 #include <stillleben/mesh_tools/consolidate.h>
+#include <stillleben/mesh_tools/compute_tangents.h>
 
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Utility/Algorithms.h>
 
+#include <Magnum/MeshTools/GenerateNormals.h>
+#include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Vector4.h>
 #include <Magnum/Math/Color.h>
@@ -30,7 +33,10 @@ namespace
     Containers::Optional<Trade::MeshAttributeData> transferAttribute(Trade::MeshData& input, Trade::MeshData& output, UnsignedInt vertexOffset, Trade::MeshAttribute attr, Callable&& transformer = [](Containers::StridedArrayView2D<T>& input, Containers::StridedArrayView2D<T>& output){ Utility::copy(input, output); })
     {
         if(!input.hasAttribute(attr))
+        {
+            Debug{} << "No attribute" << attr;
             return {};
+        }
 
         auto src = input.attribute<T>(attr);
         auto dst = output.mutableAttribute<T>(attr).slice(vertexOffset, vertexOffset + src.size());
@@ -70,6 +76,24 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
         {
             Warning{} << "Ignoring non-triangle (or non-indexed) sub-mesh" << i << "/" << importer.meshCount();
             continue;
+        }
+
+        // If normals are missing, compute them!
+        if(!mesh->hasAttribute(Trade::MeshAttribute::Normal))
+        {
+            Containers::Array<Vector3> normals = MeshTools::generateSmoothNormals(mesh->indices(), mesh->attribute<Vector3>(Trade::MeshAttribute::Position));
+
+            // And interleave them back into the mesh.
+            mesh = MeshTools::interleave(std::move(*mesh), {Trade::MeshAttributeData{
+                Trade::MeshAttribute::Normal, VertexFormat::Vector3,
+                normals, UnsignedShort(normals.size())
+            }});
+        }
+
+        // If tangents are missing, compute them!
+        if(!mesh->hasAttribute(Trade::MeshAttribute::Tangent))
+        {
+            *mesh = mesh_tools::computeTangents(std::move(*mesh));
         }
 
         meshData[i] = std::move(mesh);
@@ -256,6 +280,7 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
                 vertexOffset, Trade::MeshAttribute::Tangent,
                 [&](const Vector4& tangent){ return Vector4{transform.transformVector(tangent.xyz()), 1.0f}; }))
             {
+                Debug{} << "================== Loaded tangent data";
                 Containers::arrayAppend(attributes, std::move(*attr));
             }
 

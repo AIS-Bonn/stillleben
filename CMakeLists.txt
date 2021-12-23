@@ -106,8 +106,8 @@ add_library(stillleben SHARED
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
     src/shaders/viewer/viewer_shader.cpp
-    src/mesh_tools/tangents.cpp
     src/mesh_tools/consolidate.cpp
+    src/mesh_tools/compute_tangents.cpp
     src/utils/arc_ball.cpp
     src/utils/os.cpp
     ${stillleben_RESOURCES}

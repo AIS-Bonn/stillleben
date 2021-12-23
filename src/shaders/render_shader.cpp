@@ -17,6 +17,7 @@
 #include <Magnum/GL/Extensions.h>
 
 #include <Magnum/Trade/MaterialData.h>
+#include <Magnum/Trade/PbrMetallicRoughnessMaterialData.h>
 
 #include <stillleben/light_map.h>
 
@@ -254,34 +255,29 @@ RenderShader& RenderShader::setMaterial(
     const Containers::ArrayView<Containers::Optional<Magnum::GL::Texture2D>>& textures,
     const MaterialOverride& materialOverride)
 {
-    Float metallic = 0.04f;
-    Float roughness = 0.5f;
+    auto& material = data.as<Trade::PbrMetallicRoughnessMaterialData>();
 
-    Color4 baseColor{0.6f};
-    Color4 emissiveFactor{0.0f};
+    if(!material.hasCommonTextureCoordinates())
+    {
+        Error{} << "We only support common texture coordinates";
+        std::exit(1);
+    }
 
-    // If the material provides textures, change the defaults to 1.0
-    if(data.hasAttribute(Trade::MaterialAttribute::MetalnessTexture))
-        metallic = 1.0f;
-    if(data.hasAttribute(Trade::MaterialAttribute::RoughnessTexture))
-        roughness = 1.0f;
-    if(data.hasAttribute(Trade::MaterialAttribute::EmissiveTexture))
-        emissiveFactor = Color4{1.0f};
+    Matrix3 textureMatrix = material.commonTextureMatrix();
+    if((textureMatrix - Matrix3{}).toVector().length() > 1e-5)
+    {
+        Error{} << "We only support identity texture transformation";
+        Error{} << "But I got:\n";
+        Error{} << textureMatrix;
+        std::exit(1);
+    }
 
-    if(data.hasAttribute(Trade::MaterialAttribute::BaseColorTexture))
-        baseColor = Color4{1.0f};
 
-    if(auto m = data.tryAttribute<Float>(Trade::MaterialAttribute::Metalness))
-        metallic = *m;
+    Float metallic = material.metalness();
+    Float roughness = material.roughness();
 
-    if(auto r = data.tryAttribute<Float>(Trade::MaterialAttribute::Roughness))
-        roughness = *r;
-
-    if(auto color = data.tryAttribute<Color4>(Trade::MaterialAttribute::BaseColor))
-        baseColor = *color;
-
-    if(auto color = data.tryAttribute<Color4>(Trade::MaterialAttribute::EmissiveColor))
-        emissiveFactor = *color;
+    Color4 baseColor = material.baseColor();
+    Color4 emissiveFactor = material.emissiveColor();
 
     if(materialOverride.metallic() >= 0.0f)
         metallic = materialOverride.metallic();
@@ -311,21 +307,17 @@ RenderShader& RenderShader::setMaterial(
     if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::BaseColorTexture))
         bindTex(*tex, TextureInput::BaseColor);
 
-    Debug{} << "Texture attributes:";
-    if(data.hasAttribute(Trade::MaterialAttribute::MetalnessTexture))
-        Debug{} << " - Metalness";
-    if(data.hasAttribute(Trade::MaterialAttribute::RoughnessTexture))
-        Debug{} << " - Roughness";
-    if(data.hasAttribute(Trade::MaterialAttribute::OcclusionTexture))
-        Debug{} << " - Occlusion";
-    if(data.hasAttribute(Trade::MaterialAttribute::EmissiveTexture))
-        Debug{} << " - Emissive";
-    if(data.hasAttribute(Trade::MaterialAttribute::BaseColorTexture))
-        Debug{} << " - BaseColor";
-    if(data.hasAttribute(Trade::MaterialAttribute::NormalTexture))
-        Debug{} << " - Normal";
-    if(data.hasAttribute(Trade::MaterialAttribute::DiffuseTexture))
-        Debug{} << " - DiffuseTexture";
+    if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::EmissiveTexture))
+        bindTex(*tex, TextureInput::Emissive);
+
+    if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::NormalTexture))
+        bindTex(*tex, TextureInput::Normal);
+
+    if(material.hasNoneRoughnessMetallicTexture())
+        bindTex(material.roughnessTexture(), TextureInput::MetallicRoughness);
+
+    if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::OcclusionTexture))
+        bindTex(material.occlusionTexture(), TextureInput::Occlusion);
 
     setUniform(eVal(Uniform::AvailableTextures), availableTextures);
 
