@@ -399,22 +399,22 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
 
             Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_xp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_xn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_yp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_yn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_zp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_zn.png");
         }
 
         hdrIrradiance.generateMipmap();
@@ -474,7 +474,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
 
             Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/prefilter.png");
         }
     }
 
