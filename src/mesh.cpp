@@ -3,7 +3,6 @@
 
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
-#include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/mesh_tools/consolidate.h>
 #include <stillleben/physx.h>
 #include <stillleben/physx_impl.h>

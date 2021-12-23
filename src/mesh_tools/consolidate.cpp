@@ -33,10 +33,7 @@ namespace
     Containers::Optional<Trade::MeshAttributeData> transferAttribute(Trade::MeshData& input, Trade::MeshData& output, UnsignedInt vertexOffset, Trade::MeshAttribute attr, Callable&& transformer = [](Containers::StridedArrayView2D<T>& input, Containers::StridedArrayView2D<T>& output){ Utility::copy(input, output); })
     {
         if(!input.hasAttribute(attr))
-        {
-            Debug{} << "No attribute" << attr;
             return {};
-        }
 
         auto src = input.attribute<T>(attr);
         auto dst = output.mutableAttribute<T>(attr).slice(vertexOffset, vertexOffset + src.size());
@@ -280,7 +277,6 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
                 vertexOffset, Trade::MeshAttribute::Tangent,
                 [&](const Vector4& tangent){ return Vector4{transform.transformVector(tangent.xyz()), 1.0f}; }))
             {
-                Debug{} << "================== Loaded tangent data";
                 Containers::arrayAppend(attributes, std::move(*attr));
             }
 
