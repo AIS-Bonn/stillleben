@@ -306,6 +306,8 @@ RenderShader& RenderShader::setMaterial(
 
     if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::BaseColorTexture))
         bindTex(*tex, TextureInput::BaseColor);
+    else if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::DiffuseTexture))
+        bindTex(*tex, TextureInput::BaseColor);
 
     if(auto tex = data.tryAttribute<UnsignedInt>(Trade::MaterialAttribute::EmissiveTexture))
         bindTex(*tex, TextureInput::Emissive);
