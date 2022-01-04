@@ -55,6 +55,7 @@ namespace
     {
         std::string file;
         float gamma = 1.0f;
+        float multiplier = 1.0f;
 
         static Containers::Optional<IBLSpec> load(const Utility::ConfigurationGroup& group, const std::string& prefix)
         {
@@ -82,6 +83,7 @@ namespace
             }
 
             std::string gammaTag = prefix + "gamma";
+            std::string multiTag = prefix + "multi";
 
             IBLSpec ret;
 
@@ -89,6 +91,9 @@ namespace
 
             if(group.hasValue(gammaTag))
                 ret.gamma = group.value<float>(gammaTag);
+
+            if(group.hasValue(multiTag))
+                ret.multiplier = group.value<float>(multiTag);
 
             return ret;
         }

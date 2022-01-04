@@ -36,6 +36,7 @@
 #include "shaders/background_cube_shader.h"
 #include "shaders/ssao_shader.h"
 #include "shaders/ssao_apply_shader.h"
+#include "shaders/tone_map_shader.h"
 
 using namespace Magnum;
 using namespace Math::Literals;
@@ -101,11 +102,13 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_framebuffer{Magnum::NoCreate}
  , m_ssaoFramebuffer{Magnum::NoCreate}
  , m_ssaoApplyFramebuffer{Magnum::NoCreate}
+ , m_toneMapFramebuffer{Magnum::NoCreate}
  , m_renderShader{std::make_unique<RenderShader>()}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
  , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
  , m_ssaoShader{std::make_unique<SSAOShader>()}
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
+ , m_toneMapShader{std::make_unique<ToneMapShader>()}
  , m_meshShader{std::make_unique<Magnum::Shaders::MeshVisualizerGL3D>(Shaders::MeshVisualizerGL3D::Flag::Wireframe)}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid());
@@ -184,6 +187,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
     if(!m_initialized || m_framebuffer.viewport().size() != scene.viewport())
     {
+        UnsignedInt levels = Math::log2(viewport.max())+1;
+
         m_framebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
         m_depthbuffer.setStorage(GL::RenderbufferFormat::DepthComponent24, viewport);
@@ -191,15 +196,22 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         // SSAO
         m_ssaoFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
         m_ssaoRGBInputTexture
-            .setStorage(GL::TextureFormat::RGBA32F, viewport)
-            .setMinificationFilter(SamplerFilter::Nearest)
+            .setStorage(levels, GL::TextureFormat::RGBA32F, viewport)
+            .setMinificationFilter(SamplerFilter::Linear, SamplerMipmap::Linear)
             .setMagnificationFilter(SamplerFilter::Nearest);
         m_ssaoTexture
-            .setStorage(GL::TextureFormat::R32F, viewport)
+            .setStorage(1, GL::TextureFormat::R32F, viewport)
             .setMinificationFilter(SamplerFilter::Nearest)
             .setMagnificationFilter(SamplerFilter::Nearest);
 
         m_ssaoApplyFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
+
+        m_toneMapInputTexture
+            .setStorage(levels, GL::TextureFormat::RGBA32F, viewport)
+            .setMinificationFilter(SamplerFilter::Linear, SamplerMipmap::Linear)
+            .setMaxLevel(levels-1)
+        ;
+        m_toneMapFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
         Corrade::Containers::Array<Magnum::Float> data(Corrade::ValueInit, 4 * viewport.x()*viewport.y());
         ImageView2D zeroImage{Magnum::PixelFormat::RGBA32F, {viewport.x(), viewport.y()}, data};
@@ -226,7 +238,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            ssaoEnabled ? m_ssaoRGBInputTexture : result->rgb
+            ssaoEnabled ? m_ssaoRGBInputTexture : m_toneMapInputTexture,
+            0
         )
         .attachTexture(
             GL::Framebuffer::ColorAttachment{1},
@@ -279,37 +292,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
     m_framebuffer.clear(GL::FramebufferClear::Depth);
 
-    // Do we have a background texture?
-    if(scene.backgroundImage())
-    {
-        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
-        m_backgroundShader->
-            bindRGB(*scene.backgroundImage())
-            .draw(m_quadMesh);
-
-        // Draw on top
-        m_framebuffer.clear(GL::FramebufferClear::Depth);
-        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
-    }
-    else if(scene.lightMap())
-    {
-        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
-        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
-        m_backgroundCubeShader->bindRGB(scene.lightMap()->cubeMap());
-        m_backgroundCubeShader->setViewMatrix(scene.camera().cameraMatrix());
-        m_backgroundCubeShader->setProjectionMatrix(scene.camera().projectionMatrix());
-        m_backgroundCubeShader->draw(m_cubeMesh);
-
-        // Draw on top
-        m_framebuffer.clear(GL::FramebufferClear::Depth);
-        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::Less);
-        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
-    }
-    else
-    {
-        m_framebuffer.clearColor(0, scene.backgroundColor());
-    }
-
+    m_framebuffer.clearColor(0, 0x00000000_rgbaf);
     m_framebuffer.clearColor(1, invalid);
     m_framebuffer.clearColor(2, Vector4ui{0});
     m_framebuffer.clearColor(3, Vector4ui{0});
@@ -469,9 +452,39 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
 
     if(ssaoEnabled)
+        m_ssaoRGBInputTexture.generateMipmap();
+    else
+        m_toneMapInputTexture.generateMipmap();
+
+    // Do we have a background texture?
+    if(scene.backgroundImage())
+    {
+        m_framebuffer.mapForDraw({
+            {BackgroundShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+        });
+        m_backgroundShader->
+            bindRGB(*scene.backgroundImage())
+            .draw(m_quadMesh);
+    }
+    else if(scene.lightMap())
+    {
+        m_framebuffer.mapForDraw({
+            {BackgroundCubeShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+        });
+
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
+        m_backgroundCubeShader->bindRGB(scene.lightMap()->cubeMap());
+        m_backgroundCubeShader->setViewMatrix(scene.camera().cameraMatrix());
+        m_backgroundCubeShader->setProjectionMatrix(scene.camera().projectionMatrix());
+        m_backgroundCubeShader->draw(m_cubeMesh);
+
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::Less);
+    }
+
+    if(ssaoEnabled)
     {
         m_ssaoFramebuffer
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_ssaoTexture)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_ssaoTexture, 0)
             .mapForDraw({
                 {SSAOShader::AOOutput, GL::Framebuffer::ColorAttachment{0}}
             });
@@ -487,7 +500,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .draw(m_quadMesh);
 
         m_ssaoApplyFramebuffer
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_toneMapInputTexture, 0)
             .mapForDraw({
                 {SSAOApplyShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
             });
@@ -499,6 +512,21 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .bindAO(m_ssaoTexture)
             .bindColor(m_ssaoRGBInputTexture)
             .bindCoordinates(result->camCoordinates)
+            .draw(m_quadMesh);
+    }
+
+    // HDR Tonemapping
+    {
+        m_toneMapFramebuffer
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
+            .mapForDraw({
+                {ToneMapShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+            });
+
+        m_toneMapFramebuffer.bind();
+        (*m_toneMapShader)
+            .bindColor(m_toneMapInputTexture)
+            .bindObjectLuminance(ssaoEnabled ? m_ssaoRGBInputTexture : m_toneMapInputTexture)
             .draw(m_quadMesh);
     }
 

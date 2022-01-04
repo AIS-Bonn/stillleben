@@ -1,8 +1,8 @@
-// Screen-space Ambient Occlusion shader
+// HDR tone mapping & gamma correction
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#ifndef STILLLEBEN_SSAO_APPLY_SHADER_H
-#define STILLLEBEN_SSAO_APPLY_SHADER_H
+#ifndef SL_SHADERS_TONE_MAPPING_H
+#define SL_SHADERS_TONE_MAPPING_H
 
 #include <Corrade/Containers/Array.h>
 
@@ -17,11 +17,11 @@ namespace sl
 
 using namespace Magnum;
 
-class SSAOApplyShader : public GL::AbstractShaderProgram
+class ToneMapShader : public GL::AbstractShaderProgram
 {
 public:
     // Input attributes
-    typedef Shaders::Generic2D::Position Position;
+    typedef Shaders::GenericGL2D::Position Position;
 
     // Outputs
     enum: UnsignedInt {
@@ -31,7 +31,7 @@ public:
     /**
      * @brief Constructor
      */
-    SSAOApplyShader();
+    ToneMapShader();
 
     /**
      * @brief Construct without creating the underlying OpenGL object
@@ -43,23 +43,22 @@ public:
      * This function can be safely used for constructing (and later
      * destructing) objects even without any OpenGL context being active.
      */
-    explicit SSAOApplyShader(NoCreateT) noexcept: GL::AbstractShaderProgram{NoCreate} {}
+    explicit ToneMapShader(NoCreateT) noexcept: GL::AbstractShaderProgram{NoCreate} {}
 
     /** @brief Copying is not allowed */
-    SSAOApplyShader(const SSAOApplyShader&) = delete;
+    ToneMapShader(const ToneMapShader&) = delete;
 
     /** @brief Move constructor */
-    SSAOApplyShader(SSAOApplyShader&&) noexcept = default;
+    ToneMapShader(ToneMapShader&&) noexcept = default;
 
     /** @brief Copying is not allowed */
-    SSAOApplyShader& operator=(const SSAOApplyShader&) = delete;
+    ToneMapShader& operator=(const ToneMapShader&) = delete;
 
     /** @brief Move assignment */
-    SSAOApplyShader& operator=(SSAOApplyShader&&) noexcept = default;
+    ToneMapShader& operator=(ToneMapShader&&) noexcept = default;
 
-    SSAOApplyShader& bindAO(GL::Texture2D& texture);
-    SSAOApplyShader& bindColor(GL::Texture2D& texture);
-    SSAOApplyShader& bindCoordinates(GL::RectangleTexture& texture);
+    ToneMapShader& bindColor(GL::Texture2D& texture);
+    ToneMapShader& bindObjectLuminance(GL::Texture2D& texture);
 
 private:
 };
@@ -67,5 +66,3 @@ private:
 }
 
 #endif
-
-

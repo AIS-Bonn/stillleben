@@ -283,7 +283,7 @@ RenderShader& RenderShader::setMaterial(
         metallic = materialOverride.metallic();
 
     if(materialOverride.roughness() >= 0.0f)
-        metallic = materialOverride.roughness();
+        roughness = materialOverride.roughness();
 
     auto materialParameters = Containers::array<Vector4>({
         baseColor,

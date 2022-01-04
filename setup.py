@@ -20,7 +20,7 @@ def build_stillleben():
     env = os.environ.copy()
     env['CLICOLOR_FORCE'] = '1'
 
-    if not os.path.exists(os.path.join(BUILD_PATH, 'build.ninja')):
+    if (not os.path.exists(os.path.join(BUILD_PATH, 'build.ninja'))) or os.environ.get('CMAKE', '0') == '1':
         cmd = [
             'cmake',
             '-DCMAKE_BUILD_TYPE={}'.format('Debug' if DEBUG else 'RelWithDebInfo'),

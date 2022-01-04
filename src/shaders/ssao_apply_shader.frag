@@ -1,6 +1,6 @@
 
-layout(binding = 0) uniform highp sampler2DRect rgbSampler;
-layout(binding = 1) uniform highp sampler2DRect aoSampler;
+layout(binding = 0) uniform highp sampler2D rgbSampler;
+layout(binding = 1) uniform highp sampler2D aoSampler;
 layout(binding = 2) uniform highp sampler2DRect coordinateSampler;
 
 // Outputs
@@ -29,9 +29,9 @@ vec4 toGamma(vec4 v, float gamma)
 const float KERNEL_RADIUS = 3.0;
 const float g_Sharpness = 300.0;
 
-float bilateralBlur(vec2 uv, float r, float center_c, float center_d, inout float w_total)
+float bilateralBlur(ivec2 uv, float r, float center_c, float center_d, inout float w_total)
 {
-    float c = texture(aoSampler, uv).r;
+    float c = texelFetch(aoSampler, uv, 0).r;
     float d = texture(coordinateSampler, uv).z;
 
     const float BlurSigma = float(KERNEL_RADIUS) * 0.5;
@@ -44,9 +44,9 @@ float bilateralBlur(vec2 uv, float r, float center_c, float center_d, inout floa
     return c*w;
 }
 
-float smoothAO(vec2 texCoord)
+float smoothAO(ivec2 texCoord)
 {
-    float center_c = texture(aoSampler, texCoord).r;
+    float center_c = texelFetch(aoSampler, texCoord, 0).r;
     float center_d = texture(coordinateSampler, texCoord).z;
 
     float result = 0.0;
@@ -55,7 +55,7 @@ float smoothAO(vec2 texCoord)
     {
         for (int y = -2; y < 2; ++y)
         {
-            vec2 offset = vec2(float(x), float(y));
+            ivec2 offset = ivec2(x, y);
             result += bilateralBlur(texCoord + offset, sqrt(x*x+y*y), center_c, center_d, w_total);
         }
     }
@@ -64,18 +64,13 @@ float smoothAO(vec2 texCoord)
 
 void main()
 {
-    ivec2 texSize = textureSize(rgbSampler);
-    vec2 texCoord = gl_FragCoord.xy;
+    ivec2 texCoord = ivec2(gl_FragCoord.xy);
 
-    vec4 rgb = texture(rgbSampler, texCoord);
+    vec4 rgb = texelFetch(rgbSampler, texCoord, 0);
 
     float ao = smoothAO(texCoord);
 
-//     rgb = toLinear(rgb, 1.8);
-
     rgb.rgb *= vec3(ao);
-
-//     rgb = toGamma(rgb, 1.8);
 
     outputColor = rgb;
 }

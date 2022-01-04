@@ -12,5 +12,5 @@ void main()
     ivec2 texSize = textureSize(rgb);
     ivec2 texCoord = ivec2(textureCoords * texSize);
 
-    fragmentColor = texture(rgb, texCoord);
+    fragmentColor = vec4(texture(rgb, texCoord).rgb, 0.0);
 }

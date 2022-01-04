@@ -6,7 +6,7 @@
 
 #include <Magnum/GL/MultisampleTexture.h>
 #include <Magnum/GL/Renderbuffer.h>
-#include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/Texture.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/Shaders/MeshVisualizerGL.h>
@@ -25,6 +25,7 @@ class RenderShader;
 class Scene;
 class SSAOShader;
 class SSAOApplyShader;
+class ToneMapShader;
 class Object;
 
 class RenderPass
@@ -107,10 +108,13 @@ private:
     Magnum::GL::Renderbuffer m_depthbuffer;
 
     Magnum::GL::Framebuffer m_ssaoFramebuffer;
-    Magnum::GL::RectangleTexture m_ssaoTexture;
+    Magnum::GL::Texture2D m_ssaoTexture;
 
     Magnum::GL::Framebuffer m_ssaoApplyFramebuffer;
-    Magnum::GL::RectangleTexture m_ssaoRGBInputTexture;
+    Magnum::GL::Texture2D m_ssaoRGBInputTexture;
+
+    Magnum::GL::Framebuffer m_toneMapFramebuffer;
+    Magnum::GL::Texture2D m_toneMapInputTexture;
 
     std::unique_ptr<RenderShader> m_renderShader;
 
@@ -119,6 +123,8 @@ private:
 
     std::unique_ptr<SSAOShader> m_ssaoShader;
     std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
+
+    std::unique_ptr<ToneMapShader> m_toneMapShader;
 
     std::unique_ptr<Magnum::Shaders::MeshVisualizerGL3D> m_meshShader;
 
