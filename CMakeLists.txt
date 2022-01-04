@@ -111,6 +111,7 @@ add_library(stillleben SHARED
     src/mesh_tools/compute_tangents.cpp
     src/utils/arc_ball.cpp
     src/utils/os.cpp
+    src/utils/primitive_importer.cpp
     ${stillleben_RESOURCES}
 )
 target_include_directories(stillleben PUBLIC

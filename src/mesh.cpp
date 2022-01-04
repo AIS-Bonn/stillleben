@@ -56,6 +56,7 @@
 
 #include "shaders/render_shader.h"
 #include "utils/os.h"
+#include "utils/primitive_importer.h"
 
 using namespace Magnum;
 
@@ -234,7 +235,11 @@ void Mesh::openFile()
     Pointer<Magnum::Trade::AbstractImporter> importer;
 
     // Load a scene importer plugin
-    if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
+    if(Utility::String::beginsWith(m_filename, "primitive://"))
+    {
+        importer = Containers::pointer<PrimitiveImporter>();
+    }
+    else if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
     {
         importer = manager.loadAndInstantiate("CgltfImporter");
         if(!importer)
@@ -341,8 +346,12 @@ void Mesh::loadPhysics()
 
     // We want to cache the simplified & cooked PhysX mesh.
     std::string cacheFile = Corrade::Utility::formatString("{}.sl_mesh", m_filename);
+    bool isPrimitive = Utility::String::beginsWith(m_filename, "primitive://");
 
-    auto buffer = readCacheFile(cacheFile, m_filename, meshData, m_flags);
+    Containers::Optional<std::vector<uint8_t>> buffer;
+
+    if(!isPrimitive)
+        buffer = readCacheFile(cacheFile, m_filename, meshData, m_flags);
 
     if(buffer)
     {
@@ -507,25 +516,28 @@ void Mesh::loadPhysics()
             }
         }
 
-        os::AtomicFileStream ostream(cacheFile);
+        if(!isPrimitive)
+        {
+            os::AtomicFileStream ostream(cacheFile);
 
-        // Write version
-        ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
+            // Write version
+            ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
 
-        // Write flags
-        Magnum::UnsignedInt flagsValue = Containers::enumCastUnderlyingType(m_flags);
-        ostream.write(reinterpret_cast<const char*>(&flagsValue), sizeof(flagsValue));
+            // Write flags
+            Magnum::UnsignedInt flagsValue = Containers::enumCastUnderlyingType(m_flags);
+            ostream.write(reinterpret_cast<const char*>(&flagsValue), sizeof(flagsValue));
 
-        // Write hashes
-        MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
-        vertexHash.byteArray();
-        ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
+            // Write hashes
+            MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
+            vertexHash.byteArray();
+            ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
 
-        MeshHash::Digest indicesHash = hashArray(meshData.indicesAsArray());
-        ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
+            MeshHash::Digest indicesHash = hashArray(meshData.indicesAsArray());
+            ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
 
-        // Write buf data
-        ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
+            // Write buf data
+            ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
+        }
     }
 
     physx::PxDefaultMemoryInputData stream(buf.data(), buf.size());

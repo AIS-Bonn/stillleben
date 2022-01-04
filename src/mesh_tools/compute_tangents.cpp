@@ -42,11 +42,6 @@ Trade::MeshData computeTangents(Trade::MeshData&& mesh)
 
     auto normals = mesh.attribute<Vector3>(Trade::MeshAttribute::Normal);
 
-    if(mesh.attributeFormat(Trade::MeshAttribute::TextureCoordinates) != VertexFormat::Vector2)
-        throw std::invalid_argument{"mesh_tools::computeTangents(): Need Vector2 texture coordinates"};
-
-    auto texCoords = mesh.attribute<Vector2>(Trade::MeshAttribute::TextureCoordinates);
-
     Containers::Array<UnsignedInt> degree{ValueInit, vertexCount}; // initialized to 0
 
     Containers::Array<Vector3> tangents{vertexCount};
@@ -57,6 +52,11 @@ Trade::MeshData computeTangents(Trade::MeshData&& mesh)
     // More explanation in https://learnopengl.com/Advanced-Lighting/Normal-Mapping.
     if(mesh.hasAttribute(Trade::MeshAttribute::TextureCoordinates))
     {
+        if(mesh.attributeFormat(Trade::MeshAttribute::TextureCoordinates) != VertexFormat::Vector2)
+            throw std::invalid_argument{"mesh_tools::computeTangents(): Need Vector2 texture coordinates"};
+
+        auto texCoords = mesh.attribute<Vector2>(Trade::MeshAttribute::TextureCoordinates);
+
         // Compute the tangent for each triangle and then average for each vertex
         for(UnsignedInt f = 0; f < faceCount; ++f)
         {
@@ -106,7 +106,7 @@ Trade::MeshData computeTangents(Trade::MeshData&& mesh)
     else
     {
         // We do not have UV coordinates, so we get a random tangent vector.
-        throw std::runtime_error{"This is not implemented yet."};
+        Error{} << "WARNING: computeTangents(): outputting empty tangents";
     }
 
     // Compute compressed representation (tangent + bitangent sign)
