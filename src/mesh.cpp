@@ -170,32 +170,6 @@ namespace
 
         return buffer;
     }
-
-    bool meshIsWatertight(const Containers::ArrayView<Vector3>& vertices, const Containers::ArrayView<UnsignedInt>& indices)
-    {
-        static_assert(2 * sizeof(UnsignedInt) == sizeof(std::uint64_t));
-        std::unordered_map<std::uint64_t, UnsignedInt> counts;
-
-        // Loop over all edges
-        for(std::size_t i = 0; i < indices.size()/3; ++i)
-        {
-            auto triangle = indices.slice(i*3, i*3+3);
-            for(std::size_t j = 0; j < 3; ++j)
-            {
-                auto v0 = triangle[j];
-                auto v1 = triangle[(j+1)%3];
-
-                if(v0 < v1)
-                    counts[(static_cast<uint64_t>(v0) << 32) | v1]++;
-                else
-                    counts[(static_cast<uint64_t>(v1) << 32) | v0]++;
-            }
-        }
-
-        return std::all_of(counts.begin(), counts.end(), [](auto edge){
-            return edge.second == 2;
-        });
-    }
 }
 
 Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx, Flags flags)
@@ -362,9 +336,6 @@ void Mesh::loadPhysics()
         Debug{} << "Simplifying mesh and writing cache file...";
         Array<Vector3> vertices = meshData.positions3DAsArray();
         Array<UnsignedInt> indices = meshData.indicesAsArray();
-
-        if(!meshIsWatertight(vertices, indices))
-            Warning{} << "Mesh is not watertight!";
 
         // First compute a single convex hull (we abuse V-HACD here because
         // it's nice and robust)
