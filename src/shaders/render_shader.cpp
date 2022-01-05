@@ -28,6 +28,8 @@ namespace sl
 
 namespace
 {
+    constexpr UnsignedInt NumLights = 3;
+
     enum class TextureInput : Int
     {
         BaseColor = 0,
@@ -56,7 +58,11 @@ namespace
         InstanceIndex,
         StickerProjection,
         StickerRange,
-        CamPosition
+        CamPosition,
+        LightMapAvailable,
+        LightPositions, // size NumLights
+        LightColors = LightPositions + NumLights, // size NumLights
+        AmbientLight = LightColors + NumLights
     };
 
     template<class T>
@@ -144,6 +150,11 @@ RenderShader::RenderShader()
 #define UNIFORM_STICKER_RANGE {}
 
 #define UNIFORM_CAM_POSITION {}
+
+#define UNIFORM_LIGHT_MAP_AVAILABLE {}
+#define UNIFORM_LIGHT_POSITIONS {}
+#define UNIFORM_LIGHT_COLORS {}
+#define UNIFORM_AMBIENT_LIGHT {}
 )EOS",
         eVal(Uniform::MeshToObject),
         eVal(Uniform::ObjectToWorld),
@@ -157,7 +168,11 @@ RenderShader::RenderShader()
         eVal(Uniform::InstanceIndex),
         eVal(Uniform::StickerProjection),
         eVal(Uniform::StickerRange),
-        eVal(Uniform::CamPosition)
+        eVal(Uniform::CamPosition),
+        eVal(Uniform::LightMapAvailable),
+        eVal(Uniform::LightPositions),
+        eVal(Uniform::LightColors),
+        eVal(Uniform::AmbientLight)
     );
 
     header += Corrade::Utility::formatString(R"EOS(
@@ -181,10 +196,13 @@ RenderShader::RenderShader()
         CamCoordinatesOutput
     );
 
-    header += R"EOS(
+    header += Corrade::Utility::formatString(R"EOS(
 // other stuff
 #define M_PI 3.141592653589793
-)EOS";
+#define NUM_LIGHTS {}
+)EOS",
+        NumLights
+    );
 
     vert.addSource(header)
         .addSource(rs.get("render_shader.glsl"))
@@ -247,6 +265,35 @@ RenderShader& RenderShader::setLightMap(LightMap& lightMap)
     lightMap.irradianceMap().bind(eVal(TextureInput::LightMapIrradiance));
     lightMap.prefilterMap().bind(eVal(TextureInput::LightMapPrefilter));
     lightMap.brdfLUT().bind(eVal(TextureInput::LightMapBRDFLUT));
+
+    // TODO: Extract this from IBL light map
+    Containers::Array<Vector4> lightPositions{NumLights};
+    Containers::Array<Color3> lightColors{DirectInit, NumLights, 0.0f};
+
+    setUniform(eVal(Uniform::LightMapAvailable), 1u);
+    setUniform(eVal(Uniform::LightPositions), lightPositions);
+    setUniform(eVal(Uniform::LightColors), lightColors);
+    setUniform(eVal(Uniform::AmbientLight), Color3{0.0f});
+
+    return *this;
+}
+
+RenderShader& RenderShader::setManualLighting(const Containers::ArrayView<Vector4>& positions, const Containers::ArrayView<Color3>& colors, const Color3& ambientLight)
+{
+    Containers::Array<Vector4> lightPositions{NumLights};
+    Containers::Array<Color3> lightColors{DirectInit, NumLights, 0.0f};
+
+    for(UnsignedInt i = 0; i < std::min<UnsignedInt>(NumLights, positions.size()); ++i)
+        lightPositions[i] = positions[i];
+
+    for(UnsignedInt i = 0; i < std::min<UnsignedInt>(NumLights, colors.size()); ++i)
+        lightColors[i] = colors[i];
+
+    setUniform(eVal(Uniform::LightMapAvailable), 0u);
+    setUniform(eVal(Uniform::LightPositions), lightPositions);
+    setUniform(eVal(Uniform::LightColors), lightColors);
+    setUniform(eVal(Uniform::AmbientLight), ambientLight);
+
     return *this;
 }
 
@@ -288,8 +335,20 @@ RenderShader& RenderShader::setMaterial(
     }
 
 
-    Float metallic = material.metalness();
-    Float roughness = material.roughness();
+    Float metallic = 0.04f;
+    Float roughness = 0.5f;
+
+    // Override defaults in case there are textures
+    if(material.hasAttribute(Trade::MaterialAttribute::MetalnessTexture))
+        metallic = 1.0f;
+    if(material.hasAttribute(Trade::MaterialAttribute::RoughnessTexture))
+        roughness = 1.0f;
+
+    // If there are specific values, use them
+    if(auto m = material.tryAttribute<Float>(Trade::MaterialAttribute::Metalness))
+        metallic = *m;
+    if(auto r = material.tryAttribute<Float>(Trade::MaterialAttribute::Roughness))
+        roughness = *r;
 
     Color4 baseColor = material.baseColor();
     Color4 emissiveFactor = material.emissiveColor();

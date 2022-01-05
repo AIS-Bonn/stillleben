@@ -306,7 +306,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     if(scene.lightMap())
         m_renderShader->setLightMap(*scene.lightMap());
     else
-        Error{} << "Scenes without light maps are currently not supported";
+        m_renderShader->setManualLighting(scene.lightPositions(), scene.lightColors(), scene.ambientLight());
 
     (*m_renderShader)
         .bindDepthTexture(*minDepth)

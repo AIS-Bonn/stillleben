@@ -47,6 +47,19 @@ uniform vec4 materialParameters[3];
 layout(location = UNIFORM_AVAILABLE_TEXTURES)
 uniform uint availableTextures = 0u;
 
+// Lighting
+layout(location = UNIFORM_LIGHT_MAP_AVAILABLE)
+uniform uint lightMapAvailable = 0u;
+
+layout(location = UNIFORM_LIGHT_POSITIONS)
+uniform vec4 lightPositions[NUM_LIGHTS];
+
+layout(location = UNIFORM_LIGHT_COLORS)
+uniform vec3 lightColors[NUM_LIGHTS];
+
+layout(location = UNIFORM_AMBIENT_LIGHT)
+uniform vec3 ambientLight = vec3(0.0);
+
 // Segmentation information
 layout(location = UNIFORM_CLASS_INDEX)
 uniform uint classIndex = 0u;
@@ -155,10 +168,58 @@ float clampDot(vec3 v1, vec3 v2)
     return clamp(dot(v1, v2), 0.0, 1.0);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+
+//DFG equations from https://learnopengl.com/PBR/Lighting
+float DistributionGGX(vec3 N, vec3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float num   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = M_PI * denom * denom;
+
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float num   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return num / denom;
+}
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+vec3 fresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void main()
 {
     // Depth peeling operation
-    // discard fragments that closer to the camera than the current depth.
+    // discard fragments which are closer to the camera than the current depth.
     if(fragmentData.objectCoordinates.w - 0.00001 <= texelFetch(depthTexture, ivec2(gl_FragCoord.xy)).w)
     {
         discard;
@@ -184,7 +245,7 @@ void main()
        fragmentData.stickerCoordinates.x < 1 &&
        fragmentData.stickerCoordinates.y < 1)
     {
-        lowp vec4 stickerColor = texture(stickerTexture, fragmentData.stickerCoordinates * textureSize(stickerTexture));
+        lowp vec4 stickerColor = toLinear(texture(stickerTexture, fragmentData.stickerCoordinates * textureSize(stickerTexture)), gamma);
         baseColor = mix(baseColor, stickerColor, stickerColor.a);
     }
 
@@ -230,11 +291,7 @@ void main()
     if(haveTexture(EMISSIVE_TEXTURE))
         emissive *= toLinear(texture2D(emissiveTexture, fragmentData.interpolatedTextureCoords), gamma).xyz;
 
-    // Load env texture data
-    vec2 f_ab = texture2D(lightMapBRDFLUT, vec2(NoV, roughness)).xy;
-    float lodLevel = roughness * 4.0;
-    vec3 radiance = textureLod(lightMapPrefilter, lightDir, lodLevel).xyz;
-    vec3 irradiance = textureLod(lightMapIrradiance, normal, 0).xyz;
+    color = vec4(0.0, 0.0, 0.0, baseColor.w);
 
     // From GLTF spec
     vec3 c_diff = diffuseColor(baseColor.rgb, metallic);
@@ -244,17 +301,69 @@ void main()
     vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
     vec3 k_S = F0 + Fr * pow(1.0 - NoV, 5.0);
 
-    vec3 FssEss = k_S * f_ab.x + f_ab.y;
+    for(int i = 0; i < NUM_LIGHTS; ++i)
+    {
+        // calculate per-light radiance
+        vec3 L = normalize(lightPositions[i].xyz - fragmentData.worldCoordinates.xyz);
+        vec3 H = normalize(cameraDirection + L);
+//         float distance = length(spot_lights[i].pos - P_w);
+//         float attenuation = 1.0 / (distance * distance);
+        float attenuation = 1.0;
+        vec3 radiance = lightColors[i] * attenuation;
 
-    // Multiple scattering, from Fdez-Aguera
-    float Ems = (1.0 - (f_ab.x + f_ab.y));
-    vec3 F_avg = F0 + (1.0 - F0) / 21.0;
-    vec3 FmsEms = Ems * FssEss * F_avg / (1.0 - F_avg * Ems);
-    vec3 k_D = c_diff * (1.0 - FssEss - FmsEms);
-    vec3 selfColor = FssEss * radiance + (FmsEms + k_D) * irradiance;
+        // Cook-Torrance BRDF
+        float NDF = DistributionGGX(normal, H, roughness);
+        float G   = GeometrySmith(normal, cameraDirection, L, roughness);
+        vec3 F    = k_S;
 
-    // RGB output (linear space/HDR!)
-    color = vec4(selfColor * occlusion + emissive, baseColor.w);
+        vec3 nominator    = NDF * G * F;
+        float denominator = 4 * NoV * max(dot(normal, L), 0.0);
+        vec3 specular = nominator / max(denominator, 0.001); // prevent divide by zero for NdotV=0.0 or NdotL=0.0
+
+        // kS is equal to Fresnel
+        vec3 kS = F;
+        // for energy conservation, the diffuse and specular light can't
+        // be above 1.0 (unless the surface emits light); to preserve this
+        // relationship the diffuse component (kD) should equal 1.0 - kS.
+        vec3 kD = vec3(1.0) - kS;
+        // multiply kD by the inverse metalness such that only non-metals
+        // have diffuse lighting, or a linear blend if partly metal (pure metals
+        // have no diffuse light).
+        kD *= 1.0 - metallic;
+
+        // scale light by NdotL
+        float NdotL = max(dot(normal, L), 0.0);
+
+        // add to outgoing radiance Lo
+        color.rgb += (kD * baseColor.rgb / M_PI + specular) * radiance * NdotL;
+    }
+
+    // Ambient light
+    color.rgb += ambientLight * baseColor.rgb;
+
+    if(lightMapAvailable != 0)
+    {
+        // Load env texture data
+        vec2 f_ab = texture2D(lightMapBRDFLUT, vec2(NoV, roughness)).xy;
+        float lodLevel = roughness * 4.0;
+        vec3 radiance = textureLod(lightMapPrefilter, lightDir, lodLevel).xyz;
+        vec3 irradiance = textureLod(lightMapIrradiance, normal, 0).xyz;
+
+        vec3 FssEss = k_S * f_ab.x + f_ab.y;
+
+        // Multiple scattering, from Fdez-Aguera
+        float Ems = (1.0 - (f_ab.x + f_ab.y));
+        vec3 F_avg = F0 + (1.0 - F0) / 21.0;
+        vec3 FmsEms = Ems * FssEss * F_avg / (1.0 - F_avg * Ems);
+        vec3 k_D = c_diff * (1.0 - FssEss - FmsEms);
+        vec3 selfColor = FssEss * radiance + (FmsEms + k_D) * irradiance;
+
+        // RGB output (linear space/HDR!)
+        color.rgb += selfColor * occlusion;
+    }
+
+    // Emissive
+    color.rgb += emissive;
 
     // Simple semantic information outputs
     objectCoordinatesOut = fragmentData.objectCoordinates;

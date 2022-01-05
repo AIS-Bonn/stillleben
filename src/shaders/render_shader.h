@@ -177,6 +177,11 @@ public:
     //! @name Material & lighting
     //@{
     RenderShader& setLightMap(LightMap& lightMap);
+    RenderShader& setManualLighting(
+        const Corrade::Containers::ArrayView<Magnum::Vector4>& positions,
+        const Corrade::Containers::ArrayView<Magnum::Color3>& colors,
+        const Magnum::Color3& ambientLight
+    );
 
     RenderShader& setMaterial(
         const Magnum::Trade::MaterialData& material,

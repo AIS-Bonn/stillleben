@@ -41,7 +41,7 @@ def view_mesh(mesh_filename, ibl=None):
 
     # Setup lighting
     scene.choose_random_light_position()
-    scene.ambient_light = torch.tensor([0.3, 0.3, 0.3])
+    scene.ambient_light = torch.tensor([10.0, 10.0, 10.0])
 
     # Display a plane & set background color
     scene.background_plane_size = torch.tensor([3.0, 3.0])

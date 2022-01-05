@@ -105,7 +105,9 @@ void main()
     // The average is taken over all scene pixels, but only those on objects
     // contribute to alpha. So divide by alpha to get the average over all
     // object pixels.
-    float lum = dot(RGB_TO_LUM, avgVec.rgb / avgVec.a);
+    // FIXME: I think the average luminance calculation is flawed. Fix it and
+    //  get rid of the 0.1 twiddle factor.
+    float lum = 0.1 * dot(RGB_TO_LUM, avgVec.rgb / avgVec.a);
 
     vec3 Yxy = convertRGB2Yxy(color.rgb);
 

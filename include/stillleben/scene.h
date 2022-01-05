@@ -10,6 +10,7 @@
 #include <stillleben/pose.h>
 
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/StaticArray.h>
 #include <Magnum/SceneGraph/Camera.h>
 
 #include <memory>
@@ -170,9 +171,19 @@ public:
 
     //! @name Lighting
     //@{
-    void setLightPosition(const Magnum::Vector3& lightPosition);
-    Magnum::Vector3 lightPosition() const
-    { return m_lightPosition; }
+    void setLightMap(const std::shared_ptr<LightMap>& lightMap);
+    std::shared_ptr<LightMap> lightMap() const
+    { return m_lightMap; }
+
+    void setLightPositions(const Corrade::Containers::ArrayView<const Magnum::Vector4>& positions);
+    void setLightPositions(const std::initializer_list<Magnum::Vector4>& positions)
+    { setLightPositions(Corrade::Containers::arrayView(positions)); }
+    Corrade::Containers::ArrayView<Magnum::Vector4> lightPositions();
+
+    void setLightColors(const Corrade::Containers::ArrayView<const Magnum::Color3>& colors);
+    void setLightColors(const std::initializer_list<Magnum::Color3>& colors)
+    { setLightColors(Corrade::Containers::arrayView(colors)); }
+    Corrade::Containers::ArrayView<Magnum::Color3> lightColors();
 
     void chooseRandomLightPosition();
 
@@ -180,9 +191,6 @@ public:
     Magnum::Color3 ambientLight() const
     { return m_ambientLight; }
 
-    void setLightMap(const std::shared_ptr<LightMap>& lightMap);
-    std::shared_ptr<LightMap> lightMap() const
-    { return m_lightMap; }
     //@}
 
 private:
@@ -207,7 +215,13 @@ private:
     PhysXUnique<physx::PxScene> m_physicsScene;
     std::unique_ptr<SimulationCallback> m_simCallback;
 
-    Magnum::Vector3 m_lightPosition;
+    Corrade::Containers::StaticArray<3, Magnum::Vector4> m_lightPositions;
+    Corrade::Containers::StaticArray<3, Magnum::Color3> m_lightColors{
+        Magnum::Color3{300.0f},
+        Magnum::Color3{},
+        Magnum::Color3{}
+    };
+
     Magnum::Color3 m_ambientLight;
 
     std::shared_ptr<LightMap> m_lightMap;

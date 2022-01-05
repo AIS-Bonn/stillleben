@@ -10,6 +10,7 @@
 #include <stillleben/mesh_cache.h>
 #include <stillleben/physx_impl.h>
 
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/StaticArray.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Corrade/Utility/DebugStl.h>
@@ -408,9 +409,36 @@ namespace
     }
 }
 
-void Scene::setLightPosition(const Magnum::Vector3& position)
+void Scene::setLightPositions(const Containers::ArrayView<const Vector4>& positions)
 {
-    m_lightPosition = position;
+    if(positions.size() > m_lightPositions.size())
+        throw std::invalid_argument{"Cannot support that many lights"};
+
+    for(std::size_t i = 0; i < positions.size(); ++i)
+        m_lightPositions[i] = positions[i];
+    for(std::size_t i = positions.size(); i < m_lightPositions.size(); ++i)
+        m_lightPositions[i] = {};
+}
+
+Containers::ArrayView<Vector4> Scene::lightPositions()
+{
+    return m_lightPositions;
+}
+
+void Scene::setLightColors(const Containers::ArrayView<const Color3>& colors)
+{
+    if(colors.size() > m_lightColors.size())
+        throw std::invalid_argument{"Cannot support that many lights"};
+
+    for(std::size_t i = 0; i < colors.size(); ++i)
+        m_lightColors[i] = colors[i];
+    for(std::size_t i = colors.size(); i < m_lightColors.size(); ++i)
+        m_lightColors[i] = Color3{0.0f};
+}
+
+Containers::ArrayView<Color3> Scene::lightColors()
+{
+    return m_lightColors;
 }
 
 void Scene::setAmbientLight(const Magnum::Color3& color)
@@ -440,7 +468,9 @@ void Scene::chooseRandomLightPosition()
 
     Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
 
-    setLightPosition(m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam));
+    Magnum::Vector3 lightPositionInWorld = m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam);
+
+    setLightPositions({Vector4{lightPositionInWorld, 0.0f}});
 }
 
 void Scene::chooseRandomCameraPose()
@@ -741,7 +771,14 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
     group.setValue("cameraPosition", cameraPose.translation());
     group.setValue("cameraRotation", Quaternion::fromMatrix(cameraPose.rotationScaling()));
 
-    group.setValue("lightPosition", m_lightPosition);
+    for(UnsignedInt i = 0; i < m_lightPositions.size(); ++i)
+    {
+        auto lightGroup = group.addGroup("light");
+
+        lightGroup->setValue("position", m_lightPositions[i]);
+        lightGroup->setValue("color", m_lightColors[i]);
+    }
+
     group.setValue("ambientLight", m_ambientLight);
     group.setValue("numObjects", m_objects.size());
 
@@ -779,7 +816,26 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
     }
 
     if(group.hasValue("lightPosition"))
-        m_lightPosition = group.value<Magnum::Vector3>("lightPosition");
+    {
+        setLightPositions({Vector4{group.value<Magnum::Vector3>("lightPosition"), 0.0f}});
+        setLightColors({Color3{0.0f, 0.8f, 0.0f}});
+    }
+    else
+    {
+        auto lightGroups = group.groups("light");
+
+        Containers::Array<Vector4> positions;
+        Containers::Array<Color3> colors;
+
+        for(const auto& lightGroup : lightGroups)
+        {
+            Containers::arrayAppend(positions, lightGroup->value<Magnum::Vector4>("position"));
+            Containers::arrayAppend(colors, lightGroup->value<Magnum::Color3>("color"));
+        }
+
+        setLightPositions(positions);
+        setLightColors(colors);
+    }
 
     if(group.hasValue("ambientLight"))
         m_ambientLight = group.value<Magnum::Color3>("ambientLight");

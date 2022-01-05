@@ -259,12 +259,25 @@ void init(py::module& m)
         )EOS", py::arg("object"), py::arg("sampler") = "random", py::arg("max_iterations")=10)
 
         .def_property("light_position",
-            wrapShared(&sl::Scene::lightPosition),
-            wrapShared(&sl::Scene::setLightPosition),
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                return toTorch<Magnum::Vector3>::convert(scene->lightPositions()[0].xyz());
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor position){
+                scene->setLightPositions({
+                    Magnum::Vector4{fromTorch<Magnum::Vector3>::convert(position), 1.0f}
+                });
+            },
         R"EOS(
             The light position in world coordinates. This is a float tensor
             of size 3.
         )EOS")
+
+//         .def_property("light_positions",
+//             [&](const std::shared_ptr<sl::Scene>& scene){
+//             },
+//             [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor const){
+//             }
+//          )
 
         .def_property("ambient_light",
             wrapShared(&sl::Scene::ambientLight),
