@@ -28,10 +28,6 @@ def view_mesh(mesh_filename, ibl=None):
     # Create a scene with a few of the objects
     scene = sl.Scene((1920,1080))
 
-    # Load light map
-    if ibl:
-        scene.light_map = sl.LightMap(ibl)
-
     for i in range(10):
         obj = sl.Object(mesh)
         scene.add_object(obj)
@@ -40,8 +36,11 @@ def view_mesh(mesh_filename, ibl=None):
     scene.simulate_tabletop_scene()
 
     # Setup lighting
-    scene.choose_random_light_position()
-    scene.ambient_light = torch.tensor([10.0, 10.0, 10.0])
+    if ibl:
+        scene.light_map = sl.LightMap(ibl)
+    else:
+        scene.choose_random_light_position()
+        scene.ambient_light = torch.tensor([10.0, 10.0, 10.0])
 
     # Display a plane & set background color
     scene.background_plane_size = torch.tensor([3.0, 3.0])
