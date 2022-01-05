@@ -183,6 +183,12 @@ public:
         const Corrade::Containers::ArrayView<Corrade::Containers::Optional<Magnum::GL::Texture2D>>& textures,
         const MaterialOverride& materialOverride = {}
     );
+
+    RenderShader& setMaterial(
+        const Magnum::Trade::MaterialData& material,
+        const Corrade::Containers::ArrayView<Magnum::GL::Texture2D*>& textures,
+        const MaterialOverride& materialOverride = {}
+    );
     //@}
 
     //@{

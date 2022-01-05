@@ -255,6 +255,21 @@ RenderShader& RenderShader::setMaterial(
     const Containers::ArrayView<Containers::Optional<Magnum::GL::Texture2D>>& textures,
     const MaterialOverride& materialOverride)
 {
+    Containers::Array<GL::Texture2D*> texturePtrs{textures.size()};
+    for(std::size_t i = 0; i < textures.size(); ++i)
+    {
+        if(auto& tex = textures[i])
+            texturePtrs[i] = &*tex;
+    }
+
+    return setMaterial(data, texturePtrs, materialOverride);
+}
+
+RenderShader& RenderShader::setMaterial(
+    const Trade::MaterialData& data,
+    const Containers::ArrayView<GL::Texture2D*>& textures,
+    const MaterialOverride& materialOverride)
+{
     auto& material = data.as<Trade::PbrMetallicRoughnessMaterialData>();
 
     if(!material.hasCommonTextureCoordinates())

@@ -308,7 +308,10 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     else
         Error{} << "Scenes without light maps are currently not supported";
 
-    m_renderShader->bindDepthTexture(*minDepth);
+    (*m_renderShader)
+        .bindDepthTexture(*minDepth)
+        .setProjectionMatrix(scene.camera().projectionMatrix())
+    ;
 
     // Do we have a background plane?
     if(scene.backgroundPlaneSize().dot() > 0)
@@ -320,7 +323,33 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             1.0f
         });
 
-        Error{} << "Background plane is not supported";
+        auto texture = scene.backgroundPlaneTexture();
+
+        Trade::MaterialData material = [&](){
+            if(texture)
+            {
+                return Trade::MaterialData{Trade::MaterialType::PbrMetallicRoughness, {
+                    {Trade::MaterialAttribute::BaseColor, Color4{1.0f}},
+                    {Trade::MaterialAttribute::BaseColorTexture, 0u}
+                }};
+            }
+            else
+            {
+                return Trade::MaterialData{Trade::MaterialType::PbrMetallicRoughness, {
+                    {Trade::MaterialAttribute::BaseColor, Color4{0.0f, 0.8f, 0.0f, 1.0f}},
+                }};
+            }
+        }();
+
+        auto textures = Containers::array<GL::Texture2D*>({texture.get()});
+
+        (*m_renderShader)
+            .setClassIndex(0)
+            .setInstanceIndex(0)
+            .setStickerRange({})
+            .setMaterial(material, textures, {})
+            .setTransformations(Matrix4{Magnum::Math::IdentityInit}, scaledPoseInWorld, scene.camera().cameraMatrix())
+            .draw(m_backgroundPlaneMesh);
     }
 
     // Let the fun begin!
@@ -337,8 +366,6 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         Matrix4 worldToCam = scene.camera().object().absoluteTransformationMatrix().invertedRigid();
 
         (*m_renderShader)
-            .setProjectionMatrix(scene.camera().projectionMatrix())
-
             .setClassIndex(object->mesh()->classIndex())
             .setInstanceIndex(object->instanceIndex())
 
