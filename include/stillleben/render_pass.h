@@ -113,8 +113,8 @@ private:
     Magnum::GL::Framebuffer m_ssaoApplyFramebuffer;
     Magnum::GL::Texture2D m_ssaoRGBInputTexture;
 
-    Magnum::GL::Framebuffer m_toneMapFramebuffer;
-    Magnum::GL::Texture2D m_toneMapInputTexture;
+    Magnum::GL::Framebuffer m_postprocessFramebuffer;
+    Magnum::GL::Texture2D m_postprocessInput;
 
     std::unique_ptr<RenderShader> m_renderShader;
 

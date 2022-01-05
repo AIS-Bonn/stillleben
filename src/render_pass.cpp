@@ -102,7 +102,7 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_framebuffer{Magnum::NoCreate}
  , m_ssaoFramebuffer{Magnum::NoCreate}
  , m_ssaoApplyFramebuffer{Magnum::NoCreate}
- , m_toneMapFramebuffer{Magnum::NoCreate}
+ , m_postprocessFramebuffer{Magnum::NoCreate}
  , m_renderShader{std::make_unique<RenderShader>()}
  , m_backgroundShader{std::make_unique<BackgroundShader>()}
  , m_backgroundCubeShader{std::make_unique<BackgroundCubeShader>()}
@@ -151,6 +151,8 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     // Not really, but we skip the usual right-handed -> left-handed
     // coordinate system change (see scene.cpp), which messes everything up.
     GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
+
+    GL::Renderer::disable(GL::Renderer::Feature::Blending);
 
     // Setup the framebuffer
     auto viewport = scene.viewport();
@@ -206,12 +208,12 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
         m_ssaoApplyFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
-        m_toneMapInputTexture
+        m_postprocessInput
             .setStorage(levels, GL::TextureFormat::RGBA32F, viewport)
             .setMinificationFilter(SamplerFilter::Linear, SamplerMipmap::Linear)
             .setMaxLevel(levels-1)
         ;
-        m_toneMapFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
+        m_postprocessFramebuffer = GL::Framebuffer{Range2Di::fromSize({}, viewport)};
 
         Corrade::Containers::Array<Magnum::Float> data(Corrade::ValueInit, 4 * viewport.x()*viewport.y());
         ImageView2D zeroImage{Magnum::PixelFormat::RGBA32F, {viewport.x(), viewport.y()}, data};
@@ -238,7 +240,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     m_framebuffer
         .attachTexture(
             GL::Framebuffer::ColorAttachment{0},
-            ssaoEnabled ? m_ssaoRGBInputTexture : m_toneMapInputTexture,
+            ssaoEnabled ? m_ssaoRGBInputTexture : m_postprocessInput,
             0
         )
         .attachTexture(
@@ -369,92 +371,12 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         return {scalarGen(seqGen), scalarGen(seqGen), scalarGen(seqGen), alpha};
     };
 
-    if(m_drawBounding != DrawBounding::Disabled)
-    {
-        m_framebuffer.mapForDraw({
-            {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
-        });
-
-        GL::Renderer::enable(GL::Renderer::Feature::Blending);
-        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-            GL::Renderer::BlendEquation::Max);
-        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-
-        switch(m_drawBounding)
-        {
-            case DrawBounding::Disabled:
-                break;
-
-            case DrawBounding::Spheres:
-                for(auto& object : scene.objects())
-                {
-                    Matrix4 scaling = Matrix4::scaling(Vector3{0.5f * object->mesh()->bbox().size().length()});
-                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
-
-                    (*m_meshShader)
-                        .setColor(randomColor(0.8f))
-                        .setWireframeColor(0xdcdcdc_rgbf)
-                        .setViewportSize(Vector2{scene.viewport()})
-                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
-                        .setProjectionMatrix(scene.camera().projectionMatrix())
-                        .draw(m_sphereMesh);
-                }
-                break;
-
-            case DrawBounding::Boxes:
-                for(auto& object : scene.objects())
-                {
-                    Matrix4 scaling = Matrix4::scaling(0.5f * object->mesh()->bbox().size());
-                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
-
-                    (*m_meshShader)
-                        .setColor(randomColor(0.8f))
-                        .setWireframeColor(0xdcdcdc_rgbf)
-                        .setViewportSize(Vector2{scene.viewport()})
-                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
-                        .setProjectionMatrix(scene.camera().projectionMatrix())
-                        .draw(m_cubeMesh);
-                }
-                break;
-        }
-    }
-
-    if(m_drawPhysics)
-    {
-        m_framebuffer.mapForDraw({
-            {RenderShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
-        });
-
-        // Just draw over everything
-        m_framebuffer.clear(GL::FramebufferClear::Depth);
-
-        GL::Renderer::enable(GL::Renderer::Feature::Blending);
-        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
-            GL::Renderer::BlendEquation::Max);
-        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
-            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
-
-        for(auto& object : scene.objects())
-        {
-            object->drawPhysics(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
-                (*m_meshShader)
-                    .setColor(randomColor())
-                    .setWireframeColor(0xdcdcdc_rgbf)
-                    .setViewportSize(Vector2{scene.viewport()})
-                    .setTransformationMatrix(meshToCam)
-                    .setProjectionMatrix(cam.projectionMatrix())
-                    .draw(drawable->mesh());
-            });
-        }
-    }
-
     GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
 
     if(ssaoEnabled)
         m_ssaoRGBInputTexture.generateMipmap();
     else
-        m_toneMapInputTexture.generateMipmap();
+        m_postprocessInput.generateMipmap();
 
     // Do we have a background texture?
     if(scene.backgroundImage())
@@ -500,7 +422,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .draw(m_quadMesh);
 
         m_ssaoApplyFramebuffer
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_toneMapInputTexture, 0)
+            .attachTexture(GL::Framebuffer::ColorAttachment{0}, m_postprocessInput, 0)
             .mapForDraw({
                 {SSAOApplyShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
             });
@@ -515,19 +437,99 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             .draw(m_quadMesh);
     }
 
-    // HDR Tonemapping
-    {
-        m_toneMapFramebuffer
-            .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
-            .mapForDraw({
-                {ToneMapShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
-            });
+    // Postprocessing
+    m_postprocessFramebuffer
+        .attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb)
+        .mapForDraw({
+            {ToneMapShader::ColorOutput, GL::Framebuffer::ColorAttachment{0}}
+        });
 
-        m_toneMapFramebuffer.bind();
-        (*m_toneMapShader)
-            .bindColor(m_toneMapInputTexture)
-            .bindObjectLuminance(ssaoEnabled ? m_ssaoRGBInputTexture : m_toneMapInputTexture)
-            .draw(m_quadMesh);
+    m_postprocessFramebuffer.bind();
+
+    // HDR Tonemapping
+    (*m_toneMapShader)
+        .bindColor(m_postprocessInput)
+        .bindObjectLuminance(ssaoEnabled ? m_ssaoRGBInputTexture : m_postprocessInput)
+        .draw(m_quadMesh);
+
+    // Draw overlays (physics / bbox debugging)
+    if(m_drawPhysics || m_drawBounding != DrawBounding::Disabled)
+    {
+        // We re-use the original framebuffer to get access to the depth buffer
+        m_framebuffer.attachTexture(GL::Framebuffer::ColorAttachment{0}, result->rgb);
+        m_framebuffer.mapForDraw({
+            {0, GL::Framebuffer::ColorAttachment{0}}
+        });
+        m_framebuffer.bind();
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::ClockWise);
+
+        GL::Renderer::enable(GL::Renderer::Feature::Blending);
+        GL::Renderer::setBlendEquation(GL::Renderer::BlendEquation::Add,
+            GL::Renderer::BlendEquation::Max);
+        GL::Renderer::setBlendFunction(GL::Renderer::BlendFunction::SourceAlpha,
+            GL::Renderer::BlendFunction::OneMinusSourceAlpha);
+
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::LessOrEqual);
+
+        if(m_drawPhysics)
+        {
+            m_framebuffer.clear(GL::FramebufferClear::Depth);
+
+            for(auto& object : scene.objects())
+            {
+                object->drawPhysics(scene.camera(), [&](const Matrix4& meshToCam, SceneGraph::Camera3D& cam, Drawable* drawable) {
+                    (*m_meshShader)
+                        .setColor(randomColor())
+                        .setWireframeColor(0xdcdcdc_rgbf)
+                        .setViewportSize(Vector2{scene.viewport()})
+                        .setTransformationMatrix(meshToCam)
+                        .setProjectionMatrix(cam.projectionMatrix())
+                        .draw(drawable->mesh());
+                });
+            }
+        }
+
+        switch(m_drawBounding)
+        {
+            case DrawBounding::Disabled:
+                break;
+
+            case DrawBounding::Spheres:
+                for(auto& object : scene.objects())
+                {
+                    Matrix4 scaling = Matrix4::scaling(Vector3{0.5f * object->mesh()->bbox().size().length()});
+                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+
+                    (*m_meshShader)
+                        .setColor(randomColor(0.8f))
+                        .setWireframeColor(0xdcdcdc_rgbf)
+                        .setViewportSize(Vector2{scene.viewport()})
+                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
+                        .setProjectionMatrix(scene.camera().projectionMatrix())
+                        .draw(m_sphereMesh);
+                }
+                break;
+
+            case DrawBounding::Boxes:
+                for(auto& object : scene.objects())
+                {
+                    Matrix4 scaling = Matrix4::scaling(1.0001f * 0.5f * object->mesh()->bbox().size());
+                    Matrix4 pos = Matrix4::translation(object->mesh()->bbox().center());
+
+                    (*m_meshShader)
+                        .setColor(randomColor(0.8f))
+                        .setWireframeColor(0xdcdcdc_rgbf)
+                        .setViewportSize(Vector2{scene.viewport()})
+                        .setTransformationMatrix(scene.camera().cameraMatrix() * object->pose() * pos * scaling)
+                        .setProjectionMatrix(scene.camera().projectionMatrix())
+                        .draw(m_cubeMesh);
+                }
+                break;
+        }
+
+        GL::Renderer::disable(GL::Renderer::Feature::Blending);
+        GL::Renderer::setFrontFace(GL::Renderer::FrontFace::CounterClockWise);
+        GL::Renderer::setDepthFunction(GL::Renderer::DepthFunction::Less);
     }
 
     // Map for CUDA access
