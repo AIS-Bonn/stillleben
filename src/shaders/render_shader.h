@@ -45,6 +45,8 @@ private:
 class RenderShader : public Magnum::GL::AbstractShaderProgram
 {
 public:
+    static constexpr Magnum::UnsignedInt NumLights = 3;
+
     /**
      * @brief Vertex position
      *
@@ -106,15 +108,7 @@ public:
      * @see @ref Flags, @ref flags()
      */
     enum class Flag: Magnum::UnsignedByte {
-        BaseColorTexture = 1 << 0,
-        NormalTexture = 1 << 1,
-        MetallicRoughnessTexture = 1 << 2,
-        EmissiveTexture = 1 << 3,
-        OcclusionTexture = 1 << 4,
-
-        AlphaMask = 1 << 3,
-
-        Flat = 1 << 5
+        Flat = 1 << 0
     };
 
     /**
@@ -193,6 +187,11 @@ public:
         const Magnum::Trade::MaterialData& material,
         const Corrade::Containers::ArrayView<Magnum::GL::Texture2D*>& textures,
         const MaterialOverride& materialOverride = {}
+    );
+
+    RenderShader& setShadowMap(
+        Magnum::GL::Texture2DArray& shadowMaps,
+        const Corrade::Containers::ArrayView<Magnum::Matrix4>& shadowMatrices
     );
     //@}
 

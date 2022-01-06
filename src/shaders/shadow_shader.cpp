@@ -1,32 +1,28 @@
-// HDR tone mapping & gamma correction
+// Shader for creating shadow maps
 // Author: Max Schwarz <max.schwarz@ais.uni-bonn.de>
 
-#include "tone_map_shader.h"
+#include "shadow_shader.h"
 
-#include <Corrade/Containers/Array.h>
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/Resource.h>
 #include <Corrade/Utility/FormatStl.h>
 
-#include <Magnum/ImageView.h>
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Extensions.h>
 #include <Magnum/GL/Shader.h>
-#include <Magnum/GL/Texture.h>
-#include <Magnum/GL/TextureFormat.h>
-#include <Magnum/PixelFormat.h>
 
-#include <random>
+#include <stdexcept>
+
+using namespace Magnum;
 
 namespace sl
 {
 
 namespace
 {
-    enum class TextureInput : Int
+    enum class Uniform
     {
-        Color,
-        ObjectLuminance
+        Transformation
     };
 
     template<class T>
@@ -34,7 +30,7 @@ namespace
     { return static_cast<Int>(val); }
 }
 
-ToneMapShader::ToneMapShader()
+ShadowShader::ShadowShader()
 {
     Utility::Resource rs("stillleben-data");
 
@@ -61,17 +57,15 @@ ToneMapShader::ToneMapShader()
 
     header += Corrade::Utility::formatString(R"EOS(
 // Texture samplers
-#define COLOR_TEXTURE {}
-#define OBJECT_LUMINANCE_TEXTURE {}
+#define UNIFORM_TRANSFORMATION {}
 )EOS",
-        eVal(TextureInput::Color),
-        eVal(TextureInput::ObjectLuminance)
+        eVal(Uniform::Transformation)
     );
 
     vert.addSource(header)
-        .addSource(rs.get("tone_map_shader.vert"));
+        .addSource(rs.get("shadow_shader.vert"));
     frag.addSource(header)
-        .addSource(rs.get("tone_map_shader.frag"));
+        .addSource(rs.get("shadow_shader.frag"));
 
     CORRADE_INTERNAL_ASSERT_OUTPUT(GL::Shader::compile({vert, frag}));
 
@@ -80,15 +74,9 @@ ToneMapShader::ToneMapShader()
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 }
 
-ToneMapShader& ToneMapShader::bindColor(GL::Texture2D& texture)
+ShadowShader& ShadowShader::setTransformation(const Matrix4& transformation)
 {
-    texture.bind(eVal(TextureInput::Color));
-    return *this;
-}
-
-ToneMapShader& ToneMapShader::bindObjectLuminance(GL::Texture2D& texture)
-{
-    texture.bind(eVal(TextureInput::ObjectLuminance));
+    setUniform(eVal(Uniform::Transformation), transformation);
     return *this;
 }
 

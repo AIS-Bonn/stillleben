@@ -31,6 +31,9 @@ uniform highp sampler2DRect stickerTexture;
 
 layout(binding = DEPTH_TEXTURE)
 uniform highp sampler2DRect depthTexture;
+
+layout(binding = SHADOW_MAP_TEXTURE)
+uniform highp sampler2DArrayShadow shadowMap;
 //@}
 
 // Uniform parameters
@@ -56,6 +59,9 @@ uniform vec4 lightPositions[NUM_LIGHTS];
 
 layout(location = UNIFORM_LIGHT_COLORS)
 uniform vec3 lightColors[NUM_LIGHTS];
+
+layout(location = UNIFORM_SHADOW_MATRICES)
+uniform mat4 shadowMatrices[NUM_LIGHTS];
 
 layout(location = UNIFORM_AMBIENT_LIGHT)
 uniform vec3 ambientLight = vec3(0.0);
@@ -303,13 +309,30 @@ void main()
 
     for(int i = 0; i < NUM_LIGHTS; ++i)
     {
+        vec3 lightColor = lightColors[i];
+        if(lightColor == vec3(0.0))
+            continue;
+
+        // Shadow lookup
+        vec4 projCoords = shadowMatrices[i] * vec4(fragmentData.worldCoordinates, 1.0);
+        projCoords = projCoords / projCoords.w;
+
+        // NDC to texture
+        projCoords = 0.5 * projCoords + 0.5;
+
+        float inverseShadow = 0.0;
+        for(float y = -1.5; y <= 1.5; y += 1.0)
+            for(float x = -1.5; x <= 1.5; x += 1.0)
+                inverseShadow += textureOffset(shadowMap, vec4(projCoords.xy, i, projCoords.z-0.0003), ivec2(x,y)).r;
+        inverseShadow /= 16;
+
         // calculate per-light radiance
         vec3 L = normalize(lightPositions[i].xyz - fragmentData.worldCoordinates.xyz);
         vec3 H = normalize(cameraDirection + L);
 //         float distance = length(spot_lights[i].pos - P_w);
 //         float attenuation = 1.0 / (distance * distance);
         float attenuation = 1.0;
-        vec3 radiance = lightColors[i] * attenuation;
+        vec3 radiance = lightColor * attenuation;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(normal, H, roughness);
@@ -335,7 +358,7 @@ void main()
         float NdotL = max(dot(normal, L), 0.0);
 
         // add to outgoing radiance Lo
-        color.rgb += (kD * baseColor.rgb / M_PI + specular) * radiance * NdotL;
+        color.rgb += inverseShadow * (kD * baseColor.rgb / M_PI + specular) * radiance * NdotL;
     }
 
     // Ambient light

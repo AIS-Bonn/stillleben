@@ -13,6 +13,7 @@
 #include <Magnum/GL/Extensions.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/TextureArray.h>
 #include <Magnum/GL/RectangleTexture.h>
 #include <Magnum/GL/Extensions.h>
 
@@ -28,8 +29,6 @@ namespace sl
 
 namespace
 {
-    constexpr UnsignedInt NumLights = 3;
-
     enum class TextureInput : Int
     {
         BaseColor = 0,
@@ -41,7 +40,8 @@ namespace
         LightMapPrefilter,
         LightMapBRDFLUT,
         Sticker,
-        MinDepth
+        MinDepth,
+        ShadowMap
     };
 
     enum class Uniform : Int
@@ -61,8 +61,9 @@ namespace
         CamPosition,
         LightMapAvailable,
         LightPositions, // size NumLights
-        LightColors = LightPositions + NumLights, // size NumLights
-        AmbientLight = LightColors + NumLights
+        LightColors = LightPositions + RenderShader::NumLights, // size NumLights
+        ShadowMatrices = LightColors + RenderShader::NumLights, // size NumLights
+        AmbientLight = ShadowMatrices + RenderShader::NumLights
     };
 
     template<class T>
@@ -118,6 +119,7 @@ RenderShader::RenderShader()
 #define LIGHTMAP_BRDF_LUT_TEXTURE {}
 #define STICKER_TEXTURE {}
 #define DEPTH_TEXTURE {}
+#define SHADOW_MAP_TEXTURE {}
 )EOS",
         eVal(TextureInput::BaseColor),
         eVal(TextureInput::Normal),
@@ -128,7 +130,8 @@ RenderShader::RenderShader()
         eVal(TextureInput::LightMapPrefilter),
         eVal(TextureInput::LightMapBRDFLUT),
         eVal(TextureInput::Sticker),
-        eVal(TextureInput::MinDepth)
+        eVal(TextureInput::MinDepth),
+        eVal(TextureInput::ShadowMap)
     );
 
     header += Corrade::Utility::formatString(R"EOS(
@@ -154,6 +157,7 @@ RenderShader::RenderShader()
 #define UNIFORM_LIGHT_MAP_AVAILABLE {}
 #define UNIFORM_LIGHT_POSITIONS {}
 #define UNIFORM_LIGHT_COLORS {}
+#define UNIFORM_SHADOW_MATRICES {}
 #define UNIFORM_AMBIENT_LIGHT {}
 )EOS",
         eVal(Uniform::MeshToObject),
@@ -172,6 +176,7 @@ RenderShader::RenderShader()
         eVal(Uniform::LightMapAvailable),
         eVal(Uniform::LightPositions),
         eVal(Uniform::LightColors),
+        eVal(Uniform::ShadowMatrices),
         eVal(Uniform::AmbientLight)
     );
 
@@ -431,5 +436,16 @@ RenderShader& RenderShader::bindStickerTexture(Magnum::GL::RectangleTexture& tex
     texture.bind(eVal(TextureInput::Sticker));
     return *this;
 }
+
+RenderShader& RenderShader::setShadowMap(GL::Texture2DArray& shadowMaps, const Containers::ArrayView<Matrix4>& shadowMatrices)
+{
+    if(shadowMatrices.size() != NumLights)
+        throw std::invalid_argument{"Invalid number of shadow matrices"};
+
+    shadowMaps.bind(eVal(TextureInput::ShadowMap));
+    setUniform(eVal(Uniform::ShadowMatrices), shadowMatrices);
+    return *this;
+}
+
 
 }

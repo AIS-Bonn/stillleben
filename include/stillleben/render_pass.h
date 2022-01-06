@@ -4,9 +4,12 @@
 #ifndef STILLLEBEN_RENDER_PASS_H
 #define STILLLEBEN_RENDER_PASS_H
 
+#include <Corrade/Containers/Array.h>
+
 #include <Magnum/GL/MultisampleTexture.h>
 #include <Magnum/GL/Renderbuffer.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/GL/TextureArray.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/Shaders/MeshVisualizerGL.h>
@@ -25,6 +28,7 @@ class RenderShader;
 class Scene;
 class SSAOShader;
 class SSAOApplyShader;
+class ShadowShader;
 class ToneMapShader;
 class Object;
 
@@ -127,6 +131,12 @@ private:
     std::unique_ptr<ToneMapShader> m_toneMapShader;
 
     std::unique_ptr<Magnum::Shaders::MeshVisualizerGL3D> m_meshShader;
+
+    Magnum::GL::Texture2DArray m_shadowMaps;
+    Corrade::Containers::Array<Magnum::GL::Framebuffer> m_shadowFB;
+    Corrade::Containers::Array<Magnum::Matrix4> m_shadowMatrices;
+
+    std::unique_ptr<ShadowShader> m_shadowShader;
 
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;

@@ -9,6 +9,7 @@
 #include <stillleben/context.h>
 #include <stillleben/light_map.h>
 
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Utility/DebugStl.h>
 
 #include <Magnum/GL/Framebuffer.h>
@@ -18,6 +19,7 @@
 #include <Magnum/GL/TextureFormat.h>
 #include <Magnum/GL/Renderer.h>
 #include <Magnum/GL/DebugOutput.h>
+#include <Magnum/GL/PixelFormat.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Image.h>
 #include <Magnum/ImageView.h>
@@ -31,11 +33,14 @@
 
 #include <Magnum/PixelFormat.h>
 
+#include <Magnum/SceneGraph/Camera.h>
+
 #include "shaders/render_shader.h"
 #include "shaders/background_shader.h"
 #include "shaders/background_cube_shader.h"
 #include "shaders/ssao_shader.h"
 #include "shaders/ssao_apply_shader.h"
+#include "shaders/shadow_shader.h"
 #include "shaders/tone_map_shader.h"
 
 using namespace Magnum;
@@ -57,6 +62,114 @@ constexpr RenderShader::Flags flagsForType(RenderPass::Type type)
             return {};
     }
     return {};
+}
+
+using FrustumCorners = Containers::StaticArray<8, Vector3>;
+
+FrustumCorners computeFrustumCorners(Scene& scene)
+{
+    auto& camera = scene.camera();
+    Matrix4 P = camera.projectionMatrix();
+    Matrix4 Pinv = P.inverted();
+
+    Float near = -1.0f;
+    Float far = 1.0f;
+
+    if(!scene.objects().empty())
+    {
+        Float nearObj = std::numeric_limits<Float>::infinity();
+        Float farObj = -std::numeric_limits<Float>::infinity();
+
+        for(auto& obj : scene.objects())
+        {
+            Vector3 objInCam = (camera.cameraMatrix() * obj->pose()).transformPoint(obj->mesh()->bbox().center());
+
+            Float radius = obj->mesh()->bbox().size().length() / 2;
+            Vector3 nearPoint = objInCam - Vector3::zAxis(radius);
+            Vector3 farPoint  = objInCam + Vector3::zAxis(radius);
+
+            nearPoint = camera.projectionMatrix().transformPoint(nearPoint);
+            farPoint = camera.projectionMatrix().transformPoint(farPoint);
+
+            nearObj = Math::min(nearObj, nearPoint.z());
+            farObj = Math::max(farObj, farPoint.z());
+        }
+
+        near = Math::max(Math::max(0.0f, nearObj), near);
+        far = Math::min(farObj, far);
+    }
+
+    // homogeneous corner coords
+    Containers::StaticArray<8, Vector4> hcorners{InPlaceInit,
+        // near
+        Vector4{-1,  1, near, 1},
+        Vector4{ 1,  1, near, 1},
+        Vector4{ 1, -1, near, 1},
+        Vector4{-1, -1, near, 1},
+
+        // far
+        Vector4{-1,  1, far, 1},
+        Vector4{ 1,  1, far, 1},
+        Vector4{ 1, -1, far, 1},
+        Vector4{-1, -1, far, 1}
+    };
+
+    FrustumCorners corners;
+    for(UnsignedInt i = 0; i < 8; ++i)
+    {
+        Vector4 p = camera.cameraMatrix().invertedRigid() * Pinv * hcorners[i];
+        corners[i] = p.xyz() / p.w();
+    }
+
+    return corners;
+}
+
+Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightPosition)
+{
+    // Z always points into the scene
+    Vector3 z = -lightPosition.normalized();
+
+    // Align loosely with the frustum
+    Vector3 x = Math::cross(z, corners[0] - corners[1]).normalized();
+    Vector3 y = Math::cross(z, x).normalized();
+
+    Matrix4 camToWorld = Matrix4::from(
+        Matrix3{x,y,z}, lightPosition
+    );
+
+    Matrix4 worldToCam = camToWorld.invertedRigid();
+
+    Vector3 minInCam = Vector3{std::numeric_limits<Float>::infinity()};
+    Vector3 maxInCam = Vector3{-std::numeric_limits<Float>::infinity()};
+
+    for(UnsignedInt i = 0; i < 8; ++i)
+    {
+        Vector3 cornerInCam = worldToCam.transformPoint(corners[i]);
+
+        minInCam = Math::min(minInCam, cornerInCam);
+        maxInCam = Math::max(maxInCam, cornerInCam);
+    }
+
+    Float near = minInCam.z();
+    Float far = maxInCam.z();
+
+    Float L = minInCam.x();
+    Float R = maxInCam.x();
+    Float T = minInCam.y();
+    Float B = maxInCam.y();
+
+    Matrix4 P{
+        {2.0f / (R-L),         0.0f,                   0.0f, 0.0f},
+        {        0.0f, 2.0f / (B-T),                   0.0f, 0.0f},
+        {        0.0f,         0.0f,        2.0f/(far-near), 0.0f},
+        {-(R+L)/(R-L), -(B+T)/(B-T), -(far+near)/(far-near), 1.0f}
+    };
+
+    // Sanity check
+    // P * (R,0,0,1) = (2.0 * R / (R-L) - (R+L)/(R-L), *, *, 1.0f)
+    //   => (2*R - R - L) / (R-L) = 1
+
+    return P * worldToCam;
 }
 
 }
@@ -110,11 +223,37 @@ RenderPass::RenderPass(Type type, bool cuda)
  , m_ssaoApplyShader{std::make_unique<SSAOApplyShader>()}
  , m_toneMapShader{std::make_unique<ToneMapShader>()}
  , m_meshShader{std::make_unique<Magnum::Shaders::MeshVisualizerGL3D>(Shaders::MeshVisualizerGL3D::Flag::Wireframe)}
+ , m_shadowShader{std::make_unique<ShadowShader>()}
 {
     m_quadMesh = MeshTools::compile(Primitives::squareSolid());
     m_cubeMesh = MeshTools::compile(Primitives::cubeSolid());
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneFlag::TextureCoordinates));
     m_sphereMesh = MeshTools::compile(Primitives::uvSphereSolid(80, 80));
+
+    Vector2i shadowResolution{1024, 1024};
+    m_shadowMaps
+        .setWrapping(GL::SamplerWrapping::ClampToEdge)
+        .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
+        .setMaxLevel(0)
+        .setCompareFunction(GL::SamplerCompareFunction::LessOrEqual)
+        .setCompareMode(GL::SamplerCompareMode::CompareRefToTexture)
+        .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Base)
+        .setMagnificationFilter(GL::SamplerFilter::Linear)
+        .setImage(0, GL::TextureFormat::DepthComponent, ImageView3D{GL::PixelFormat::DepthComponent, GL::PixelType::Float, {shadowResolution, RenderShader::NumLights}})
+    ;
+
+    Containers::arrayResize(m_shadowFB, DirectInit, RenderShader::NumLights, Range2Di::fromSize({}, shadowResolution));
+    for(UnsignedInt i = 0; i < RenderShader::NumLights; ++i)
+    {
+        m_shadowFB[i]
+            .attachTextureLayer(GL::Framebuffer::BufferAttachment::Depth, m_shadowMaps, 0, i)
+            .mapForDraw(GL::Framebuffer::DrawAttachment::None)
+            .bind();
+
+        CORRADE_INTERNAL_ASSERT(m_shadowFB[i].checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
+    }
+
+    Containers::arrayResize(m_shadowMatrices, RenderShader::NumLights);
 
     m_result = std::make_shared<Result>(cuda);
 }
@@ -227,15 +366,50 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
         m_initialized = true;
     }
 
+    // Shadow mapping
+    {
+        // FIXME: Can we statically enforce that?
+        if(scene.lightPositions().size() != RenderShader::NumLights)
+            throw std::logic_error{"Invalid number of lights"};
+
+        FrustumCorners frustum = computeFrustumCorners(scene);
+
+        GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+        GL::Renderer::setFaceCullingMode(GL::Renderer::PolygonFacing::Front);
+        for(UnsignedInt i = 0; i < RenderShader::NumLights; ++i)
+        {
+            // Skip lights with no output
+            if(scene.lightColors()[i] == Color3{0.0} || scene.lightPositions()[i] == Vector4{0.0f})
+                continue;
+
+            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, scene.lightPositions()[i].xyz());
+
+            m_shadowFB[i]
+                .clear(GL::FramebufferClear::Depth)
+                .bind();
+
+            for(auto& object : scene.objects())
+            {
+                if(predicate && !predicate(object))
+                    continue;
+
+                object->draw(scene.camera(), [&](const Matrix4&, SceneGraph::Camera3D&, Drawable* drawable) {
+                    (*m_shadowShader)
+                        .setTransformation(m_shadowMatrices[i] * drawable->object().absoluteTransformationMatrix())
+                        .draw(drawable->mesh())
+                    ;
+                });
+            }
+        }
+        GL::Renderer::setFaceCullingMode(GL::Renderer::PolygonFacing::Back);
+        GL::Renderer::disable(GL::Renderer::Feature::FaceCulling);
+    }
+
     Magnum::GL::RectangleTexture* minDepth;
-    if (depthBufferResult)
-    {
+    if(depthBufferResult)
         minDepth = &depthBufferResult->objectCoordinates;
-    }
     else
-    {
         minDepth = &m_zeroMinDepth;
-    }
 
     m_framebuffer
         .attachTexture(
@@ -311,6 +485,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     (*m_renderShader)
         .bindDepthTexture(*minDepth)
         .setProjectionMatrix(scene.camera().projectionMatrix())
+        .setShadowMap(m_shadowMaps, m_shadowMatrices)
     ;
 
     // Do we have a background plane?
