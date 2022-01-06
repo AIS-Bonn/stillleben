@@ -269,23 +269,46 @@ void init(py::module& m)
             },
         R"EOS(
             The light position in world coordinates. This is a float tensor
-            of size 3.
+            of size 3. This is a shortcut for the position of the first light
+            (see :ref:`light_positions`).
         )EOS")
 
-//         .def_property("light_positions",
-//             [&](const std::shared_ptr<sl::Scene>& scene){
-//             },
-//             [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor const){
-//             }
-//          )
+        .def_property("light_positions",
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                int n = scene->lightPositions().size();
+                return torch::from_blob(scene->lightPositions().data(), {n, 4}, at::kFloat);
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor positions){
+                int n = scene->lightPositions().size();
+                torch::Tensor a = torch::from_blob(scene->lightPositions().data(), {n, 4}, at::kFloat);
+                a.copy_(positions);
+            },
+        R"EOS(
+            Positions of all lights in world coordinates. This is a N x 4 float tensor.
+            The fourth component should always be set to zero.
+        )EOS")
+        .def_property("light_colors",
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                int n = scene->lightColors().size();
+                return torch::from_blob(scene->lightColors().data(), {n, 3}, at::kFloat);
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor colors){
+                int n = scene->lightColors().size();
+                torch::Tensor a = torch::from_blob(scene->lightColors().data(), {n, 3}, at::kFloat);
+                a.copy_(colors);
+            },
+        R"EOS(
+            Colors of all lights in world coordinates. Note that the color
+            directly determines radiance, so you might have to increase colors
+            beyond 1.0 or they might be too dark.
+        )EOS")
 
         .def_property("ambient_light",
             wrapShared(&sl::Scene::ambientLight),
             wrapShared(&sl::Scene::setAmbientLight),
         R"EOS(
             The color & intensity of the ambient light. This is a float
-            tensor of size 3 (RGB, range 0-1). This color is multiplied
-            with the object color / texture during rendering.
+            tensor of size 3 (RGB), which determines general ambient radiance.
         )EOS")
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
