@@ -367,21 +367,34 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
     // Shadow mapping
     {
-        // FIXME: Can we statically enforce that?
-        if(scene.lightPositions().size() != RenderShader::NumLights)
-            throw std::logic_error{"Invalid number of lights"};
+        Containers::ArrayView<const Vector4> lightPositions;
+        Containers::ArrayView<const Color3> lightColors;
+
+        if(scene.lightMap())
+        {
+            lightPositions = scene.lightMap()->lightPositions();
+            lightColors = scene.lightMap()->lightColors();
+
+            if(lightPositions.size() > RenderShader::NumLights)
+                lightPositions = lightPositions.slice(0, RenderShader::NumLights);
+        }
+        else
+        {
+            lightPositions = scene.lightPositions();
+            lightColors = scene.lightColors();
+        }
 
         FrustumCorners frustum = computeFrustumCorners(scene);
 
         GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
         GL::Renderer::setFaceCullingMode(GL::Renderer::PolygonFacing::Front);
-        for(UnsignedInt i = 0; i < RenderShader::NumLights; ++i)
+        for(UnsignedInt i = 0; i < lightPositions.size(); ++i)
         {
             // Skip lights with no output
-            if(scene.lightColors()[i] == Color3{0.0} || scene.lightPositions()[i] == Vector4{0.0f})
+            if(lightColors[i] == Color3{0.0} || lightPositions[i] == Vector4{0.0f})
                 continue;
 
-            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, scene.lightPositions()[i].xyz());
+            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, lightPositions[i].xyz());
 
             m_shadowFB[i]
                 .clear(GL::FramebufferClear::Depth)

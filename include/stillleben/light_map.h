@@ -7,8 +7,12 @@
 #include <memory>
 #include <string>
 
+#include <Corrade/Containers/Array.h>
+
 #include <Magnum/GL/CubeMapTexture.h>
 #include <Magnum/GL/Texture.h>
+#include <Magnum/Math/Vector.h>
+#include <Magnum/Math/Color.h>
 
 namespace sl
 {
@@ -38,6 +42,12 @@ public:
     inline Magnum::GL::CubeMapTexture& cubeMap()
     { return m_cubeMap; }
 
+    inline Corrade::Containers::ArrayView<const Magnum::Vector4> lightPositions() const
+    { return m_lightPositions; }
+
+    inline Corrade::Containers::ArrayView<const Magnum::Color3> lightColors() const
+    { return m_lightColors; }
+
 private:
     std::string m_path;
 
@@ -45,8 +55,12 @@ private:
     Magnum::GL::CubeMapTexture m_irradiance;
     Magnum::GL::CubeMapTexture m_prefilter;
     Magnum::GL::Texture2D m_brdfLUT;
+
+    Corrade::Containers::Array<Magnum::Vector4> m_lightPositions;
+    Corrade::Containers::Array<Magnum::Color3> m_lightColors;
 };
 
 }
 
 #endif
+

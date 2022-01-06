@@ -6,30 +6,32 @@ SL_PATH = pathlib.Path(__file__).parent.parent.absolute()
 import stillleben as sl
 import torch
 import sys
+import random
 from PIL import Image
 
-def view_mesh(mesh_filename, ibl=None):
-    # Load a mesh
-    mesh = sl.Mesh(mesh_filename)
+def view_mesh(mesh_filenames, ibl=None):
+    # Load meshes
+    meshes = sl.Mesh.load_threaded(mesh_filenames)
 
     # Meshes can come in strange dimensions - rescale to something reasonable
-    mesh.center_bbox()
-    mesh.scale_to_bbox_diagonal(0.5)
+    for mesh in meshes:
+        mesh.center_bbox()
+        mesh.scale_to_bbox_diagonal(0.5)
 
-    # Dump some object statistics
-    obj = sl.Object(mesh)
-    print("Object properties:")
-    print(f" - mass: {obj.mass} kg")
-    print(f" - density: {obj.density} kg/m^3")
-    print(f" - volume: {obj.volume} m^3")
-    print(f" - inertial frame:\n{obj.inertial_frame}")
-    print(f" - inertia in inertial frame: {obj.inertia}")
+        # Dump some object statistics
+        obj = sl.Object(mesh)
+        print("Object properties:")
+        print(f" - mass: {obj.mass} kg")
+        print(f" - density: {obj.density} kg/m^3")
+        print(f" - volume: {obj.volume} m^3")
+        print(f" - inertial frame:\n{obj.inertial_frame}")
+        print(f" - inertia in inertial frame: {obj.inertia}")
 
     # Create a scene with a few of the objects
     scene = sl.Scene((1920,1080))
 
     for i in range(10):
-        obj = sl.Object(mesh)
+        obj = sl.Object(random.choice(meshes))
         scene.add_object(obj)
 
     # Let them fall in a heap
@@ -57,8 +59,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Stillleben mesh viewer.')
-    parser.add_argument('mesh', metavar='PATH', type=str,
-                        help='The mesh file to load',
+    parser.add_argument('meshes', metavar='PATH', type=str, nargs='+',
+                        help='The mesh file(s) to load',
                         default=str(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf'))
     parser.add_argument('--ibl', metavar='PATH', type=str,
                         help='IBL light map to load')
@@ -67,4 +69,4 @@ if __name__ == "__main__":
 
     sl.init() # use sl.init_cuda() for CUDA interop
 
-    view_mesh(mesh_filename=args.mesh, ibl=args.ibl)
+    view_mesh(mesh_filenames=args.meshes, ibl=args.ibl)

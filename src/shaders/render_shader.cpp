@@ -8,6 +8,7 @@
 #include <Corrade/Containers/ArrayView.h>
 #include <Corrade/Utility/FormatStl.h>
 #include <Corrade/Utility/Resource.h>
+#include <Corrade/Utility/Algorithms.h>
 
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Extensions.h>
@@ -271,9 +272,19 @@ RenderShader& RenderShader::setLightMap(LightMap& lightMap)
     lightMap.prefilterMap().bind(eVal(TextureInput::LightMapPrefilter));
     lightMap.brdfLUT().bind(eVal(TextureInput::LightMapBRDFLUT));
 
-    // TODO: Extract this from IBL light map
     Containers::Array<Vector4> lightPositions{NumLights};
     Containers::Array<Color3> lightColors{DirectInit, NumLights, 0.0f};
+
+    {
+        auto mapPos = lightMap.lightPositions();
+        std::size_t n = std::min<std::size_t>(NumLights, mapPos.size());
+        Utility::copy(mapPos.slice(0, n), lightPositions.slice(0, n));
+    }
+    {
+        auto mapColor = lightMap.lightColors();
+        std::size_t n = std::min<std::size_t>(NumLights, mapColor.size());
+        Utility::copy(mapColor.slice(0, n), lightColors.slice(0, n));
+    }
 
     setUniform(eVal(Uniform::LightMapAvailable), 1u);
     setUniform(eVal(Uniform::LightPositions), lightPositions);
