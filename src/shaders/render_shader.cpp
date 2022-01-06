@@ -355,9 +355,9 @@ RenderShader& RenderShader::setMaterial(
     Float roughness = 0.5f;
 
     // Override defaults in case there are textures
-    if(material.hasAttribute(Trade::MaterialAttribute::MetalnessTexture))
+    if(material.hasAttribute(Trade::MaterialAttribute::MetalnessTexture) | material.hasAttribute(Trade::MaterialAttribute::NoneRoughnessMetallicTexture))
         metallic = 1.0f;
-    if(material.hasAttribute(Trade::MaterialAttribute::RoughnessTexture))
+    if(material.hasAttribute(Trade::MaterialAttribute::RoughnessTexture) | material.hasAttribute(Trade::MaterialAttribute::NoneRoughnessMetallicTexture))
         roughness = 1.0f;
 
     // If there are specific values, use them
