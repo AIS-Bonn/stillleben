@@ -95,7 +95,7 @@ FrustumCorners computeFrustumCorners(Scene& scene)
             farObj = Math::max(farObj, farPoint.z());
         }
 
-        near = Math::max(Math::max(0.0f, nearObj), near);
+        near = Math::max(Math::max(-1.0f, nearObj), near);
         far = Math::min(farObj, far);
     }
 
@@ -129,8 +129,7 @@ Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightPosi
     // Z always points into the scene
     Vector3 z = -lightPosition.normalized();
 
-    // Align loosely with the frustum
-    Vector3 x = Math::cross(z, corners[0] - corners[1]).normalized();
+    Vector3 x = Math::cross(z, Vector3::zAxis()).normalized();
     Vector3 y = Math::cross(z, x).normalized();
 
     Matrix4 camToWorld = Matrix4::from(
@@ -230,7 +229,7 @@ RenderPass::RenderPass(Type type, bool cuda)
     m_backgroundPlaneMesh = MeshTools::compile(Primitives::planeSolid(Primitives::PlaneFlag::TextureCoordinates));
     m_sphereMesh = MeshTools::compile(Primitives::uvSphereSolid(80, 80));
 
-    Vector2i shadowResolution{1024, 1024};
+    Vector2i shadowResolution{2048, 2048};
     m_shadowMaps
         .setWrapping(GL::SamplerWrapping::ClampToEdge)
         .setMaxAnisotropy(GL::Sampler::maxMaxAnisotropy())
