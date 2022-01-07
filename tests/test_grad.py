@@ -101,6 +101,8 @@ class TestGradients(unittest.TestCase):
             pose[:3, :3] = th.matmul(U, V.t())
             object.set_pose(pose)
 
+        self.scene.choose_random_light_direction()
+
         renderer = sl.RenderPass()
         result = renderer.render(self.scene)
         gt_mask = (result.instance_index()!=0).float()
