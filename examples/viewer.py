@@ -9,7 +9,7 @@ import sys
 import random
 from PIL import Image
 
-def view_mesh(mesh_filenames, ibl=None):
+def view_mesh(mesh_filenames, ibl=None, serialize=False):
     # Load meshes
     meshes = sl.Mesh.load_threaded(mesh_filenames)
 
@@ -41,7 +41,7 @@ def view_mesh(mesh_filenames, ibl=None):
     if ibl:
         scene.light_map = sl.LightMap(ibl)
     else:
-        scene.choose_random_light_position()
+        scene.choose_random_light_direction()
         scene.ambient_light = torch.tensor([10.0, 10.0, 10.0])
 
     # Display a plane & set background color
@@ -51,6 +51,10 @@ def view_mesh(mesh_filenames, ibl=None):
     # Render a frame
     renderer = sl.RenderPass()
     result = renderer.render(scene)
+
+    if serialize:
+        print("\nSerialized scene:\n")
+        print(scene.serialize())
 
     # Display interactive viewer
     sl.view(scene)
@@ -64,9 +68,11 @@ if __name__ == "__main__":
                         default=str(SL_PATH / 'tests' / 'stanford_bunny' / 'scene.gltf'))
     parser.add_argument('--ibl', metavar='PATH', type=str,
                         help='IBL light map to load')
+    parser.add_argument('--serialize', action='store_true',
+                        help='Show serialized scene')
 
     args = parser.parse_args()
 
     sl.init() # use sl.init_cuda() for CUDA interop
 
-    view_mesh(mesh_filenames=args.meshes, ibl=args.ibl)
+    view_mesh(mesh_filenames=args.meshes, ibl=args.ibl, serialize=args.serialize)
