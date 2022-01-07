@@ -124,16 +124,16 @@ FrustumCorners computeFrustumCorners(Scene& scene)
     return corners;
 }
 
-Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightPosition)
+Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightDirection)
 {
     // Z always points into the scene
-    Vector3 z = -lightPosition.normalized();
+    Vector3 z = lightDirection.normalized();
 
     Vector3 x = Math::cross(z, Vector3::zAxis()).normalized();
     Vector3 y = Math::cross(z, x).normalized();
 
     Matrix4 camToWorld = Matrix4::from(
-        Matrix3{x,y,z}, lightPosition
+        Matrix3{x,y,z}, {}
     );
 
     Matrix4 worldToCam = camToWorld.invertedRigid();
@@ -238,11 +238,11 @@ RenderPass::RenderPass(Type type, bool cuda)
         .setCompareMode(GL::SamplerCompareMode::CompareRefToTexture)
         .setMinificationFilter(GL::SamplerFilter::Linear, GL::SamplerMipmap::Base)
         .setMagnificationFilter(GL::SamplerFilter::Linear)
-        .setImage(0, GL::TextureFormat::DepthComponent, ImageView3D{GL::PixelFormat::DepthComponent, GL::PixelType::Float, {shadowResolution, RenderShader::NumLights}})
+        .setImage(0, GL::TextureFormat::DepthComponent, ImageView3D{GL::PixelFormat::DepthComponent, GL::PixelType::Float, {shadowResolution, sl::NumLights}})
     ;
 
-    Containers::arrayResize(m_shadowFB, DirectInit, RenderShader::NumLights, Range2Di::fromSize({}, shadowResolution));
-    for(UnsignedInt i = 0; i < RenderShader::NumLights; ++i)
+    Containers::arrayResize(m_shadowFB, DirectInit, sl::NumLights, Range2Di::fromSize({}, shadowResolution));
+    for(UnsignedInt i = 0; i < sl::NumLights; ++i)
     {
         m_shadowFB[i]
             .attachTextureLayer(GL::Framebuffer::BufferAttachment::Depth, m_shadowMaps, 0, i)
@@ -252,7 +252,7 @@ RenderPass::RenderPass(Type type, bool cuda)
         CORRADE_INTERNAL_ASSERT(m_shadowFB[i].checkStatus(GL::FramebufferTarget::Draw) == GL::Framebuffer::Status::Complete);
     }
 
-    Containers::arrayResize(m_shadowMatrices, RenderShader::NumLights);
+    Containers::arrayResize(m_shadowMatrices, sl::NumLights);
 
     m_result = std::make_shared<Result>(cuda);
 }
@@ -367,20 +367,20 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
     // Shadow mapping
     {
-        Containers::ArrayView<const Vector4> lightPositions;
+        Containers::ArrayView<const Vector3> lightDirections;
         Containers::ArrayView<const Color3> lightColors;
 
         if(scene.lightMap())
         {
-            lightPositions = scene.lightMap()->lightPositions();
+            lightDirections = scene.lightMap()->lightDirections();
             lightColors = scene.lightMap()->lightColors();
 
-            if(lightPositions.size() > RenderShader::NumLights)
-                lightPositions = lightPositions.slice(0, RenderShader::NumLights);
+            if(lightDirections.size() > NumLights)
+                lightDirections = lightDirections.slice(0, NumLights);
         }
         else
         {
-            lightPositions = scene.lightPositions();
+            lightDirections = scene.lightDirections();
             lightColors = scene.lightColors();
         }
 
@@ -388,13 +388,13 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
 
         GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
         GL::Renderer::setFaceCullingMode(GL::Renderer::PolygonFacing::Front);
-        for(UnsignedInt i = 0; i < lightPositions.size(); ++i)
+        for(UnsignedInt i = 0; i < lightDirections.size(); ++i)
         {
             // Skip lights with no output
-            if(lightColors[i] == Color3{0.0} || lightPositions[i] == Vector4{0.0f})
+            if(lightColors[i] == Color3{0.0} || lightDirections[i] == Vector3{0.0f})
                 continue;
 
-            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, lightPositions[i].xyz());
+            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, lightDirections[i]);
 
             m_shadowFB[i]
                 .clear(GL::FramebufferClear::Depth)
@@ -492,7 +492,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     if(scene.lightMap())
         m_renderShader->setLightMap(*scene.lightMap());
     else
-        m_renderShader->setManualLighting(scene.lightPositions(), scene.lightColors(), scene.ambientLight());
+        m_renderShader->setManualLighting(scene.lightDirections(), scene.lightColors(), scene.ambientLight());
 
     (*m_renderShader)
         .bindDepthTexture(*minDepth)

@@ -260,32 +260,42 @@ void init(py::module& m)
 
         .def_property("light_position",
             [&](const std::shared_ptr<sl::Scene>& scene){
-                return toTorch<Magnum::Vector3>::convert(scene->lightPositions()[0].xyz());
+                PyErr_WarnEx(PyExc_DeprecationWarning, "light_position is deprecated, use light_directions instead.", 1);
+
+                return toTorch<Magnum::Vector3>::convert(-scene->lightDirections()[0]);
             },
             [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor position){
-                scene->setLightPositions({
-                    Magnum::Vector4{fromTorch<Magnum::Vector3>::convert(position), 1.0f}
+                PyErr_WarnEx(PyExc_DeprecationWarning, "light_position is deprecated, use light_directions instead.", 1);
+
+                scene->setLightDirections({
+                    -fromTorch<Magnum::Vector3>::convert(position)
                 });
             },
         R"EOS(
             The light position in world coordinates. This is a float tensor
             of size 3. This is a shortcut for the position of the first light
-            (see :ref:`light_positions`).
+            (see :ref:`light_directions`).
+
+            .. block-warning:: Deprecated
+
+                Please use :ref:`light_directions` instead.
         )EOS")
 
-        .def_property("light_positions",
+        .def_property("light_directions",
             [&](const std::shared_ptr<sl::Scene>& scene){
-                int n = scene->lightPositions().size();
-                return torch::from_blob(scene->lightPositions().data(), {n, 4}, at::kFloat);
+                int n = scene->lightDirections().size();
+                return torch::from_blob(scene->lightDirections().data(), {n, 3}, at::kFloat);
             },
             [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor positions){
-                int n = scene->lightPositions().size();
-                torch::Tensor a = torch::from_blob(scene->lightPositions().data(), {n, 4}, at::kFloat);
+                int n = scene->lightDirections().size();
+                torch::Tensor a = torch::from_blob(scene->lightDirections().data(), {n, 3}, at::kFloat);
                 a.copy_(positions);
             },
         R"EOS(
-            Positions of all lights in world coordinates. This is a N x 4 float tensor.
-            The fourth component should always be set to zero.
+            Directions of all lights in world coordinates. This is a N x 3 float tensor. All lights are assumed
+            to be point lights at infinite distance, casting light in the specified direction.
+
+            All lights with direction set to (0,0,0) will be disabled.
         )EOS")
         .def_property("light_colors",
             [&](const std::shared_ptr<sl::Scene>& scene){
@@ -298,9 +308,11 @@ void init(py::module& m)
                 a.copy_(colors);
             },
         R"EOS(
-            Colors of all lights in world coordinates. Note that the color
+            Colors of all lights in linear sRGB. Note that the color
             directly determines radiance, so you might have to increase colors
             beyond 1.0 or they might be too dark.
+
+            All lights with color set to (0,0,0) will be disabled.
         )EOS")
 
         .def_property("ambient_light",
@@ -308,7 +320,7 @@ void init(py::module& m)
             wrapShared(&sl::Scene::setAmbientLight),
         R"EOS(
             The color & intensity of the ambient light. This is a float
-            tensor of size 3 (RGB), which determines general ambient radiance.
+            tensor of size 3 (linear sRGB), which determines general ambient radiance.
         )EOS")
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
@@ -335,10 +347,25 @@ void init(py::module& m)
             that all objects in the scene should be within the camera frustum.
         )EOS")
 
-        .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
+        .def("choose_random_light_position", [](const std::shared_ptr<sl::Scene>& scene) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "choose_random_light_position is deprecated, use choose_random_light_direction instead.", 1);
+        }, R"EOS(
             Choose a random light position.
 
             The position obeys the following constraints:
+
+            * The light comes from above (negative Y direction)
+            * The light never comes from behind the objects.
+
+            .. block-warning:: Deprecated
+
+                Please use :ref:`choose_random_light_direction` instead.
+        )EOS")
+
+        .def("choose_random_light_direction", &sl::Scene::chooseRandomLightDirection, R"EOS(
+            Choose a random light direction.
+
+            The direction obeys the following constraints:
 
             * The light comes from above (negative Y direction)
             * The light never comes from behind the objects.

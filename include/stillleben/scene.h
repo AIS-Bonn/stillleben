@@ -175,17 +175,21 @@ public:
     std::shared_ptr<LightMap> lightMap() const
     { return m_lightMap; }
 
-    void setLightPositions(const Corrade::Containers::ArrayView<const Magnum::Vector4>& positions);
-    void setLightPositions(const std::initializer_list<Magnum::Vector4>& positions)
-    { setLightPositions(Corrade::Containers::arrayView(positions)); }
-    Corrade::Containers::ArrayView<Magnum::Vector4> lightPositions();
+    void setLightDirections(const Corrade::Containers::ArrayView<const Magnum::Vector3>& directions);
+    void setLightDirections(const std::initializer_list<Magnum::Vector3>& directions)
+    { setLightDirections(Corrade::Containers::arrayView(directions)); }
+    Corrade::Containers::StaticArrayView<NumLights, Magnum::Vector3> lightDirections();
 
     void setLightColors(const Corrade::Containers::ArrayView<const Magnum::Color3>& colors);
     void setLightColors(const std::initializer_list<Magnum::Color3>& colors)
     { setLightColors(Corrade::Containers::arrayView(colors)); }
-    Corrade::Containers::ArrayView<Magnum::Color3> lightColors();
+    Corrade::Containers::StaticArrayView<NumLights, Magnum::Color3> lightColors();
 
-    void chooseRandomLightPosition();
+    [[deprecated("use chooseRandomLightDirection")]]
+    void chooseRandomLightPosition()
+    { chooseRandomLightDirection(); }
+
+    void chooseRandomLightDirection();
 
     void setAmbientLight(const Magnum::Color3& ambientLight);
     Magnum::Color3 ambientLight() const
@@ -215,8 +219,8 @@ private:
     PhysXUnique<physx::PxScene> m_physicsScene;
     std::unique_ptr<SimulationCallback> m_simCallback;
 
-    Corrade::Containers::StaticArray<3, Magnum::Vector4> m_lightPositions;
-    Corrade::Containers::StaticArray<3, Magnum::Color3> m_lightColors{
+    Corrade::Containers::StaticArray<NumLights, Magnum::Vector3> m_lightDirections;
+    Corrade::Containers::StaticArray<NumLights, Magnum::Color3> m_lightColors{
         Magnum::Color3{300.0f},
         Magnum::Color3{},
         Magnum::Color3{}

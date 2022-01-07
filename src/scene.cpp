@@ -409,20 +409,20 @@ namespace
     }
 }
 
-void Scene::setLightPositions(const Containers::ArrayView<const Vector4>& positions)
+void Scene::setLightDirections(const Containers::ArrayView<const Vector3>& positions)
 {
-    if(positions.size() > m_lightPositions.size())
+    if(positions.size() > m_lightDirections.size())
         throw std::invalid_argument{"Cannot support that many lights"};
 
     for(std::size_t i = 0; i < positions.size(); ++i)
-        m_lightPositions[i] = positions[i];
-    for(std::size_t i = positions.size(); i < m_lightPositions.size(); ++i)
-        m_lightPositions[i] = {};
+        m_lightDirections[i] = positions[i];
+    for(std::size_t i = positions.size(); i < m_lightDirections.size(); ++i)
+        m_lightDirections[i] = {};
 }
 
-Containers::ArrayView<Vector4> Scene::lightPositions()
+Containers::StaticArrayView<NumLights, Vector3> Scene::lightDirections()
 {
-    return m_lightPositions;
+    return m_lightDirections;
 }
 
 void Scene::setLightColors(const Containers::ArrayView<const Color3>& colors)
@@ -436,7 +436,7 @@ void Scene::setLightColors(const Containers::ArrayView<const Color3>& colors)
         m_lightColors[i] = Color3{0.0f};
 }
 
-Containers::ArrayView<Color3> Scene::lightColors()
+Containers::StaticArrayView<NumLights, Color3> Scene::lightColors()
 {
     return m_lightColors;
 }
@@ -446,18 +446,10 @@ void Scene::setAmbientLight(const Magnum::Color3& color)
     m_ambientLight = color;
 }
 
-void Scene::chooseRandomLightPosition()
+void Scene::chooseRandomLightDirection()
 {
     // We want to have the light coming from above, but not from behind the
     // objects. We first determine the light position relative to the camera.
-
-    Magnum::Vector3 meanPosition;
-    for(auto& obj : m_objects)
-    {
-        meanPosition += (m_camera->cameraMatrix() * obj->pose()).translation();
-    }
-    if(!m_objects.empty())
-        meanPosition /= m_objects.size();
 
     std::normal_distribution<float> normalDist;
     Magnum::Vector3 randomDirection = Magnum::Vector3{
@@ -466,11 +458,11 @@ void Scene::chooseRandomLightPosition()
         -std::abs(normalDist(m_randomGenerator)) // always on camera side
     }.normalized();
 
-    Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
+    Magnum::Vector3 lightDirectionInCam = -randomDirection.normalized();
 
-    Magnum::Vector3 lightPositionInWorld = m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam);
+    Vector3 lightDirectionInWorld = m_camera->cameraMatrix().invertedRigid().transformVector(lightDirectionInCam);
 
-    setLightPositions({Vector4{lightPositionInWorld, 0.0f}});
+    setLightDirections({lightDirectionInWorld});
 }
 
 void Scene::chooseRandomCameraPose()
@@ -771,11 +763,11 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
     group.setValue("cameraPosition", cameraPose.translation());
     group.setValue("cameraRotation", Quaternion::fromMatrix(cameraPose.rotationScaling()));
 
-    for(UnsignedInt i = 0; i < m_lightPositions.size(); ++i)
+    for(UnsignedInt i = 0; i < m_lightDirections.size(); ++i)
     {
         auto lightGroup = group.addGroup("light");
 
-        lightGroup->setValue("position", m_lightPositions[i]);
+        lightGroup->setValue("direction", m_lightDirections[i]);
         lightGroup->setValue("color", m_lightColors[i]);
     }
 
@@ -817,23 +809,23 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
 
     if(group.hasValue("lightPosition"))
     {
-        setLightPositions({Vector4{group.value<Magnum::Vector3>("lightPosition"), 0.0f}});
+        setLightDirections({-group.value<Magnum::Vector3>("lightPosition").normalized()});
         setLightColors({Color3{0.0f, 0.8f, 0.0f}});
     }
     else
     {
         auto lightGroups = group.groups("light");
 
-        Containers::Array<Vector4> positions;
+        Containers::Array<Vector3> directions;
         Containers::Array<Color3> colors;
 
         for(const auto& lightGroup : lightGroups)
         {
-            Containers::arrayAppend(positions, lightGroup->value<Magnum::Vector4>("position"));
+            Containers::arrayAppend(directions, lightGroup->value<Magnum::Vector3>("direction"));
             Containers::arrayAppend(colors, lightGroup->value<Magnum::Color3>("color"));
         }
 
-        setLightPositions(positions);
+        setLightDirections(directions);
         setLightColors(colors);
     }
 

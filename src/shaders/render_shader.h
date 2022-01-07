@@ -45,8 +45,6 @@ private:
 class RenderShader : public Magnum::GL::AbstractShaderProgram
 {
 public:
-    static constexpr Magnum::UnsignedInt NumLights = 3;
-
     /**
      * @brief Vertex position
      *
@@ -172,7 +170,7 @@ public:
     //@{
     RenderShader& setLightMap(LightMap& lightMap);
     RenderShader& setManualLighting(
-        const Corrade::Containers::ArrayView<Magnum::Vector4>& positions,
+        const Corrade::Containers::ArrayView<Magnum::Vector3>& directions,
         const Corrade::Containers::ArrayView<Magnum::Color3>& colors,
         const Magnum::Color3& ambientLight
     );

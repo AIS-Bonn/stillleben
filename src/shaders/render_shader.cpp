@@ -22,6 +22,7 @@
 #include <Magnum/Trade/PbrMetallicRoughnessMaterialData.h>
 
 #include <stillleben/light_map.h>
+#include <stillleben/common.h>
 
 using namespace Magnum;
 
@@ -61,10 +62,10 @@ namespace
         StickerRange,
         CamPosition,
         LightMapAvailable,
-        LightPositions, // size NumLights
-        LightColors = LightPositions + RenderShader::NumLights, // size NumLights
-        ShadowMatrices = LightColors + RenderShader::NumLights, // size NumLights
-        AmbientLight = ShadowMatrices + RenderShader::NumLights
+        LightDirections, // size NumLights
+        LightColors = LightDirections + NumLights, // size NumLights
+        ShadowMatrices = LightColors + NumLights, // size NumLights
+        AmbientLight = ShadowMatrices + NumLights
     };
 
     template<class T>
@@ -156,7 +157,7 @@ RenderShader::RenderShader()
 #define UNIFORM_CAM_POSITION {}
 
 #define UNIFORM_LIGHT_MAP_AVAILABLE {}
-#define UNIFORM_LIGHT_POSITIONS {}
+#define UNIFORM_LIGHT_DIRECTIONS {}
 #define UNIFORM_LIGHT_COLORS {}
 #define UNIFORM_SHADOW_MATRICES {}
 #define UNIFORM_AMBIENT_LIGHT {}
@@ -175,7 +176,7 @@ RenderShader::RenderShader()
         eVal(Uniform::StickerRange),
         eVal(Uniform::CamPosition),
         eVal(Uniform::LightMapAvailable),
-        eVal(Uniform::LightPositions),
+        eVal(Uniform::LightDirections),
         eVal(Uniform::LightColors),
         eVal(Uniform::ShadowMatrices),
         eVal(Uniform::AmbientLight)
@@ -272,13 +273,13 @@ RenderShader& RenderShader::setLightMap(LightMap& lightMap)
     lightMap.prefilterMap().bind(eVal(TextureInput::LightMapPrefilter));
     lightMap.brdfLUT().bind(eVal(TextureInput::LightMapBRDFLUT));
 
-    Containers::Array<Vector4> lightPositions{NumLights};
+    Containers::Array<Vector3> lightDirections{NumLights};
     Containers::Array<Color3> lightColors{DirectInit, NumLights, 0.0f};
 
     {
-        auto mapPos = lightMap.lightPositions();
+        auto mapPos = lightMap.lightDirections();
         std::size_t n = std::min<std::size_t>(NumLights, mapPos.size());
-        Utility::copy(mapPos.slice(0, n), lightPositions.slice(0, n));
+        Utility::copy(mapPos.slice(0, n), lightDirections.slice(0, n));
     }
     {
         auto mapColor = lightMap.lightColors();
@@ -287,26 +288,26 @@ RenderShader& RenderShader::setLightMap(LightMap& lightMap)
     }
 
     setUniform(eVal(Uniform::LightMapAvailable), 1u);
-    setUniform(eVal(Uniform::LightPositions), lightPositions);
+    setUniform(eVal(Uniform::LightDirections), lightDirections);
     setUniform(eVal(Uniform::LightColors), lightColors);
     setUniform(eVal(Uniform::AmbientLight), Color3{0.0f});
 
     return *this;
 }
 
-RenderShader& RenderShader::setManualLighting(const Containers::ArrayView<Vector4>& positions, const Containers::ArrayView<Color3>& colors, const Color3& ambientLight)
+RenderShader& RenderShader::setManualLighting(const Containers::ArrayView<Vector3>& directions, const Containers::ArrayView<Color3>& colors, const Color3& ambientLight)
 {
-    Containers::Array<Vector4> lightPositions{NumLights};
+    Containers::Array<Vector3> lightDirections{NumLights};
     Containers::Array<Color3> lightColors{DirectInit, NumLights, 0.0f};
 
-    for(UnsignedInt i = 0; i < std::min<UnsignedInt>(NumLights, positions.size()); ++i)
-        lightPositions[i] = positions[i];
+    for(UnsignedInt i = 0; i < std::min<UnsignedInt>(NumLights, directions.size()); ++i)
+        lightDirections[i] = directions[i];
 
     for(UnsignedInt i = 0; i < std::min<UnsignedInt>(NumLights, colors.size()); ++i)
         lightColors[i] = colors[i];
 
     setUniform(eVal(Uniform::LightMapAvailable), 0u);
-    setUniform(eVal(Uniform::LightPositions), lightPositions);
+    setUniform(eVal(Uniform::LightDirections), lightDirections);
     setUniform(eVal(Uniform::LightColors), lightColors);
     setUniform(eVal(Uniform::AmbientLight), ambientLight);
 

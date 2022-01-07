@@ -267,7 +267,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 {
     using namespace Utility;
 
-    m_lightPositions = {};
+    m_lightDirections = {};
     m_lightColors = {};
 
     Magnum::GL::Texture2D hdrEquirectangular{NoCreate};
@@ -315,15 +315,13 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Rad theta = Rad{(light.uv[0] + 0.5f) * Constants::pi() * 2};
             Rad phi = Rad{light.uv[1] * Constants::pi()};
 
-            Float R = 1000.0f;
-            Vector4 pos{
-                R * Math::cos(phi) * Math::sin(theta),
-                R * Math::sin(phi) * Math::sin(theta),
-                R * Math::cos(theta),
-                0.0f
+            Vector3 pos{
+                Math::cos(phi) * Math::sin(theta),
+                Math::sin(phi) * Math::sin(theta),
+                Math::cos(theta)
             };
 
-            Containers::arrayAppend(m_lightPositions, pos);
+            Containers::arrayAppend(m_lightDirections, -pos);
             Containers::arrayAppend(m_lightColors, light.color);
         };
 

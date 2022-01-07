@@ -42,8 +42,8 @@ public:
     inline Magnum::GL::CubeMapTexture& cubeMap()
     { return m_cubeMap; }
 
-    inline Corrade::Containers::ArrayView<const Magnum::Vector4> lightPositions() const
-    { return m_lightPositions; }
+    inline Corrade::Containers::ArrayView<const Magnum::Vector3> lightDirections() const
+    { return m_lightDirections; }
 
     inline Corrade::Containers::ArrayView<const Magnum::Color3> lightColors() const
     { return m_lightColors; }
@@ -56,7 +56,7 @@ private:
     Magnum::GL::CubeMapTexture m_prefilter;
     Magnum::GL::Texture2D m_brdfLUT;
 
-    Corrade::Containers::Array<Magnum::Vector4> m_lightPositions;
+    Corrade::Containers::Array<Magnum::Vector3> m_lightDirections;
     Corrade::Containers::Array<Magnum::Color3> m_lightColors;
 };
 

@@ -393,7 +393,7 @@ TEST_CASE("vertex indices")
     scene.addObject(object);
 
     scene.setCameraLookAt({4.0, 0.0, 0.0}, {});
-    scene.chooseRandomLightPosition();
+    scene.chooseRandomLightDirection();
 
     // Render everything using a Phong shader
     sl::RenderPass pass;

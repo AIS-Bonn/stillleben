@@ -54,8 +54,8 @@ uniform uint availableTextures = 0u;
 layout(location = UNIFORM_LIGHT_MAP_AVAILABLE)
 uniform uint lightMapAvailable = 0u;
 
-layout(location = UNIFORM_LIGHT_POSITIONS)
-uniform vec4 lightPositions[NUM_LIGHTS];
+layout(location = UNIFORM_LIGHT_DIRECTIONS)
+uniform vec3 lightDirections[NUM_LIGHTS];
 
 layout(location = UNIFORM_LIGHT_COLORS)
 uniform vec3 lightColors[NUM_LIGHTS];
@@ -310,7 +310,8 @@ void main()
     for(int i = 0; i < NUM_LIGHTS; ++i)
     {
         vec3 lightColor = lightColors[i];
-        if(lightColor == vec3(0.0))
+        vec3 lightDirection = lightDirections[i];
+        if(lightColor == vec3(0.0) || lightDirection == vec3(0.0))
             continue;
 
         // Shadow lookup
@@ -327,10 +328,8 @@ void main()
         inverseShadow /= 16;
 
         // calculate per-light radiance
-        vec3 L = normalize(lightPositions[i].xyz - fragmentData.worldCoordinates.xyz);
+        vec3 L = normalize(-lightDirection);
         vec3 H = normalize(cameraDirection + L);
-//         float distance = length(spot_lights[i].pos - P_w);
-//         float attenuation = 1.0 / (distance * distance);
         float attenuation = 1.0;
         vec3 radiance = lightColor * attenuation;
 
