@@ -462,6 +462,11 @@ void Object::setMetallic(float metalness)
     m_metallic = metalness;
 }
 
+void Object::setCastsShadows(bool on)
+{
+    m_castsShadows = on;
+}
+
 void Object::setStickerTexture(const std::shared_ptr<Magnum::GL::RectangleTexture>& texture)
 {
     m_stickerTexture = texture;

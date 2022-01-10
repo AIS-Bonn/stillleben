@@ -122,6 +122,10 @@ void init(py::module& m)
             mesh is used.
         )EOS")
 
+        .def_property("casts_shadows", &sl::Object::castsShadows, &sl::Object::setCastsShadows, R"EOS(
+            Enable/disable shadow casting (default True).
+        )EOS")
+
 
         .def_property("sticker_rotation", wrapShared(&sl::Object::stickerRotation), wrapShared(&sl::Object::setStickerRotation), R"EOS(
             Sticker rotation quaternion.

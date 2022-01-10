@@ -183,6 +183,10 @@ public:
     constexpr float metallic() const
     { return m_metallic; }
 
+    void setCastsShadows(bool on);
+    constexpr bool castsShadows() const
+    { return m_castsShadows; }
+
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
 
@@ -287,6 +291,8 @@ private:
 
     physx::PxMaterial* m_material = nullptr;
     PhysXHolder<physx::PxMaterial> m_customMaterial;
+
+    bool m_castsShadows = true;
 };
 
 }

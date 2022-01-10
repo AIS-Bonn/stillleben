@@ -405,6 +405,9 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
                 if(predicate && !predicate(object))
                     continue;
 
+                if(!object->castsShadows())
+                    continue;
+
                 object->draw(scene.camera(), [&](const Matrix4&, SceneGraph::Camera3D&, Drawable* drawable) {
                     (*m_shadowShader)
                         .setTransformation(m_shadowMatrices[i] * drawable->object().absoluteTransformationMatrix())
