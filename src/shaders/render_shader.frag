@@ -166,7 +166,7 @@ vec3 diffuseColor(vec3 baseColor, float metallic)
 
 bool haveTexture(uint tex_code)
 {
-    return (availableTextures & (1 << tex_code)) != 0;
+    return (availableTextures & (1u << tex_code)) != 0u;
 }
 
 float clampDot(vec3 v1, vec3 v2)
@@ -307,6 +307,9 @@ void main()
     vec3 Fr = max(vec3(1.0 - roughness), F0) - F0;
     vec3 k_S = F0 + Fr * pow(1.0 - NoV, 5.0);
 
+    ivec3 shadowMapSize = textureSize(shadowMap, 0);
+    vec2 shadowMapScale = 1.0 / shadowMapSize.xy;
+
     for(int i = 0; i < NUM_LIGHTS; ++i)
     {
         vec3 lightColor = lightColors[i];
@@ -322,9 +325,15 @@ void main()
         projCoords = 0.5 * projCoords + 0.5;
 
         float inverseShadow = 0.0;
+
         for(float y = -1.5; y <= 1.5; y += 1.0)
+        {
             for(float x = -1.5; x <= 1.5; x += 1.0)
-                inverseShadow += textureOffset(shadowMap, vec4(projCoords.xy, i, projCoords.z-0.0003), ivec2(x,y)).r;
+            {
+                vec2 offset = vec2(x,y) * shadowMapScale;
+                inverseShadow += texture(shadowMap, vec4(projCoords.xy + offset, i, projCoords.z-0.0003)).r;
+            }
+        }
         inverseShadow /= 16;
 
         // calculate per-light radiance
