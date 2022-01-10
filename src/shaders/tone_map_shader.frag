@@ -1,4 +1,8 @@
 
+// Uniforms
+layout(location = UNIFORM_MANUAL_EXPOSURE)
+uniform highp float manualExposure = -1.0;
+
 // Texture samplers
 layout(binding = COLOR_TEXTURE)
 uniform highp sampler2D rgbSampler;
@@ -100,18 +104,23 @@ void main()
     vec2 texCoord = gl_FragCoord.xy;
 
     vec4 color = texelFetch(rgbSampler, ivec2(texCoord), 0);
-    vec4 avgVec = texelFetch(luminanceSampler, ivec2(0,0), textureQueryLevels(luminanceSampler)-1);
-
-    // The average is taken over all scene pixels, but only those on objects
-    // contribute to alpha. So divide by alpha to get the average over all
-    // object pixels.
-    // FIXME: I think the average luminance calculation is flawed. Fix it and
-    //  get rid of the 0.1 twiddle factor.
-    float lum = 0.1 * dot(RGB_TO_LUM, avgVec.rgb / avgVec.a);
 
     vec3 Yxy = convertRGB2Yxy(color.rgb);
 
-    Yxy.x /= (9.6 * lum + 0.0001);
+    if(manualExposure >= 0)
+        Yxy.x *= manualExposure;
+    else
+    {
+        vec4 avgVec = texelFetch(luminanceSampler, ivec2(0,0), textureQueryLevels(luminanceSampler)-1);
+
+        // The average is taken over all scene pixels, but only those on objects
+        // contribute to alpha. So divide by alpha to get the average over all
+        // object pixels.
+        // FIXME: I think the average luminance calculation is flawed. Fix it and
+        //  get rid of the 0.1 twiddle factor.
+        float lum = 0.1 * dot(RGB_TO_LUM, avgVec.rgb / avgVec.a);
+        Yxy.x /= (9.6 * lum + 0.0001);
+    }
 
     color.rgb = convertYxy2RGB(Yxy);
 

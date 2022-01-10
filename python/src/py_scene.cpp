@@ -404,8 +404,8 @@ void init(py::module& m)
 
 
         .def_property("light_map", &sl::Scene::lightMap, &sl::Scene::setLightMap, R"EOS(
-                Light map used for image-based lighting.
-            )EOS")
+            Light map used for image-based lighting.
+        )EOS")
 
         .def_property("background_plane_pose", wrapShared(&sl::Scene::backgroundPlanePose), wrapShared(&sl::Scene::setBackgroundPlanePose),
             "Pose of the background plane (plane normal is in +Z direction)")
@@ -413,6 +413,15 @@ void init(py::module& m)
             "Size of the background plane in local X/Y directions")
         .def_property("background_plane_texture", &sl::Scene::backgroundPlaneTexture, &sl::Scene::setBackgroundPlaneTexture,
             "Texture of the background plane")
+
+        .def_property("manual_exposure", &sl::Scene::manualExposure, &sl::Scene::setManualExposure, R"EOS(
+            Manual exposure.
+
+            This can be used to override the default auto-exposure algorithm,
+            which can be especially useful in the case of video. The exposure
+            value is a simple coefficient that is multiplied with the linear
+            sRGB color.
+        )EOS")
     ;
 }
 

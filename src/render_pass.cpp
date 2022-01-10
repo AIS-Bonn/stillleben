@@ -676,6 +676,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
     (*m_toneMapShader)
         .bindColor(m_postprocessInput)
         .bindObjectLuminance(ssaoEnabled ? m_ssaoRGBInputTexture : m_postprocessInput)
+        .setManualExposure(scene.manualExposure())
         .draw(m_quadMesh);
 
     // Draw overlays (physics / bbox debugging)

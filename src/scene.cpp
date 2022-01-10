@@ -789,6 +789,8 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
 
     group.setValue("backgroundPlanePose", m_backgroundPlanePose);
     group.setValue("backgroundPlaneSize", m_backgroundPlaneSize);
+
+    group.setValue("manualExposure", m_manualExposure);
 }
 
 void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
@@ -839,6 +841,9 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
         m_backgroundPlanePose = group.value<Magnum::Matrix4>("backgroundPlanePose");
     if(group.hasValue("backgroundPlaneSize"))
         m_backgroundPlaneSize = group.value<Magnum::Vector2>("backgroundPlaneSize");
+
+    if(group.hasValue("manualExposure"))
+        m_manualExposure = group.value<Float>("manualExposure");
 
     std::unique_ptr<MeshCache> localCache;
     if(!cache)
@@ -913,6 +918,11 @@ void Scene::checkCollisions()
         else
             obj->m_separation = 0.0f;
     }
+}
+
+void Scene::setManualExposure(Float exposure)
+{
+    m_manualExposure = exposure;
 }
 
 }

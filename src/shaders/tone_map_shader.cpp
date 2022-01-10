@@ -29,6 +29,11 @@ namespace
         ObjectLuminance
     };
 
+    enum class Uniform : Int
+    {
+        ManualExposure
+    };
+
     template<class T>
     constexpr Int eVal(T val)
     { return static_cast<Int>(val); }
@@ -68,6 +73,13 @@ ToneMapShader::ToneMapShader()
         eVal(TextureInput::ObjectLuminance)
     );
 
+    header += Corrade::Utility::formatString(R"EOS(
+// Uniforms
+#define UNIFORM_MANUAL_EXPOSURE {}
+)EOS",
+        eVal(Uniform::ManualExposure)
+    );
+
     vert.addSource(header)
         .addSource(rs.get("tone_map_shader.vert"));
     frag.addSource(header)
@@ -91,5 +103,12 @@ ToneMapShader& ToneMapShader::bindObjectLuminance(GL::Texture2D& texture)
     texture.bind(eVal(TextureInput::ObjectLuminance));
     return *this;
 }
+
+ToneMapShader& ToneMapShader::setManualExposure(Float exposure)
+{
+    setUniform(eVal(Uniform::ManualExposure), exposure);
+    return *this;
+}
+
 
 }

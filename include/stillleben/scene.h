@@ -195,6 +195,9 @@ public:
     Magnum::Color3 ambientLight() const
     { return m_ambientLight; }
 
+    void setManualExposure(Magnum::Float exposure);
+    Magnum::Float manualExposure() const
+    { return m_manualExposure; }
     //@}
 
 private:
@@ -233,6 +236,8 @@ private:
     Magnum::Matrix4 m_backgroundPlanePose{Magnum::Math::IdentityInit};
     Magnum::Vector2 m_backgroundPlaneSize{};
     std::shared_ptr<Magnum::GL::Texture2D> m_backgroundPlaneTexture;
+
+    Magnum::Float m_manualExposure = -1.0f;
 };
 
 // IMPLEMENTATION

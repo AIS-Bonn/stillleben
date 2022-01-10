@@ -60,6 +60,8 @@ public:
     ToneMapShader& bindColor(GL::Texture2D& texture);
     ToneMapShader& bindObjectLuminance(GL::Texture2D& texture);
 
+    ToneMapShader& setManualExposure(Float exposure);
+
 private:
 };
 
