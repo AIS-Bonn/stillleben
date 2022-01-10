@@ -152,6 +152,15 @@ Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightDire
     Float near = minInCam.z();
     Float far = maxInCam.z();
 
+    // Increase far/near so that we do not ignore shadow casters that are
+    // not in the frustum
+
+    Float meanZ = (near + far)/2.0f;
+    Float spread = far - meanZ;
+
+    far = meanZ + 5.0f * spread;
+    near = meanZ - 5.0f * spread;
+
     Float L = minInCam.x();
     Float R = maxInCam.x();
     Float T = minInCam.y();
