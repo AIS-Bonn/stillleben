@@ -20,12 +20,16 @@
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Quaternion.h>
-#include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#include <Magnum/Math/ConfigurationValue.h>
+#pragma GCC diagnostic pop
 
 #include <sstream>
 
