@@ -331,7 +331,7 @@ void main()
             for(float x = -1.5; x <= 1.5; x += 1.0)
             {
                 vec2 offset = vec2(x,y) * shadowMapScale;
-                inverseShadow += texture(shadowMap, vec4(projCoords.xy + offset, i, projCoords.z-0.0003)).r;
+                inverseShadow += texture(shadowMap, vec4(projCoords.xy + offset, i, projCoords.z-0.00003)).r;
             }
         }
         inverseShadow /= 16;
