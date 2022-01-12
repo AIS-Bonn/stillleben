@@ -99,6 +99,8 @@ FrustumCorners computeFrustumCorners(Scene& scene)
         far = Math::min(farObj, far);
     }
 
+//     Debug{} << "Objects in frustum near, far:" << near << far;
+
     // homogeneous corner coords
     Containers::StaticArray<8, Vector4> hcorners{InPlaceInit,
         // near
@@ -121,10 +123,12 @@ FrustumCorners computeFrustumCorners(Scene& scene)
         corners[i] = p.xyz() / p.w();
     }
 
+//     Debug{} << "Frustum corners:" << corners;
+
     return corners;
 }
 
-Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightDirection)
+Matrix4 computeShadowMapMatrix(Scene& scene, FrustumCorners& corners, const Vector3& lightDirection)
 {
     // Z always points into the scene
     Vector3 z = lightDirection.normalized();
@@ -166,6 +170,26 @@ Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightDire
     Float T = minInCam.y();
     Float B = maxInCam.y();
 
+    if(!scene.objects().empty())
+    {
+        Vector3 maxObjInCam = Vector3{std::numeric_limits<Float>::infinity()};
+        Vector3 minObjInCam = Vector3{-std::numeric_limits<Float>::infinity()};
+
+        for(auto& obj : scene.objects())
+        {
+            Float radius = obj->mesh()->bbox().size().length() / 2;
+            Vector3 centerInCam = (worldToCam * obj->pose()).transformPoint(obj->mesh()->bbox().center());
+
+            maxObjInCam = Math::min(maxObjInCam, centerInCam - Vector3(radius));
+            minObjInCam = Math::max(minObjInCam, centerInCam + Vector3(radius));
+        }
+
+        L = Math::max(L, maxObjInCam.x());
+        R = Math::min(R, minObjInCam.x());
+        T = Math::max(T, maxObjInCam.y());
+        B = Math::min(B, minObjInCam.y());
+    }
+
     Matrix4 P{
         {2.0f / (R-L),         0.0f,                   0.0f, 0.0f},
         {        0.0f, 2.0f / (B-T),                   0.0f, 0.0f},
@@ -176,6 +200,12 @@ Matrix4 computeShadowMapMatrix(FrustumCorners& corners, const Vector3& lightDire
     // Sanity check
     // P * (R,0,0,1) = (2.0 * R / (R-L) - (R+L)/(R-L), *, *, 1.0f)
     //   => (2*R - R - L) / (R-L) = 1
+
+//     Debug{} << "Frustum corners in image:";
+//     for(UnsignedInt i = 0; i < 8; ++i)
+//     {
+//         Debug{} << (P * worldToCam).transformPoint(corners[i]);
+//     }
 
     return P * worldToCam;
 }
@@ -403,7 +433,7 @@ std::shared_ptr<RenderPass::Result> RenderPass::render(Scene& scene, const std::
             if(lightColors[i] == Color3{0.0} || lightDirections[i] == Vector3{0.0f})
                 continue;
 
-            m_shadowMatrices[i] = computeShadowMapMatrix(frustum, lightDirections[i]);
+            m_shadowMatrices[i] = computeShadowMapMatrix(scene, frustum, lightDirections[i]);
 
             m_shadowFB[i]
                 .clear(GL::FramebufferClear::Depth)
