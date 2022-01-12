@@ -18,7 +18,11 @@
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #include <Magnum/Math/ConfigurationValue.h>
+#pragma GCC diagnostic pop
 
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
