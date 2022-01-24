@@ -59,6 +59,12 @@ def view_mesh(mesh_filenames, ibl=None, serialize=False):
     # Display interactive viewer
     sl.view(scene)
 
+def view_scene(scene_filename):
+    scene = sl.Scene((1280, 800))
+    scene.deserialize(open(scene_filename).read())
+
+    sl.view(scene)
+
 if __name__ == "__main__":
     import argparse
 
@@ -75,4 +81,7 @@ if __name__ == "__main__":
 
     sl.init() # use sl.init_cuda() for CUDA interop
 
-    view_mesh(mesh_filenames=args.meshes, ibl=args.ibl, serialize=args.serialize)
+    if len(args.meshes) == 1 and (args.meshes[0].endswith('.txt') or args.meshes[0].endswith('.scene')):
+        view_scene(args.meshes[0])
+    else:
+        view_mesh(mesh_filenames=args.meshes, ibl=args.ibl, serialize=args.serialize)
