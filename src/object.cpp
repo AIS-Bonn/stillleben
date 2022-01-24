@@ -393,6 +393,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("roughness", m_roughness);
     group.setValue("metallic", m_metallic);
 
+    group.setValue("casts_shadows", m_castsShadows);
+
     // FIXME: What about stickerTexture?
     group.setValue("stickerRange", m_stickerRange);
     group.setValue("stickerRotation", m_stickerRotation);
@@ -430,6 +432,9 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
 
     if(group.hasValue("metallic"))
         setMetallic(group.value<float>("metallic"));
+
+    if(group.hasValue("casts_shadows"))
+        setCastsShadows(group.value<bool>("casts_shadows"));
 
     if(group.hasValue("stickerRange"))
         setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
