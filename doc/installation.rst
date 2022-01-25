@@ -47,7 +47,7 @@ Anaconda (see above), make sure the Anaconda environment is loaded.
 .. code:: sh
 
     # Install dependencies
-    sudo apt install libassimp-dev libjpeg-dev libpng-dev
+    sudo apt install libassimp-dev libjpeg-dev libpng-dev libxext-dev
 
     cd stillleben
     python setup.py install
