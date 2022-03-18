@@ -53,6 +53,7 @@
             <li>
               Reference
               <ul>
+                <li><a href="#enums">Enums</a></li>
                 <li><a href="#staticmethods">Static methods</a></li>
                 <li><a href="#methods">Methods</a></li>
                 <li><a href="#dunder-methods">Special methods</a></li>
@@ -65,7 +66,7 @@
 In order to be rendered, you need to instantiate it (see <a class="m-doc" href="stillleben.Object.html">Object</a>).</p>
 <section id="typical-usage">
 <h2>Typical usage</h2>
-<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="k">as</span> <span class="nn">sl</span>
 
 <span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
@@ -77,6 +78,33 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
 <span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">))</span>
 <span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></pre>
 </section>
+<section id="accessing-and-manipulating-vertex-data">
+<h2>Accessing and manipulating vertex data</h2>
+<p>You can use <a class="m-doc" href="stillleben.Mesh.html#points">points</a>, <a class="m-doc" href="stillleben.Mesh.html#faces">faces</a>, <a class="m-doc" href="stillleben.Mesh.html#colors">colors</a>, <a class="m-doc" href="stillleben.Mesh.html#normals">normals</a>
+to access common vertex attributes. <a class="m-doc" href="stillleben.Mesh.html#update_positions">update_positions()</a> and friends
+can be used to write vertex attributes.</p>
+</section>
+<section id="sub-meshes">
+<h2>Sub-Meshes</h2>
+<p>Some mesh file formats (such as .obj) may contain multiple sub-meshes
+with different properties and textures. Stillleben fully supports
+loading and working with such files.
+If you work with the mesh data itself (see <a class="m-doc" href="stillleben.Mesh.html#points">points</a>, <a class="m-doc" href="stillleben.Mesh.html#faces">faces</a>),
+it will feel like working with a big concatenated mesh. This is more
+convenient in most situations and removes a level of indirection
+when performing vertex updates. All meshes live in the same coordinate
+system.</p>
+</section>
+        <section id="enums">
+          <h2><a href="#enums">Enums</a></h2>
+          <dl class="m-doc">
+            <dt id="Flag">
+              <span class="m-doc-wrap-bumper">class <a href="#Flag" class="m-doc-self">Flag</a>: </span><span class="m-doc-wrap"><a href="#Flag-NONE" class="m-doc-self" id="Flag-NONE">NONE</a> = 0
+              <a href="#Flag-PHYSICS_FORCE_CONVEX_HULL" class="m-doc-self" id="Flag-PHYSICS_FORCE_CONVEX_HULL">PHYSICS_FORCE_CONVEX_HULL</a> = 1</span>
+            </dt>
+            <dd>Mesh flags</dd>
+          </dl>
+        </section>
         <section id="staticmethods">
           <h2><a href="#staticmethods">Static methods</a></h2>
           <dl class="m-doc">
@@ -84,7 +112,7 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
               <span class="m-doc-wrap-bumper">def <a href="#load_threaded" class="m-doc">load_threaded</a>(</span><span class="m-doc-wrap">filenames: typing.List[object],
               visual: bool = True,
               physics: bool = True,
-              max_physics_triangles: int = 2000) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>]</span>
+              flags: typing.List[<a href="stillleben.Mesh.html#Flag" class="m-doc">Flag</a>] = []) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>]</span>
             </dt>
             <dd>Load multiple meshes using a thread pool.</dd>
           </dl>
@@ -96,6 +124,11 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
               <span class="m-doc-wrap-bumper">def <a href="#center_bbox" class="m-doc">center_bbox</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
             </dt>
             <dd>Center mesh.</dd>
+            <dt id="dump_physics_meshes">
+              <span class="m-doc-wrap-bumper">def <a href="#dump_physics_meshes" class="m-doc-self">dump_physics_meshes</a>(</span><span class="m-doc-wrap">self,
+              arg0: str<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Write physics meshes in PLY format into the given directory.</dd>
             <dt>
               <span class="m-doc-wrap-bumper">def <a href="#scale_to_bbox_diagonal" class="m-doc">scale_to_bbox_diagonal</a>(</span><span class="m-doc-wrap">self,
               target_diagonal: float,
@@ -139,9 +172,9 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
             <dt>
               <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc">__init__</a>(</span><span class="m-doc-wrap">self,
               filename: object,
-              max_physics_triangles: int = 2000,
               visual: bool = True,
-              physics: bool = True) -&gt; None</span>
+              physics: bool = True,
+              flags: <a href="stillleben.Mesh.html#Flag" class="m-doc">Flag</a> = stillleben.Mesh.<Flag.NONE: 0>) -&gt; None</span>
             </dt>
             <dd>Constructor</dd>
           </dl>
@@ -160,17 +193,26 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
             <dt>
               <a href="#colors" class="m-doc">colors</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
             </dt>
-            <dd>The mesh normals as (Nx4) float tensor.</dd>
+            <dd>The mesh colors as (Nx4) float tensor.</dd>
             <dt>
               <a href="#faces" class="m-doc">faces</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
             </dt>
             <dd>The mesh faces as (N*3) int32 tensor.</dd>
-            <dt>
-              <a href="#normals" class="m-doc">normals</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            <dt id="filename">
+              <a href="#filename" class="m-doc-self">filename</a>: str <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The mesh filename</dd>
+            <dt id="normals">
+              <a href="#normals" class="m-doc-self">normals</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
             </dt>
             <dd>The mesh normals as (Nx3) float tensor.</dd>
-            <dt>
-              <a href="#points" class="m-doc">points</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            <dt id="physics_mesh_data">
+              <a href="#physics_mesh_data" class="m-doc-self">physics_mesh_data</a>: list <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>The convex decomposition used for physics simulation. This is a list
+of dicts, with the keys <cite>positions</cite> and <cite>indices</cite>.</dd>
+            <dt id="points">
+              <a href="#points" class="m-doc-self">points</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
             </dt>
             <dd>The mesh vertices as (Nx3) float tensor.</dd>
             <dt>
@@ -186,7 +228,7 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#load_threaded" class="m-doc-self">load_threaded</a>(</span><span class="m-doc-wrap">filenames: typing.List[object],
               visual: bool = True,
               physics: bool = True,
-              max_physics_triangles: int = 2000) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>] <span class="m-label m-info">staticmethod</span></span></span>
+              flags: typing.List[<a href="stillleben.Mesh.html#Flag" class="m-doc">Flag</a>] = []) -&gt; typing.List[<a href="stillleben.Mesh.html" class="m-doc">Mesh</a>] <span class="m-label m-info">staticmethod</span></span></span>
             </h3>
             <p>Load multiple meshes using a thread pool.</p>
             <table class="m-table m-fullwidth m-flat">
@@ -207,9 +249,8 @@ In order to be rendered, you need to instantiate it (see <a class="m-doc" href="
                   <td>Should we load collision meshes?</td>
                 </tr>
                 <tr>
-                  <td>max_physics_triangles</td>
-                  <td>Maximum number of triangles for
-collision shape (see <a class="m-doc" href="stillleben.Mesh.html#__init__">__init__()</a>).</td>
+                  <td>flags</td>
+                  <td>Flags</td>
                 </tr>
               </tbody>
               <tfoot>
@@ -369,9 +410,9 @@ the scale of arbitrary mesh files.</td>
             <h3>
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />Mesh.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self,
               filename: object,
-              max_physics_triangles: int = 2000,
               visual: bool = True,
-              physics: bool = True) -&gt; None</span></span>
+              physics: bool = True,
+              flags: <a href="stillleben.Mesh.html#Flag" class="m-doc">Flag</a> = stillleben.Mesh.<Flag.NONE: 0>) -&gt; None</span></span>
             </h3>
             <p>Constructor</p>
             <table class="m-table m-fullwidth m-flat">
@@ -384,18 +425,16 @@ the scale of arbitrary mesh files.</td>
                   <td>Mesh filename</td>
                 </tr>
                 <tr>
-                  <td>max_physics_triangles</td>
-                  <td>Maximum number of triangles for
-collision shape. If the mesh is more complex than this, it is
-simplified using quadric edge decimation.</td>
-                </tr>
-                <tr>
                   <td>visual</td>
                   <td>Should we load visual components?</td>
                 </tr>
                 <tr>
                   <td>physics</td>
                   <td>Should we load collision meshes?</td>
+                </tr>
+                <tr>
+                  <td>flags</td>
+                  <td>Flags</td>
                 </tr>
               </tbody>
             </table>
@@ -416,11 +455,12 @@ automatically.</p>
             <h3>
               stillleben.<wbr />Mesh.<wbr /><a href="#colors" class="m-doc-self">colors</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
             </h3>
-            <p>The mesh normals as (Nx4) float tensor.</p>
+            <p>The mesh colors as (Nx4) float tensor.</p>
 <aside class="m-block m-warning">
 <h3>Multiple sub meshes</h3>
-<p>This can only be used on single-submesh meshes for now.
-On meshes with multiple submeshes this will raise a RuntimeError.</p>
+<p>This returns a view onto all concatenated sub-meshes.
+Some of them may use vertex coloring, some not. For the former,
+you will see the vertex colors, for the latter just zeros.</p>
 </aside>
           </div></section>
           <section class="m-doc-details" id="faces"><div>
@@ -446,33 +486,6 @@ will wrap around at <svg class="m-math" style="width: 1.492em; height: 0.987em; 
 <use x='10.0872' xlink:href='#eq1-g0-49' y='-4.33844'/>
 </g>
 </svg>.</p>
-</aside>
-<aside class="m-block m-warning">
-<h3>Multiple sub meshes</h3>
-<p>This can only be used on single-submesh meshes for now.
-On meshes with multiple submeshes this will raise a RuntimeError.</p>
-</aside>
-          </div></section>
-          <section class="m-doc-details" id="normals"><div>
-            <h3>
-              stillleben.<wbr />Mesh.<wbr /><a href="#normals" class="m-doc-self">normals</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
-            </h3>
-            <p>The mesh normals as (Nx3) float tensor.</p>
-<aside class="m-block m-warning">
-<h3>Multiple sub meshes</h3>
-<p>This can only be used on single-submesh meshes for now.
-On meshes with multiple submeshes this will raise a RuntimeError.</p>
-</aside>
-          </div></section>
-          <section class="m-doc-details" id="points"><div>
-            <h3>
-              stillleben.<wbr />Mesh.<wbr /><a href="#points" class="m-doc-self">points</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
-            </h3>
-            <p>The mesh vertices as (Nx3) float tensor.</p>
-<aside class="m-block m-warning">
-<h3>Multiple sub meshes</h3>
-<p>This can only be used on single-submesh meshes for now.
-On meshes with multiple submeshes this will raise a RuntimeError.</p>
 </aside>
           </div></section>
           <section class="m-doc-details" id="pretransform"><div>

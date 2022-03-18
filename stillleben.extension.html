@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Installation | stillleben Python</title>
+  <title>stillleben.extension | stillleben Python</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
   <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
   <link rel="icon" href="favicon-dark.png" type="image/png" />
@@ -44,47 +44,28 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          Installation
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>extension <span class="m-thin">module</span>
         </h1>
-<section id="system-requirements">
-<h2>System requirements</h2>
-<p>stillleben has been developed and tested on Ubuntu 18.04. Specifically, it
-requires EGL, which did not work reliably in earlier Ubuntu versions.
-Your mileage on other Linux distributions may vary. Other platforms have never
-been tested and are unlikely to work.</p>
-<p>If you want to use the Python API (you probably do), you will need PyTorch 1.8.1.
-If you want to use CUDA, please install it first.
-Then install PyTorch from source to avoid compiler ABI issues.
-Here is a short guide:</p>
-<pre class="m-code"><span class="c1"># Install Anaconda (skip this if you already have it)</span>
-<span class="c1"># you may adapt the link to a newer Anaconda version :)</span>
-wget https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh
-bash Anaconda3-2021.05-Linux-x86_64.sh
-
-<span class="c1"># Make sure to enter the Anaconde environment here!</span>
-<span class="c1"># If you chose auto-activation during installation, just open a new shell.</span>
-<span class="c1"># Otherwise, source anaconda/bin/activate.</span>
-
-<span class="c1"># Install PyTorch requirements</span>
-conda install astunparse numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses pillow
-conda install -c pytorch magma-cuda101 <span class="c1"># adapt the 101 to your CUDA version!</span>
-
-<span class="c1"># Install PyTorch 1.8.1</span>
-git clone --recursive --depth <span class="m">1</span> -b v1.8.1 https://github.com/pytorch/pytorch.git
-<span class="nb">cd</span> pytorch
-<span class="nb">export</span> <span class="nv">CMAKE_PREFIX_PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">CONDA_PREFIX</span><span class="k">:-</span><span class="s2">&quot;</span><span class="k">$(</span>dirname <span class="k">$(</span>which conda<span class="k">))</span><span class="s2">/../&quot;</span><span class="si">}</span>
-python setup.py install</pre>
-</section>
-<section id="compiling-stillleben">
-<h2>Compiling stillleben</h2>
-<p>You can compile stillleben like any other Python package. If you are using
-Anaconda (see above), make sure the Anaconda environment is loaded.</p>
-<pre class="m-code"><span class="c1"># Install dependencies</span>
-sudo apt install libassimp-dev libjpeg-dev libpng-dev libxext-dev
-
-<span class="nb">cd</span> stillleben
-python setup.py install</pre>
-</section>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#functions">Functions</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <section id="functions">
+          <h2><a href="#functions">Functions</a></h2>
+          <dl class="m-doc">
+            <dt id="load">
+              <span class="m-doc-wrap-bumper">def <a href="#load" class="m-doc-self">load</a>(</span><span class="m-doc-wrap">**kwargs)</span>
+            </dt>
+            <dd></dd>
+          </dl>
+        </section>
       </div>
     </div>
   </div>

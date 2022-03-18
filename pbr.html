@@ -52,7 +52,7 @@
 <p>This is based on the <a class="m-doc" href="viewer.html">Viewer</a> example, but adds an sIBL
 light map (see <a class="m-doc" href="stillleben.LightMap.html">stillleben.LightMap</a>), which enables highly realistic
 environment reflections and illumination.</p>
-<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="k">as</span> <span class="nn">sl</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
@@ -92,8 +92,8 @@ environment reflections and illumination.</p>
 <span class="c1"># Render a frame</span>
 <span class="n">renderer</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">RenderPass</span><span class="p">()</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Resulting RGB frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">rgb</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Resulting segmentation frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">instance_index</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Resulting RGB frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">rgb</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Resulting segmentation frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">instance_index</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
 
 <span class="c1"># Save as JPEG</span>
 <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">rgb</span><span class="p">()[:,:,:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;rgb.jpeg&#39;</span><span class="p">)</span></pre>

@@ -67,6 +67,8 @@
             <dd>Introduces camera noise effects.</dd>
             <dt>module <a href="stillleben.diff.html" class="m-doc">diff</a></dt>
             <dd>Differentiation package for stillleben</dd>
+            <dt>module <a href="stillleben.extension.html" class="m-doc">extension</a></dt>
+            <dd></dd>
             <dt>module <a href="stillleben.losses.html" class="m-doc">losses</a></dt>
             <dd>Loss functions to be used with stillleben differentiation package.</dd>
           </dl>
@@ -78,6 +80,8 @@
             <dd>Generates interpolated object poses.</dd>
             <dt>class <a href="stillleben.ImageLoader.html" class="m-doc">ImageLoader</a></dt>
             <dd>Multi-threaded image loader.</dd>
+            <dt>class <a href="stillleben.ImageSaver.html" class="m-doc">ImageSaver</a></dt>
+            <dd>Multi-threaded image writer.</dd>
             <dt>class <a href="stillleben.LightMap.html" class="m-doc">LightMap</a></dt>
             <dd>An .ibl light map for image-based lighting.</dd>
             <dt>class <a href="stillleben.Mesh.html" class="m-doc">Mesh</a></dt>
@@ -123,6 +127,14 @@ properties.</dd>
               <span class="m-doc-wrap-bumper">def <a href="#view" class="m-doc">view</a>(</span><span class="m-doc-wrap">scene: <a href="stillleben.Scene.html" class="m-doc">Scene</a>) -&gt; None</span>
             </dt>
             <dd>Shortcut for viewing a scene interactively.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#quat_to_matrix" class="m-doc">quat_to_matrix</a>(</span><span class="m-doc-wrap">quat: at::Tensor) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Convert a quaternion into a 3x3 rotation matrix.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#matrix_to_quat" class="m-doc">matrix_to_quat</a>(</span><span class="m-doc-wrap">matrix: at::Tensor) -&gt; at::Tensor</span>
+            </dt>
+            <dd>Convert a 3x3 rotation matrix into a quaternion.</dd>
           </dl>
         </section>
         <section>
@@ -180,6 +192,52 @@ the GPU, but CUDA is not actually used.</p>
             </table>
 <p>Creates and launches a <a class="m-doc" href="stillleben.Viewer.html">Viewer</a> for the given scene. This call is
 blocking and returns when the viewer is closed by the user.</p>
+          </div></section>
+          <section class="m-doc-details" id="quat_to_matrix"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#quat_to_matrix" class="m-doc-self">quat_to_matrix</a>(</span><span class="m-doc-wrap">quat: at::Tensor) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Convert a quaternion into a 3x3 rotation matrix.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">quat</td>
+                  <td>Should be a size 4 tensor with elements [x y z w]</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>3x3 rotation matrix</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="matrix_to_quat"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#matrix_to_quat" class="m-doc-self">matrix_to_quat</a>(</span><span class="m-doc-wrap">matrix: at::Tensor) -&gt; at::Tensor</span></span>
+            </h3>
+            <p>Convert a 3x3 rotation matrix into a quaternion.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">matrix</td>
+                  <td>3x3 rotation matrix</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Quaternion [x y z w]</td>
+                </tr>
+              </tfoot>
+            </table>
           </div></section>
         </section>
       </div>

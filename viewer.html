@@ -56,47 +56,88 @@ interactive viewer.</p>
 <p>For more realistic lighting, see the <a class="m-doc" href="pbr.html">PBR example</a>.</p>
 <section id="source-code">
 <h2>Source code</h2>
-<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="k">as</span> <span class="nn">sl</span>
 <span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
 
-<span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span> <span class="c1"># use sl.init_cuda() for CUDA interop</span>
+<span class="k">def</span> <span class="nf">view_mesh</span><span class="p">(</span><span class="n">mesh_filenames</span><span class="p">,</span> <span class="n">ibl</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">serialize</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="c1"># Load meshes</span>
+    <span class="n">meshes</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Mesh</span><span class="o">.</span><span class="n">load_threaded</span><span class="p">(</span><span class="n">mesh_filenames</span><span class="p">)</span>
 
-<span class="c1"># Load a mesh</span>
-<span class="n">mesh</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">SL_PATH</span> <span class="o">/</span> <span class="s1">&#39;tests&#39;</span> <span class="o">/</span> <span class="s1">&#39;stanford_bunny&#39;</span> <span class="o">/</span> <span class="s1">&#39;scene.gltf&#39;</span><span class="p">)</span>
+    <span class="c1"># Meshes can come in strange dimensions - rescale to something reasonable</span>
+    <span class="k">for</span> <span class="n">mesh</span> <span class="ow">in</span> <span class="n">meshes</span><span class="p">:</span>
+        <span class="n">mesh</span><span class="o">.</span><span class="n">center_bbox</span><span class="p">()</span>
+        <span class="n">mesh</span><span class="o">.</span><span class="n">scale_to_bbox_diagonal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
 
-<span class="c1"># Meshes can come in strange dimensions - rescale to something reasonable</span>
-<span class="n">mesh</span><span class="o">.</span><span class="n">scale_to_bbox_diagonal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="c1"># Dump some object statistics</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Object properties:&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; - mass: </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">mass</span><span class="si">}</span><span class="s2"> kg&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; - density: </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">density</span><span class="si">}</span><span class="s2"> kg/m^3&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; - volume: </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">volume</span><span class="si">}</span><span class="s2"> m^3&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; - inertial frame:</span><span class="se">\n</span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">inertial_frame</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; - inertia in inertial frame: </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">inertia</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-<span class="c1"># Create a scene with a few bunnies</span>
-<span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1920</span><span class="p">,</span><span class="mi">1080</span><span class="p">))</span>
+    <span class="c1"># Create a scene with a few of the objects</span>
+    <span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1920</span><span class="p">,</span><span class="mi">1080</span><span class="p">))</span>
 
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-    <span class="n">obj</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-    <span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Object</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">meshes</span><span class="p">))</span>
+        <span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
 
-<span class="c1"># Let them fall in a heap</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">simulate_tabletop_scene</span><span class="p">()</span>
+    <span class="c1"># Let them fall in a heap</span>
+    <span class="n">scene</span><span class="o">.</span><span class="n">simulate_tabletop_scene</span><span class="p">()</span>
 
-<span class="c1"># Setup lighting</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">choose_random_light_position</span><span class="p">()</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">ambient_light</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+    <span class="c1"># Setup lighting</span>
+    <span class="k">if</span> <span class="n">ibl</span><span class="p">:</span>
+        <span class="n">scene</span><span class="o">.</span><span class="n">light_map</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">LightMap</span><span class="p">(</span><span class="n">ibl</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">scene</span><span class="o">.</span><span class="n">choose_random_light_direction</span><span class="p">()</span>
+        <span class="n">scene</span><span class="o">.</span><span class="n">ambient_light</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">])</span>
 
-<span class="c1"># Display a plane &amp; set background color</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">background_plane_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">background_color</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
+    <span class="c1"># Display a plane &amp; set background color</span>
+    <span class="n">scene</span><span class="o">.</span><span class="n">background_plane_size</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
+    <span class="n">scene</span><span class="o">.</span><span class="n">background_color</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
 
-<span class="c1"># Render a frame</span>
-<span class="n">renderer</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">RenderPass</span><span class="p">()</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Resulting RGB frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">rgb</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="s1">&#39;Resulting segmentation frame:&#39;</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">instance_index</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="c1"># Render a frame</span>
+    <span class="n">renderer</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">RenderPass</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
 
-<span class="c1"># Save as JPEG</span>
-<span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">rgb</span><span class="p">()[:,:,:</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;rgb.jpeg&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">serialize</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Serialized scene:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">serialize</span><span class="p">())</span>
 
-<span class="c1"># Display interactive viewer</span>
-<span class="n">sl</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span></pre>
+    <span class="c1"># Display interactive viewer</span>
+    <span class="n">sl</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">view_scene</span><span class="p">(</span><span class="n">scene_filename</span><span class="p">):</span>
+    <span class="n">scene</span> <span class="o">=</span> <span class="n">sl</span><span class="o">.</span><span class="n">Scene</span><span class="p">((</span><span class="mi">1280</span><span class="p">,</span> <span class="mi">800</span><span class="p">))</span>
+    <span class="n">scene</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">scene_filename</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="n">sl</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">argparse</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Stillleben mesh viewer.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;meshes&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">&#39;PATH&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;The mesh file(s) to load&#39;</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">SL_PATH</span> <span class="o">/</span> <span class="s1">&#39;tests&#39;</span> <span class="o">/</span> <span class="s1">&#39;stanford_bunny&#39;</span> <span class="o">/</span> <span class="s1">&#39;scene.gltf&#39;</span><span class="p">))</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ibl&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">&#39;PATH&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;IBL light map to load&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--serialize&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Show serialized scene&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span> <span class="c1"># use sl.init_cuda() for CUDA interop</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">meshes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.txt&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.scene&#39;</span><span class="p">)):</span>
+        <span class="n">view_scene</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">meshes</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">view_mesh</span><span class="p">(</span><span class="n">mesh_filenames</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">meshes</span><span class="p">,</span> <span class="n">ibl</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ibl</span><span class="p">,</span> <span class="n">serialize</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">serialize</span><span class="p">)</span></pre>
 </section>
       </div>
     </div>

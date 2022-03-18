@@ -62,7 +62,7 @@
         </div>
 <section id="typical-usage">
 <h2>Typical usage</h2>
-<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="kn">as</span> <span class="nn">sl</span>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="k">as</span> <span class="nn">sl</span>
 <span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
 <span class="c1"># Load &amp; instantiate meshes</span>
@@ -92,6 +92,20 @@
               poseInCamera: at::Tensor) -&gt; at::Tensor</span>
             </dt>
             <dd>Transform a pose from camera coordinates to world coordinates.</dd>
+            <dt id="check_collisions">
+              <span class="m-doc-wrap-bumper">def <a href="#check_collisions" class="m-doc-self">check_collisions</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Checks the scene for collisions. The results will be available in
+<a class="m-doc" href="stillleben.Object.html#separation">Object.separation</a>.</dd>
+            <dt id="choose_random_camera_pose">
+              <span class="m-doc-wrap-bumper">def <a href="#choose_random_camera_pose" class="m-doc-self">choose_random_camera_pose</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Choose a random camera pose in the upper hemisphere (Z up) under the constraint
+that all objects in the scene should be within the camera frustum.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#choose_random_light_direction" class="m-doc">choose_random_light_direction</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Choose a random light direction.</dd>
             <dt>
               <span class="m-doc-wrap-bumper">def <a href="#choose_random_light_position" class="m-doc">choose_random_light_position</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
             </dt>
@@ -135,10 +149,11 @@ of diameter <code>diameter</code> fully visible in the camera frustrum.</dd>
               <span class="m-doc-wrap-bumper">def <a href="#projection_matrix" class="m-doc-self">projection_matrix</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; at::Tensor</span>
             </dt>
             <dd>Return the currently used OpenGL projection matrix.</dd>
-            <dt id="resolve_collisions">
-              <span class="m-doc-wrap-bumper">def <a href="#resolve_collisions" class="m-doc-self">resolve_collisions</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; bool</span>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#remove_object" class="m-doc">remove_object</a>(</span><span class="m-doc-wrap">self,
+              object: <a href="stillleben.Object.html" class="m-doc">Object</a>) -&gt; None</span>
             </dt>
-            <dd>Resolve collisions by forward-simulation using the physics engine.</dd>
+            <dd>Removes an object from the scene.</dd>
             <dt id="serialize">
               <span class="m-doc-wrap-bumper">def <a href="#serialize" class="m-doc-self">serialize</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; str</span>
             </dt>
@@ -174,10 +189,16 @@ of diameter <code>diameter</code> fully visible in the camera frustrum.</dd>
             </dt>
             <dd>Set the camera intrinsics from a 4x4 matrix.</dd>
             <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#simulate" class="m-doc">simulate</a>(</span><span class="m-doc-wrap">self,
+              dt: float) -&gt; None</span>
+            </dt>
+            <dd>Runs the physics simulation for a single timestep of size <code>dt</code>.</dd>
+            <dt>
               <span class="m-doc-wrap-bumper">def <a href="#simulate_tabletop_scene" class="m-doc">simulate_tabletop_scene</a>(</span><span class="m-doc-wrap">self,
               vis_cb: typing.Callable[[int], None] = None) -&gt; None</span>
             </dt>
-            <dd>Arrange the objects as if they were standing on a supporting surface.</dd>
+            <dd>Arrange the objects as if they were standing on a supporting surface.
+This also calls <a class="m-doc" href="stillleben.Scene.html#choose_random_camera_pose">choose_random_camera_pose()</a>.</dd>
           </dl>
         </section>
         <section id="dunder-methods">
@@ -197,8 +218,7 @@ of diameter <code>diameter</code> fully visible in the camera frustrum.</dd>
               <a href="#ambient_light" class="m-doc-self">ambient_light</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>The color &amp; intensity of the ambient light. This is a float
-tensor of size 3 (RGB, range 0-1). This color is multiplied
-with the object color / texture during rendering.</dd>
+tensor of size 3 (linear sRGB), which determines general ambient radiance.</dd>
             <dt id="background_color">
               <a href="#background_color" class="m-doc-self">background_color</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
             </dt>
@@ -220,15 +240,31 @@ with the object color / texture during rendering.</dd>
               <a href="#background_plane_texture" class="m-doc-self">background_plane_texture</a>: <a href="stillleben.Texture2D.html" class="m-doc">Texture2D</a> <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Texture of the background plane</dd>
+            <dt>
+              <a href="#light_colors" class="m-doc">light_colors</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Colors of all lights in linear sRGB. Note that the color
+directly determines radiance, so you might have to increase colors
+beyond 1.0 or they might be too dark.</dd>
+            <dt>
+              <a href="#light_directions" class="m-doc">light_directions</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Directions of all lights in world coordinates. This is a N x 3 float tensor. All lights are assumed
+to be point lights at infinite distance, casting light in the specified direction.</dd>
             <dt id="light_map">
               <a href="#light_map" class="m-doc-self">light_map</a>: <a href="stillleben.LightMap.html" class="m-doc">LightMap</a> <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Light map used for image-based lighting.</dd>
-            <dt id="light_position">
-              <a href="#light_position" class="m-doc-self">light_position</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            <dt>
+              <a href="#light_position" class="m-doc">light_position</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>The light position in world coordinates. This is a float tensor
-of size 3.</dd>
+of size 3. This is a shortcut for the position of the first light
+(see <a class="m-doc" href="stillleben.Scene.html#light_directions">light_directions</a>).</dd>
+            <dt>
+              <a href="#manual_exposure" class="m-doc">manual_exposure</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Manual exposure.</dd>
             <dt>
               <a href="#objects" class="m-doc">objects</a>: typing.List[<a href="stillleben.Object.html" class="m-doc">Object</a>] <span class="m-label m-flat m-warning">get</span>
             </dt>
@@ -277,6 +313,17 @@ of size 3.</dd>
               </tbody>
             </table>
           </div></section>
+          <section class="m-doc-details" id="choose_random_light_direction"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#choose_random_light_direction" class="m-doc-self">choose_random_light_direction</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
+            </h3>
+            <p>Choose a random light direction.</p>
+<p>The direction obeys the following constraints:</p>
+<ul>
+<li>The light comes from above (negative Y direction)</li>
+<li>The light never comes from behind the objects.</li>
+</ul>
+          </div></section>
           <section class="m-doc-details" id="choose_random_light_position"><div>
             <h3>
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#choose_random_light_position" class="m-doc-self">choose_random_light_position</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
@@ -287,6 +334,10 @@ of size 3.</dd>
 <li>The light comes from above (negative Y direction)</li>
 <li>The light never comes from behind the objects.</li>
 </ul>
+<aside class="m-block m-warning">
+<h3>Deprecated</h3>
+<p>Please use <a class="m-doc" href="stillleben.Scene.html#choose_random_light_direction">choose_random_light_direction()</a> instead.</p>
+</aside>
           </div></section>
           <section class="m-doc-details" id="min_dist_for_object_diameter"><div>
             <h3>
@@ -374,6 +425,24 @@ y
 </svg> are choosen such that the object center is
 inside 80% of the camera frustrum in each axis.</li>
 </ul>
+          </div></section>
+          <section class="m-doc-details" id="remove_object"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#remove_object" class="m-doc-self">remove_object</a>(</span><span class="m-doc-wrap">self,
+              object: <a href="stillleben.Object.html" class="m-doc">Object</a>) -&gt; None</span></span>
+            </h3>
+            <p>Removes an object from the scene.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">object</td>
+                  <td>Object to be removed</td>
+                </tr>
+              </tbody>
+            </table>
           </div></section>
           <section class="m-doc-details" id="set_camera_hfov"><div>
             <h3>
@@ -609,12 +678,31 @@ global coordinates.</td>
               </tbody>
             </table>
           </div></section>
+          <section class="m-doc-details" id="simulate"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#simulate" class="m-doc-self">simulate</a>(</span><span class="m-doc-wrap">self,
+              dt: float) -&gt; None</span></span>
+            </h3>
+            <p>Runs the physics simulation for a single timestep of size <code>dt</code>.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">dt</td>
+                  <td>The timestep (usually something small like 0.002 is used)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
           <section class="m-doc-details" id="simulate_tabletop_scene"><div>
             <h3>
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />Scene.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#simulate_tabletop_scene" class="m-doc-self">simulate_tabletop_scene</a>(</span><span class="m-doc-wrap">self,
               vis_cb: typing.Callable[[int], None] = None) -&gt; None</span></span>
             </h3>
-            <p>Arrange the objects as if they were standing on a supporting surface.</p>
+            <p>Arrange the objects as if they were standing on a supporting surface.
+This also calls <a class="m-doc" href="stillleben.Scene.html#choose_random_camera_pose">choose_random_camera_pose()</a>.</p>
             <table class="m-table m-fullwidth m-flat">
               <thead>
                 <tr><th colspan="2">Parameters</th></tr>
@@ -649,6 +737,45 @@ timestep.</td>
         </section>
         <section>
           <h2>Property documentation</h2>
+          <section class="m-doc-details" id="light_colors"><div>
+            <h3>
+              stillleben.<wbr />Scene.<wbr /><a href="#light_colors" class="m-doc-self">light_colors</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>Colors of all lights in linear sRGB. Note that the color
+directly determines radiance, so you might have to increase colors
+beyond 1.0 or they might be too dark.</p>
+<p>All lights with color set to (0,0,0) will be disabled.</p>
+          </div></section>
+          <section class="m-doc-details" id="light_directions"><div>
+            <h3>
+              stillleben.<wbr />Scene.<wbr /><a href="#light_directions" class="m-doc-self">light_directions</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>Directions of all lights in world coordinates. This is a N x 3 float tensor. All lights are assumed
+to be point lights at infinite distance, casting light in the specified direction.</p>
+<p>All lights with direction set to (0,0,0) will be disabled.</p>
+          </div></section>
+          <section class="m-doc-details" id="light_position"><div>
+            <h3>
+              stillleben.<wbr />Scene.<wbr /><a href="#light_position" class="m-doc-self">light_position</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>The light position in world coordinates. This is a float tensor
+of size 3. This is a shortcut for the position of the first light
+(see <a class="m-doc" href="stillleben.Scene.html#light_directions">light_directions</a>).</p>
+<aside class="m-block m-warning">
+<h3>Deprecated</h3>
+<p>Please use <a class="m-doc" href="stillleben.Scene.html#light_directions">light_directions</a> instead.</p>
+</aside>
+          </div></section>
+          <section class="m-doc-details" id="manual_exposure"><div>
+            <h3>
+              stillleben.<wbr />Scene.<wbr /><a href="#manual_exposure" class="m-doc-self">manual_exposure</a>: float <span class="m-label m-flat m-success">get set</span>
+            </h3>
+            <p>Manual exposure.</p>
+<p>This can be used to override the default auto-exposure algorithm,
+which can be especially useful in the case of video. The exposure
+value is a simple coefficient that is multiplied with the linear
+sRGB color.</p>
+          </div></section>
           <section class="m-doc-details" id="objects"><div>
             <h3>
               stillleben.<wbr />Scene.<wbr /><a href="#objects" class="m-doc-self">objects</a>: typing.List[<a href="stillleben.Object.html" class="m-doc">Object</a>] <span class="m-label m-flat m-warning">get</span>

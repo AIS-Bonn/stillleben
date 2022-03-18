@@ -67,7 +67,8 @@
               <span class="m-doc-wrap-bumper">def <a href="#render" class="m-doc">render</a>(</span><span class="m-doc-wrap">self,
               scene: <a href="stillleben.Scene.html" class="m-doc">Scene</a>,
               result: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None,
-              depth_peel: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None) -&gt; <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a></span>
+              depth_peel: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None,
+              predicate: typing.Callable[[<a href="stillleben.Object.html" class="m-doc">Object</a>], bool] = None) -&gt; <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a></span>
             </dt>
             <dd>Render a scene.</dd>
           </dl>
@@ -98,7 +99,8 @@
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />RenderPass.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#render" class="m-doc-self">render</a>(</span><span class="m-doc-wrap">self,
               scene: <a href="stillleben.Scene.html" class="m-doc">Scene</a>,
               result: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None,
-              depth_peel: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None) -&gt; <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a></span></span>
+              depth_peel: <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a> = None,
+              predicate: typing.Callable[[<a href="stillleben.Object.html" class="m-doc">Object</a>], bool] = None) -&gt; <a href="stillleben.RenderPassResult.html" class="m-doc">RenderPassResult</a></span></span>
             </h3>
             <p>Render a scene.</p>
             <table class="m-table m-fullwidth m-flat">
@@ -121,6 +123,11 @@ instance of the RenderPass object will be used.</td>
                   <td>If you want to retrieve the layer behind the last
 rendered one, pass in the result of the previous render here
 (depth peeling).</td>
+                </tr>
+                <tr>
+                  <td>predicate</td>
+                  <td>A function that decides whether a particular
+object should be rendered.</td>
                 </tr>
               </tbody>
               <tfoot>

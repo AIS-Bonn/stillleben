@@ -66,16 +66,21 @@
           <h2><a href="#methods">Methods</a></h2>
           <dl class="m-doc">
             <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#draw_frame" class="m-doc">draw_frame</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Draw a single frame.</dd>
+            <dt>
               <span class="m-doc-wrap-bumper">def <a href="#run" class="m-doc">run</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
             </dt>
-            <dd>Launch the viewer.</dd>
+            <dd>Draw until the user closes the window.</dd>
           </dl>
         </section>
         <section id="dunder-methods">
           <h2><a href="#dunder-methods">Special methods</a></h2>
           <dl class="m-doc">
-            <dt id="__init__">
-              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc">__init__</a>(</span><span class="m-doc-wrap">self,
+              scene: <a href="stillleben.Scene.html" class="m-doc">Scene</a>) -&gt; None</span>
             </dt>
             <dd>Constructor.</dd>
           </dl>
@@ -84,20 +89,45 @@
           <h2><a href="#properties">Properties</a></h2>
           <dl class="m-doc">
             <dt id="scene">
-              <a href="#scene" class="m-doc-self">scene</a>: <a href="stillleben.Scene.html" class="m-doc">Scene</a> <span class="m-label m-flat m-success">get set</span>
+              <a href="#scene" class="m-doc-self">scene</a>: <a href="stillleben.Scene.html" class="m-doc">Scene</a> <span class="m-label m-flat m-warning">get</span>
             </dt>
             <dd>Scene to be shown.</dd>
           </dl>
         </section>
         <section>
           <h2>Method documentation</h2>
+          <section class="m-doc-details" id="draw_frame"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Viewer.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#draw_frame" class="m-doc-self">draw_frame</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
+            </h3>
+            <p>Draw a single frame.</p>
+<p>In most cases, you should call <a class="m-doc" href="stillleben.Viewer.html#run">run()</a> instead, which is blocking
+and easier to use.</p>
+          </div></section>
           <section class="m-doc-details" id="run"><div>
             <h3>
               <span class="m-doc-wrap-bumper">def stillleben.<wbr />Viewer.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#run" class="m-doc-self">run</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span></span>
             </h3>
-            <p>Launch the viewer.</p>
-<p>You should set the <a class="m-doc" href="stillleben.Viewer.html#scene">scene</a> property first.
-This call is blocking.</p>
+            <p>Draw until the user closes the window.</p>
+<p>This call is blocking.</p>
+          </div></section>
+          <section class="m-doc-details" id="__init__"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />Viewer.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self,
+              scene: <a href="stillleben.Scene.html" class="m-doc">Scene</a>) -&gt; None</span></span>
+            </h3>
+            <p>Constructor.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">scene</td>
+                  <td>Scene to view</td>
+                </tr>
+              </tbody>
+            </table>
           </div></section>
         </section>
       </div>

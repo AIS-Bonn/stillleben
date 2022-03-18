@@ -91,12 +91,49 @@ points.</dd>
         <section id="properties">
           <h2><a href="#properties">Properties</a></h2>
           <dl class="m-doc">
+            <dt id="angular_velocity">
+              <a href="#angular_velocity" class="m-doc-self">angular_velocity</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Angular velocity in rad/s (in global frame).</dd>
+            <dt id="casts_shadows">
+              <a href="#casts_shadows" class="m-doc-self">casts_shadows</a>: bool <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Enable/disable shadow casting (default True).</dd>
+            <dt id="density">
+              <a href="#density" class="m-doc-self">density</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Density of the object in kg / m^3.</dd>
+            <dt id="dynamic_friction">
+              <a href="#dynamic_friction" class="m-doc-self">dynamic_friction</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Dynamic friction coefficient (should be in range 0-1).</dd>
+            <dt id="inertia">
+              <a href="#inertia" class="m-doc-self">inertia</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>Inertia around the axes of the inertial frame (see <a class="m-doc" href="stillleben.Object.html#inertial_frame">inertial_frame</a>).</dd>
+            <dt>
+              <a href="#inertial_frame" class="m-doc">inertial_frame</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>Inertial frame. The center of mass is at the origin in the intertial frame,
+and its axes are aligned with the principal axes of inertia (see <a class="m-doc" href="stillleben.Object.html#inertia">inertia</a>).</dd>
             <dt id="instance_index">
               <a href="#instance_index" class="m-doc-self">instance_index</a>: int <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Instance index for training semantic segmentation. This is
 automatically set by <a class="m-doc" href="stillleben.Scene.html#add_object">Scene.add_object()</a> but can also be
 set manually. A manual assignment always takes precedence.</dd>
+            <dt id="linear_velocity">
+              <a href="#linear_velocity" class="m-doc-self">linear_velocity</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Linear velocity in m/s (in global frame).</dd>
+            <dt id="linear_velocity_limit">
+              <a href="#linear_velocity_limit" class="m-doc-self">linear_velocity_limit</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Linear velocity limit in m/s.</dd>
+            <dt id="mass">
+              <a href="#mass" class="m-doc-self">mass</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Mass of the object in kg.</dd>
             <dt id="mesh">
               <a href="#mesh" class="m-doc-self">mesh</a>: <a href="stillleben.Mesh.html" class="m-doc">Mesh</a> <span class="m-label m-flat m-warning">get</span>
             </dt>
@@ -105,10 +142,21 @@ set manually. A manual assignment always takes precedence.</dd>
               <a href="#metallic" class="m-doc">metallic</a>: float <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Metallic parameter for PBR shading (0-1).</dd>
+            <dt id="restitution">
+              <a href="#restitution" class="m-doc-self">restitution</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Coefficient of restitution.
+A coefficient of 0 makes the object bounce as little as possible, higher values up to 1.0 result in more bounce.</dd>
             <dt>
               <a href="#roughness" class="m-doc">roughness</a>: float <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Roughness parameter for PBR shading (0-1).</dd>
+            <dt>
+              <a href="#separation" class="m-doc">separation</a>: float <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>After physics simulation, this contains the minimum separation of
+this object to other objects in the scene. If the separation is
+negative, the two objects intersect.</dd>
             <dt id="shininess">
               <a href="#shininess" class="m-doc-self">shininess</a>: float <span class="m-label m-flat m-success">get set</span>
             </dt>
@@ -121,6 +169,15 @@ highlights. Default value is 80 (pretty sharp).</dd>
             <dd>Specular color for Phong shading. This is multiplied with the
 calculated specular intensity. Set to white for a fully-specular
 object, set to black for a fully diffuse object.</dd>
+            <dt id="static">
+              <a href="#static" class="m-doc-self">static</a>: bool <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>If set to true, the object is marked as static for physics simulation. This is a good choice
+for containers or supporting planes.</dd>
+            <dt id="static_friction">
+              <a href="#static_friction" class="m-doc-self">static_friction</a>: float <span class="m-label m-flat m-success">get set</span>
+            </dt>
+            <dd>Static friction coefficient (should be in range 0-1).</dd>
             <dt id="sticker_range">
               <a href="#sticker_range" class="m-doc-self">sticker_range</a>: at::Tensor <span class="m-label m-flat m-success">get set</span>
             </dt>
@@ -133,6 +190,10 @@ object, set to black for a fully diffuse object.</dd>
               <a href="#sticker_texture" class="m-doc-self">sticker_texture</a>: <a href="stillleben.Texture.html" class="m-doc">Texture</a> <span class="m-label m-flat m-success">get set</span>
             </dt>
             <dd>Sticker texture.</dd>
+            <dt id="volume">
+              <a href="#volume" class="m-doc-self">volume</a>: float <span class="m-label m-flat m-warning">get</span>
+            </dt>
+            <dd>Volume of the object in m^3.</dd>
           </dl>
         </section>
         <section>
@@ -159,6 +220,13 @@ in-place operations on the returned pose do not work.</p>
 <span class="n">p</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">pose</span><span class="p">()</span>
 <span class="n">p</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
 <span class="n">obj</span><span class="o">.</span><span class="n">set_pose</span><span class="p">(</span><span class="n">p</span><span class="p">)</span></pre>
+<aside class="m-block m-info">
+<h3>Supported poses</h3>
+<p>The stillleben renderer supports arbitrary 4x4 pose matrices.
+However, if you use the physics engine (e.g. via
+<a class="m-doc" href="stillleben.Scene.html#simulate">Scene.simulate()</a>), you are restricted to proper rigid transforms,
+i.e. pure rotations and translations.</p>
+</aside>
           </div></section>
           <section class="m-doc-details" id="__init__"><div>
             <h3>
@@ -197,6 +265,14 @@ present in the mesh. Defaults to white.</dd>
         </section>
         <section>
           <h2>Property documentation</h2>
+          <section class="m-doc-details" id="inertial_frame"><div>
+            <h3>
+              stillleben.<wbr />Object.<wbr /><a href="#inertial_frame" class="m-doc-self">inertial_frame</a>: at::Tensor <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>Inertial frame. The center of mass is at the origin in the intertial frame,
+and its axes are aligned with the principal axes of inertia (see <a class="m-doc" href="stillleben.Object.html#inertia">inertia</a>).</p>
+<p>The pose is given relative to the object's coordinate system.</p>
+          </div></section>
           <section class="m-doc-details" id="metallic"><div>
             <h3>
               stillleben.<wbr />Object.<wbr /><a href="#metallic" class="m-doc-self">metallic</a>: float <span class="m-label m-flat m-success">get set</span>
@@ -212,6 +288,20 @@ mesh is used.</p>
             <p>Roughness parameter for PBR shading (0-1).</p>
 <p>A negative value (default) means that the roughness parameter of the
 mesh is used.</p>
+          </div></section>
+          <section class="m-doc-details" id="separation"><div>
+            <h3>
+              stillleben.<wbr />Object.<wbr /><a href="#separation" class="m-doc-self">separation</a>: float <span class="m-label m-flat m-warning">get</span>
+            </h3>
+            <p>After physics simulation, this contains the minimum separation of
+this object to other objects in the scene. If the separation is
+negative, the two objects intersect.</p>
+<aside class="m-block m-warning">
+<h3>Caveats</h3>
+<p>This functionality is work-in-progress. Currently, you can only
+rely on the following: If and only if the separation is
+negative, the objects intersect.</p>
+</aside>
           </div></section>
         </section>
       </div>

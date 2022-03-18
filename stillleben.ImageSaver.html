@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Installation | stillleben Python</title>
+  <title>stillleben.ImageSaver | stillleben Python</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
   <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
   <link rel="icon" href="favicon-dark.png" type="image/png" />
@@ -44,47 +44,78 @@
     <div class="m-row">
       <div class="m-col-l-10 m-push-l-1">
         <h1>
-          Installation
+          <span class="m-breadcrumb"><a href="stillleben.html">stillleben</a>.<wbr/></span>ImageSaver <span class="m-thin">class</span>
         </h1>
-<section id="system-requirements">
-<h2>System requirements</h2>
-<p>stillleben has been developed and tested on Ubuntu 18.04. Specifically, it
-requires EGL, which did not work reliably in earlier Ubuntu versions.
-Your mileage on other Linux distributions may vary. Other platforms have never
-been tested and are unlikely to work.</p>
-<p>If you want to use the Python API (you probably do), you will need PyTorch 1.8.1.
-If you want to use CUDA, please install it first.
-Then install PyTorch from source to avoid compiler ABI issues.
-Here is a short guide:</p>
-<pre class="m-code"><span class="c1"># Install Anaconda (skip this if you already have it)</span>
-<span class="c1"># you may adapt the link to a newer Anaconda version :)</span>
-wget https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh
-bash Anaconda3-2021.05-Linux-x86_64.sh
+        <p>Multi-threaded image writer.</p>
+        <div class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#methods">Methods</a></li>
+                <li><a href="#dunder-methods">Special methods</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+<section id="typical-usage">
+<h2>Typical usage</h2>
+<pre class="m-code"><span class="kn">import</span> <span class="nn">stillleben</span> <span class="k">as</span> <span class="nn">sl</span>
 
-<span class="c1"># Make sure to enter the Anaconde environment here!</span>
-<span class="c1"># If you chose auto-activation during installation, just open a new shell.</span>
-<span class="c1"># Otherwise, source anaconda/bin/activate.</span>
+<span class="n">sl</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
-<span class="c1"># Install PyTorch requirements</span>
-conda install astunparse numpy ninja pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses pillow
-conda install -c pytorch magma-cuda101 <span class="c1"># adapt the 101 to your CUDA version!</span>
-
-<span class="c1"># Install PyTorch 1.8.1</span>
-git clone --recursive --depth <span class="m">1</span> -b v1.8.1 https://github.com/pytorch/pytorch.git
-<span class="nb">cd</span> pytorch
-<span class="nb">export</span> <span class="nv">CMAKE_PREFIX_PATH</span><span class="o">=</span><span class="si">${</span><span class="nv">CONDA_PREFIX</span><span class="k">:-</span><span class="s2">&quot;</span><span class="k">$(</span>dirname <span class="k">$(</span>which conda<span class="k">))</span><span class="s2">/../&quot;</span><span class="si">}</span>
-python setup.py install</pre>
+<span class="k">with</span> <span class="n">sl</span><span class="o">.</span><span class="n">ImageSaver</span><span class="p">()</span> <span class="k">as</span> <span class="n">saver</span><span class="p">:</span>
+    <span class="n">saver</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">640</span><span class="p">,</span><span class="mi">480</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="s1">&#39;/tmp/test.png&#39;</span><span class="p">)</span></pre>
 </section>
-<section id="compiling-stillleben">
-<h2>Compiling stillleben</h2>
-<p>You can compile stillleben like any other Python package. If you are using
-Anaconda (see above), make sure the Anaconda environment is loaded.</p>
-<pre class="m-code"><span class="c1"># Install dependencies</span>
-sudo apt install libassimp-dev libjpeg-dev libpng-dev libxext-dev
-
-<span class="nb">cd</span> stillleben
-python setup.py install</pre>
-</section>
+        <section id="methods">
+          <h2><a href="#methods">Methods</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">def <a href="#save" class="m-doc">save</a>(</span><span class="m-doc-wrap">self,
+              image: at::Tensor,
+              path: str) -&gt; None</span>
+            </dt>
+            <dd>Save image.</dd>
+          </dl>
+        </section>
+        <section id="dunder-methods">
+          <h2><a href="#dunder-methods">Special methods</a></h2>
+          <dl class="m-doc">
+            <dt id="__enter__">
+              <span class="m-doc-wrap-bumper">def <a href="#__enter__" class="m-doc-self">__enter__</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; <a href="stillleben.ImageSaver.html" class="m-doc">ImageSaver</a></span>
+            </dt>
+            <dd></dd>
+            <dt id="__exit__">
+              <span class="m-doc-wrap-bumper">def <a href="#__exit__" class="m-doc-self">__exit__</a>(</span><span class="m-doc-wrap">self,
+              arg0: object,
+              arg1: object,
+              arg2: object<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd></dd>
+            <dt id="__init__">
+              <span class="m-doc-wrap-bumper">def <a href="#__init__" class="m-doc-self">__init__</a>(</span><span class="m-doc-wrap">self<span class="m-text m-dim">, /</span>) -&gt; None</span>
+            </dt>
+            <dd>Constructor.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Method documentation</h2>
+          <section class="m-doc-details" id="save"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">def stillleben.<wbr />ImageSaver.<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#save" class="m-doc-self">save</a>(</span><span class="m-doc-wrap">self,
+              image: at::Tensor,
+              path: str) -&gt; None</span></span>
+            </h3>
+            <p>Save image.</p>
+<p>Note: This call is asynchronous. You can only assume the image
+has been written once <a class="m-doc" href="stillleben.ImageSaver.html#__exit__">__exit__()</a> has been called.</p>
+<dl class="field-list simple">
+<dt>param image</dt>
+<dd>Image tensor. Needs to have uint8 type and shape HxWx4 (RGBA), HxWx3 (RGB), or HxW (grayscale). Grayscale images can also be uint16.</dd>
+</dl>
+          </div></section>
+        </section>
       </div>
     </div>
   </div>
