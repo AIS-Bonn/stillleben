@@ -10,6 +10,7 @@
 #include <stillleben/mesh_cache.h>
 #include <stillleben/physx_impl.h>
 
+#include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/StaticArray.h>
 #include <Corrade/Utility/ConfigurationGroup.h>
 #include <Corrade/Utility/DebugStl.h>
@@ -19,12 +20,16 @@
 #include <Magnum/Math/Matrix4.h>
 #include <Magnum/Math/Angle.h>
 #include <Magnum/Math/Quaternion.h>
-#include <Magnum/Math/ConfigurationValue.h>
 #include <Magnum/Magnum.h>
 #include <Magnum/SceneGraph/Scene.h>
 #include <Magnum/SceneGraph/Camera.h>
 #include <Magnum/SceneGraph/Object.h>
 #include <Magnum/SceneGraph/MatrixTransformation3D.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#include <Magnum/Math/ConfigurationValue.h>
+#pragma GCC diagnostic pop
 
 #include <sstream>
 
@@ -408,9 +413,36 @@ namespace
     }
 }
 
-void Scene::setLightPosition(const Magnum::Vector3& position)
+void Scene::setLightDirections(const Containers::ArrayView<const Vector3>& positions)
 {
-    m_lightPosition = position;
+    if(positions.size() > m_lightDirections.size())
+        throw std::invalid_argument{"Cannot support that many lights"};
+
+    for(std::size_t i = 0; i < positions.size(); ++i)
+        m_lightDirections[i] = positions[i];
+    for(std::size_t i = positions.size(); i < m_lightDirections.size(); ++i)
+        m_lightDirections[i] = {};
+}
+
+Containers::StaticArrayView<NumLights, Vector3> Scene::lightDirections()
+{
+    return m_lightDirections;
+}
+
+void Scene::setLightColors(const Containers::ArrayView<const Color3>& colors)
+{
+    if(colors.size() > m_lightColors.size())
+        throw std::invalid_argument{"Cannot support that many lights"};
+
+    for(std::size_t i = 0; i < colors.size(); ++i)
+        m_lightColors[i] = colors[i];
+    for(std::size_t i = colors.size(); i < m_lightColors.size(); ++i)
+        m_lightColors[i] = Color3{0.0f};
+}
+
+Containers::StaticArrayView<NumLights, Color3> Scene::lightColors()
+{
+    return m_lightColors;
 }
 
 void Scene::setAmbientLight(const Magnum::Color3& color)
@@ -418,18 +450,10 @@ void Scene::setAmbientLight(const Magnum::Color3& color)
     m_ambientLight = color;
 }
 
-void Scene::chooseRandomLightPosition()
+void Scene::chooseRandomLightDirection()
 {
     // We want to have the light coming from above, but not from behind the
     // objects. We first determine the light position relative to the camera.
-
-    Magnum::Vector3 meanPosition;
-    for(auto& obj : m_objects)
-    {
-        meanPosition += (m_camera->cameraMatrix() * obj->pose()).translation();
-    }
-    if(!m_objects.empty())
-        meanPosition /= m_objects.size();
 
     std::normal_distribution<float> normalDist;
     Magnum::Vector3 randomDirection = Magnum::Vector3{
@@ -438,9 +462,11 @@ void Scene::chooseRandomLightPosition()
         -std::abs(normalDist(m_randomGenerator)) // always on camera side
     }.normalized();
 
-    Magnum::Vector3 lightPositionInCam = meanPosition + 1000.0f * randomDirection;
+    Magnum::Vector3 lightDirectionInCam = -randomDirection.normalized();
 
-    setLightPosition(m_camera->cameraMatrix().invertedRigid().transformPoint(lightPositionInCam));
+    Vector3 lightDirectionInWorld = m_camera->cameraMatrix().invertedRigid().transformVector(lightDirectionInCam);
+
+    setLightDirections({lightDirectionInWorld});
 }
 
 void Scene::chooseRandomCameraPose()
@@ -741,7 +767,14 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
     group.setValue("cameraPosition", cameraPose.translation());
     group.setValue("cameraRotation", Quaternion::fromMatrix(cameraPose.rotationScaling()));
 
-    group.setValue("lightPosition", m_lightPosition);
+    for(UnsignedInt i = 0; i < m_lightDirections.size(); ++i)
+    {
+        auto lightGroup = group.addGroup("light");
+
+        lightGroup->setValue("direction", m_lightDirections[i]);
+        lightGroup->setValue("color", m_lightColors[i]);
+    }
+
     group.setValue("ambientLight", m_ambientLight);
     group.setValue("numObjects", m_objects.size());
 
@@ -760,6 +793,8 @@ void Scene::serialize(Corrade::Utility::ConfigurationGroup& group) const
 
     group.setValue("backgroundPlanePose", m_backgroundPlanePose);
     group.setValue("backgroundPlaneSize", m_backgroundPlaneSize);
+
+    group.setValue("manualExposure", m_manualExposure);
 }
 
 void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshCache* cache)
@@ -779,7 +814,26 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
     }
 
     if(group.hasValue("lightPosition"))
-        m_lightPosition = group.value<Magnum::Vector3>("lightPosition");
+    {
+        setLightDirections({-group.value<Magnum::Vector3>("lightPosition").normalized()});
+        setLightColors({Color3{0.0f, 0.8f, 0.0f}});
+    }
+    else
+    {
+        auto lightGroups = group.groups("light");
+
+        Containers::Array<Vector3> directions;
+        Containers::Array<Color3> colors;
+
+        for(const auto& lightGroup : lightGroups)
+        {
+            Containers::arrayAppend(directions, lightGroup->value<Magnum::Vector3>("direction"));
+            Containers::arrayAppend(colors, lightGroup->value<Magnum::Color3>("color"));
+        }
+
+        setLightDirections(directions);
+        setLightColors(colors);
+    }
 
     if(group.hasValue("ambientLight"))
         m_ambientLight = group.value<Magnum::Color3>("ambientLight");
@@ -791,6 +845,9 @@ void Scene::deserialize(const Corrade::Utility::ConfigurationGroup& group, MeshC
         m_backgroundPlanePose = group.value<Magnum::Matrix4>("backgroundPlanePose");
     if(group.hasValue("backgroundPlaneSize"))
         m_backgroundPlaneSize = group.value<Magnum::Vector2>("backgroundPlaneSize");
+
+    if(group.hasValue("manualExposure"))
+        m_manualExposure = group.value<Float>("manualExposure");
 
     std::unique_ptr<MeshCache> localCache;
     if(!cache)
@@ -865,6 +922,11 @@ void Scene::checkCollisions()
         else
             obj->m_separation = 0.0f;
     }
+}
+
+void Scene::setManualExposure(Float exposure)
+{
+    m_manualExposure = exposure;
 }
 
 }

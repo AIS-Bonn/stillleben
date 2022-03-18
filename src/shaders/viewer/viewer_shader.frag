@@ -32,7 +32,7 @@ void main()
 
     vec3 objBBox = bbox[instanceIndexVal];
 
-    rgbOut = rgbVec;
+    rgbOut = vec4(rgbVec.rgb, 1.0);
 
     // no object -> bg color
     if(objectCoordinatesVec.w > 2000.0)

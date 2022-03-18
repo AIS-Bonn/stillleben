@@ -91,7 +91,6 @@ add_library(stillleben SHARED
     src/mesh.cpp
     src/mesh_cache.cpp
     src/object.cpp
-    src/phong_pass.cpp
     src/pose.cpp
     src/render_pass.cpp
     src/scene.cpp
@@ -105,11 +104,14 @@ add_library(stillleben SHARED
     src/shaders/render_shader.cpp
     src/shaders/ssao_shader.cpp
     src/shaders/ssao_apply_shader.cpp
+    src/shaders/tone_map_shader.cpp
+    src/shaders/shadow_shader.cpp
     src/shaders/viewer/viewer_shader.cpp
-    src/mesh_tools/tangents.cpp
     src/mesh_tools/consolidate.cpp
+    src/mesh_tools/compute_tangents.cpp
     src/utils/arc_ball.cpp
     src/utils/os.cpp
+    src/utils/primitive_importer.cpp
     ${stillleben_RESOURCES}
 )
 target_include_directories(stillleben PUBLIC

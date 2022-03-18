@@ -3,11 +3,14 @@
 // adapted from Magnum::MeshTools::concatenate()
 
 #include <stillleben/mesh_tools/consolidate.h>
+#include <stillleben/mesh_tools/compute_tangents.h>
 
 #include <Corrade/Containers/GrowableArray.h>
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Utility/Algorithms.h>
 
+#include <Magnum/MeshTools/GenerateNormals.h>
+#include <Magnum/MeshTools/Interleave.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Vector4.h>
 #include <Magnum/Math/Color.h>
@@ -72,6 +75,24 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
             continue;
         }
 
+        // If normals are missing, compute them!
+        if(!mesh->hasAttribute(Trade::MeshAttribute::Normal))
+        {
+            Containers::Array<Vector3> normals = MeshTools::generateSmoothNormals(mesh->indices(), mesh->attribute<Vector3>(Trade::MeshAttribute::Position));
+
+            // And interleave them back into the mesh.
+            mesh = MeshTools::interleave(std::move(*mesh), {Trade::MeshAttributeData{
+                Trade::MeshAttribute::Normal, VertexFormat::Vector3,
+                normals, UnsignedShort(normals.size())
+            }});
+        }
+
+        // If tangents are missing, compute them!
+        if(!mesh->hasAttribute(Trade::MeshAttribute::Tangent))
+        {
+            *mesh = mesh_tools::computeTangents(std::move(*mesh));
+        }
+
         meshData[i] = std::move(mesh);
     }
 
@@ -112,7 +133,7 @@ Containers::Optional<ConsolidatedMesh> consolidateMesh(Magnum::Trade::AbstractIm
     {
         // Format has no support for objects, create a dummy one.
         objects = ObjectDataArray{1};
-        objects[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0});
+        objects[0] = Containers::Pointer<Trade::ObjectData3D>(new Trade::MeshObjectData3D{{}, {}, 0, 0, 0});
     }
 
     UnsignedInt objectCount = objects.size();

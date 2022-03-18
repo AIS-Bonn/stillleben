@@ -280,6 +280,9 @@ public:
     Containers::Array<Matrix4> initialPoses;
     Containers::Array<Vector3> initialLinearVelocities;
     Containers::Array<Vector3> initialAngularVelocities;
+
+    bool enableManualExposure = false;
+    Float manualExposure = 1.0f;
 };
 
 Viewer::Viewer(const std::shared_ptr<Scene>& scene)
@@ -449,6 +452,9 @@ Viewer::Viewer(const std::shared_ptr<Scene>& scene)
         m_d->initialAngularVelocities[i] = obj->angularVelocity();
     }
 
+    m_d->enableManualExposure = m_d->scene->manualExposure() >= 0.0f;
+    m_d->manualExposure = m_d->enableManualExposure ? m_d->scene->manualExposure() : 1.0f;
+
 #if HAVE_XCURSOR
     // Load cursors
     // Why yes, I quite like pain.
@@ -544,6 +550,8 @@ void Viewer::draw()
 
     m_d->arcBall->updateTransformation();
     m_d->scene->setCameraPose(m_d->arcBall->transformationMatrix());
+
+    m_d->scene->setManualExposure(m_d->enableManualExposure ? m_d->manualExposure : -1.0f);
 
     if(m_d->renderer->type() != m_d->renderType)
         m_d->renderer = std::make_unique<RenderPass>(m_d->renderType, false);
@@ -713,6 +721,9 @@ void Viewer::draw()
             }
 
             ImGui::Checkbox("SSAO", &m_d->enableSSAO);
+
+            ImGui::Checkbox("Manual Exposure", &m_d->enableManualExposure);
+            ImGui::SliderFloat("Exposure", &m_d->manualExposure, 0.0f, 1.0f);
         }
 
         if(ImGui::CollapsingHeader("Debug", ImGuiTreeNodeFlags_DefaultOpen))

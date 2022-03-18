@@ -18,7 +18,11 @@
 #include <Magnum/Math/Range.h>
 #include <Magnum/Math/Vector3.h>
 #include <Magnum/Math/Color.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #include <Magnum/Math/ConfigurationValue.h>
+#pragma GCC diagnostic pop
 
 #include <Magnum/Mesh.h>
 #include <Magnum/MeshTools/Compile.h>
@@ -114,55 +118,19 @@ void Object::loadVisual()
             auto meshFlags = m_mesh->meshFlags()[part->index()];
             const Int materialId = meshObjectData->material();
 
-            auto drawable = new Drawable{*part, m_drawables, mesh, &m_cb};
+            const auto& material = [&]() -> const Trade::MaterialData& {
+                if(materialId == -1)
+                    return m_mesh->context()->defaultMaterial();
+
+                auto& mat = m_mesh->materials()[materialId];
+                if(!mat)
+                    return m_mesh->context()->defaultMaterial();
+
+                return *mat;
+            }();
+
+            auto drawable = new Drawable{*part, m_drawables, mesh, material, &m_cb};
             drawable->setHasVertexColors(!m_options.forceColor && (meshFlags & Mesh::MeshFlag::HasVertexColors));
-
-            if(m_options.forceColor || materialId == -1 || !m_mesh->materials()[materialId])
-            {
-                // Material not available / not loaded, use a default material
-                drawable->setColor(m_options.color);
-                continue;
-            }
-
-            const auto& material = m_mesh->materials()[materialId];
-
-            auto metalness = material->tryAttribute<Float>(Trade::MaterialAttribute::Metalness);
-            auto roughness = material->tryAttribute<Float>(Trade::MaterialAttribute::Roughness);
-            if(metalness && roughness)
-                drawable->setMetallicRoughness(*metalness, *roughness);
-            else
-                drawable->setMetallicRoughness(0.04f, 0.5f);
-
-            if(auto textureID = material->tryAttribute<UnsignedInt>(Trade::MaterialAttribute::BaseColorTexture))
-            {
-                // Textured material. If the texture failed to load, again just use a
-                // default colored material.
-                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[*textureID];
-                if(texture)
-                    drawable->setTexture(&*texture);
-                else
-                    drawable->setColor(m_options.color);
-            }
-            else if(auto textureID = material->tryAttribute<UnsignedInt>(Trade::MaterialAttribute::DiffuseTexture))
-            {
-                // Textured material. If the texture failed to load, again just use a
-                // default colored material.
-                Containers::Optional<GL::Texture2D>& texture = m_mesh->textures()[*textureID];
-                if(texture)
-                    drawable->setTexture(&*texture);
-                else
-                    drawable->setColor(m_options.color);
-            }
-            else if(auto baseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::BaseColor))
-            {
-                // Color-only material
-                drawable->setColor(*baseColor);
-            }
-            else if(auto diffuseColor = material->tryAttribute<Color4>(Trade::MaterialAttribute::DiffuseColor))
-            {
-                // Color-only material
-                drawable->setColor(*diffuseColor);
-            }
         }
     }
 
@@ -315,8 +283,10 @@ void Object::loadPhysicsVisualization()
 
     auto& meshes = m_mesh->physXVisualizationMeshes();
 
+    auto& material = m_mesh->context()->defaultMaterial();
+
     for(auto mesh : meshes)
-        new Drawable{m_meshObject, m_physXDrawables, mesh, &m_cb};
+        new Drawable{m_meshObject, m_physXDrawables, mesh, material, &m_cb};
 
     m_physicsVisLoaded = true;
 }
@@ -423,6 +393,8 @@ void Object::serialize(Corrade::Utility::ConfigurationGroup& group)
     group.setValue("roughness", m_roughness);
     group.setValue("metallic", m_metallic);
 
+    group.setValue("casts_shadows", m_castsShadows);
+
     // FIXME: What about stickerTexture?
     group.setValue("stickerRange", m_stickerRange);
     group.setValue("stickerRotation", m_stickerRotation);
@@ -461,6 +433,9 @@ void Object::deserialize(const Corrade::Utility::ConfigurationGroup& group, Mesh
     if(group.hasValue("metallic"))
         setMetallic(group.value<float>("metallic"));
 
+    if(group.hasValue("casts_shadows"))
+        setCastsShadows(group.value<bool>("casts_shadows"));
+
     if(group.hasValue("stickerRange"))
         setStickerRange(group.value<Magnum::Range2D>("stickerRange"));
     if(group.hasValue("stickerRotation"))
@@ -494,6 +469,11 @@ void Object::setRoughness(float roughness)
 void Object::setMetallic(float metalness)
 {
     m_metallic = metalness;
+}
+
+void Object::setCastsShadows(bool on)
+{
+    m_castsShadows = on;
 }
 
 void Object::setStickerTexture(const std::shared_ptr<Magnum::GL::RectangleTexture>& texture)

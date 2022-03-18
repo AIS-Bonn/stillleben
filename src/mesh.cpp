@@ -3,7 +3,6 @@
 
 #include <stillleben/mesh.h>
 #include <stillleben/context.h>
-#include <stillleben/mesh_tools/tangents.h>
 #include <stillleben/mesh_tools/consolidate.h>
 #include <stillleben/physx.h>
 #include <stillleben/physx_impl.h>
@@ -57,6 +56,7 @@
 
 #include "shaders/render_shader.h"
 #include "utils/os.h"
+#include "utils/primitive_importer.h"
 
 using namespace Magnum;
 
@@ -170,32 +170,6 @@ namespace
 
         return buffer;
     }
-
-    bool meshIsWatertight(const Containers::ArrayView<Vector3>& vertices, const Containers::ArrayView<UnsignedInt>& indices)
-    {
-        static_assert(2 * sizeof(UnsignedInt) == sizeof(std::uint64_t));
-        std::unordered_map<std::uint64_t, UnsignedInt> counts;
-
-        // Loop over all edges
-        for(std::size_t i = 0; i < indices.size()/3; ++i)
-        {
-            auto triangle = indices.slice(i*3, i*3+3);
-            for(std::size_t j = 0; j < 3; ++j)
-            {
-                auto v0 = triangle[j];
-                auto v1 = triangle[(j+1)%3];
-
-                if(v0 < v1)
-                    counts[(static_cast<uint64_t>(v0) << 32) | v1]++;
-                else
-                    counts[(static_cast<uint64_t>(v1) << 32) | v0]++;
-            }
-        }
-
-        return std::all_of(counts.begin(), counts.end(), [](auto edge){
-            return edge.second == 2;
-        });
-    }
 }
 
 Mesh::Mesh(const std::string& filename, const std::shared_ptr<Context>& ctx, Flags flags)
@@ -234,16 +208,16 @@ void Mesh::openFile()
     Corrade::PluginManager::Manager<Magnum::Trade::AbstractImporter> manager(m_ctx->importerPluginPath());
     Pointer<Magnum::Trade::AbstractImporter> importer;
 
-    bool haveTinyGltf = false;
-
     // Load a scene importer plugin
-    if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
+    if(Utility::String::beginsWith(m_filename, "primitive://"))
     {
-        importer = manager.loadAndInstantiate("TinyGltfImporter");
+        importer = Containers::pointer<PrimitiveImporter>();
+    }
+    else if(Utility::String::endsWith(m_filename, ".gltf") || Utility::String::endsWith(m_filename, ".glb"))
+    {
+        importer = manager.loadAndInstantiate("CgltfImporter");
         if(!importer)
             std::abort();
-
-        haveTinyGltf = true;
     }
     else
     {
@@ -346,8 +320,12 @@ void Mesh::loadPhysics()
 
     // We want to cache the simplified & cooked PhysX mesh.
     std::string cacheFile = Corrade::Utility::formatString("{}.sl_mesh", m_filename);
+    bool isPrimitive = Utility::String::beginsWith(m_filename, "primitive://");
 
-    auto buffer = readCacheFile(cacheFile, m_filename, meshData, m_flags);
+    Containers::Optional<std::vector<uint8_t>> buffer;
+
+    if(!isPrimitive)
+        buffer = readCacheFile(cacheFile, m_filename, meshData, m_flags);
 
     if(buffer)
     {
@@ -358,9 +336,6 @@ void Mesh::loadPhysics()
         Debug{} << "Simplifying mesh and writing cache file...";
         Array<Vector3> vertices = meshData.positions3DAsArray();
         Array<UnsignedInt> indices = meshData.indicesAsArray();
-
-        if(!meshIsWatertight(vertices, indices))
-            Warning{} << "Mesh is not watertight!";
 
         // First compute a single convex hull (we abuse V-HACD here because
         // it's nice and robust)
@@ -512,25 +487,28 @@ void Mesh::loadPhysics()
             }
         }
 
-        os::AtomicFileStream ostream(cacheFile);
+        if(!isPrimitive)
+        {
+            os::AtomicFileStream ostream(cacheFile);
 
-        // Write version
-        ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
+            // Write version
+            ostream.write(reinterpret_cast<const char*>(&FILE_FORMAT_VERSION), sizeof(FILE_FORMAT_VERSION));
 
-        // Write flags
-        Magnum::UnsignedInt flagsValue = Containers::enumCastUnderlyingType(m_flags);
-        ostream.write(reinterpret_cast<const char*>(&flagsValue), sizeof(flagsValue));
+            // Write flags
+            Magnum::UnsignedInt flagsValue = Containers::enumCastUnderlyingType(m_flags);
+            ostream.write(reinterpret_cast<const char*>(&flagsValue), sizeof(flagsValue));
 
-        // Write hashes
-        MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
-        vertexHash.byteArray();
-        ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
+            // Write hashes
+            MeshHash::Digest vertexHash = hashArray(meshData.positions3DAsArray());
+            vertexHash.byteArray();
+            ostream.write(vertexHash.byteArray(), MeshHash::DigestSize);
 
-        MeshHash::Digest indicesHash = hashArray(meshData.indicesAsArray());
-        ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
+            MeshHash::Digest indicesHash = hashArray(meshData.indicesAsArray());
+            ostream.write(indicesHash.byteArray(), MeshHash::DigestSize);
 
-        // Write buf data
-        ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
+            // Write buf data
+            ostream.write(reinterpret_cast<char*>(buf.data()), buf.size());
+        }
     }
 
     physx::PxDefaultMemoryInputData stream(buf.data(), buf.size());

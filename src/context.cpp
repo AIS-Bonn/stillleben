@@ -21,6 +21,7 @@
 #include <Magnum/Trade/AbstractImporter.h>
 #include <Magnum/Trade/AbstractImageConverter.h>
 #include <Magnum/Trade/ImageData.h>
+#include <Magnum/Trade/MaterialData.h>
 
 #include <Magnum/DebugTools/ResourceManager.h>
 
@@ -43,6 +44,7 @@ T getExtension(const char* name)
 }
 
 using namespace Magnum;
+using namespace Math::Literals;
 
 namespace sl
 {
@@ -376,6 +378,10 @@ public:
     std::string importerPath;
     std::string imageConverterPath;
     std::string sceneConverterPath;
+
+    Magnum::Trade::MaterialData defaultMaterial{Trade::MaterialType::PbrMetallicRoughness, {
+        {Trade::MaterialAttribute::BaseColor, 0x3bd267ff_srgbaf}
+    }};
 };
 
 Context::Context(const std::string& installPrefix)
@@ -694,6 +700,11 @@ void* Context::eglConfig() const
 void *Context::x11Display() const
 {
     return m_d->x11_display;
+}
+
+const Magnum::Trade::MaterialData& Context::defaultMaterial() const
+{
+    return m_d->defaultMaterial;
 }
 
 }

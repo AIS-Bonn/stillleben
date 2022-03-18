@@ -9,6 +9,8 @@
 
 #include <Corrade/Containers/Optional.h>
 #include <Corrade/Containers/StringStl.h>
+#include <Corrade/Containers/GrowableArray.h>
+#include <Corrade/Utility/String.h>
 
 #include <Corrade/PluginManager/PluginManager.h>
 #include <Corrade/Utility/Configuration.h>
@@ -55,6 +57,7 @@ namespace
     {
         std::string file;
         float gamma = 1.0f;
+        float multiplier = 1.0f;
 
         static Containers::Optional<IBLSpec> load(const Utility::ConfigurationGroup& group, const std::string& prefix)
         {
@@ -82,6 +85,7 @@ namespace
             }
 
             std::string gammaTag = prefix + "gamma";
+            std::string multiTag = prefix + "multi";
 
             IBLSpec ret;
 
@@ -89,6 +93,59 @@ namespace
 
             if(group.hasValue(gammaTag))
                 ret.gamma = group.value<float>(gammaTag);
+
+            if(group.hasValue(multiTag))
+                ret.multiplier = group.value<float>(multiTag);
+
+            return ret;
+        }
+    };
+
+    struct LightSpec
+    {
+        Vector2 uv;
+        Vector3 color;
+
+        static Containers::Optional<LightSpec> load(const Utility::ConfigurationGroup& group, const std::string& prefix)
+        {
+            using namespace Utility;
+
+            std::string multiTag = prefix + "multi";
+            std::string colorTag = prefix + "color";
+            std::string uTag = prefix + "u";
+            std::string vTag = prefix + "v";
+
+            LightSpec ret;
+
+            Float multiplier = 1.0f;
+            if(group.hasValue(multiTag))
+                multiplier = group.value<float>(multiTag);
+
+            Color3 color{1.0f};
+            if(group.hasValue(colorTag))
+            {
+                std::string value = group.value<std::string>(colorTag);
+
+                auto parts = Utility::String::split(value, ',');
+                if(parts.size() != 3)
+                {
+                    Error{} << "Invalid light spec:" << value;
+                    return {};
+                }
+
+                color.r() = Utility::ConfigurationValue<Float>::fromString(parts[0], {});
+                color.g() = Utility::ConfigurationValue<Float>::fromString(parts[1], {});
+                color.b() = Utility::ConfigurationValue<Float>::fromString(parts[2], {});
+                color /= 255;
+            }
+
+            ret.color = multiplier * color;
+
+            if(group.hasValue(uTag))
+                ret.uv[0] = group.value<Float>(uTag);
+
+            if(group.hasValue(vTag))
+                ret.uv[1] = group.value<Float>(vTag);
 
             return ret;
         }
@@ -210,6 +267,9 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
 {
     using namespace Utility;
 
+    m_lightDirections = {};
+    m_lightColors = {};
+
     Magnum::GL::Texture2D hdrEquirectangular{NoCreate};
     if(String::endsWith(path, ".ibl"))
     {
@@ -249,6 +309,39 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             }
 
             hdrEquirectangular = std::move(*refTex);
+        }
+
+        auto addLight = [&](const LightSpec& light){
+            Rad theta = Rad{(light.uv[0] + 0.5f) * Constants::pi() * 2};
+            Rad phi = Rad{light.uv[1] * Constants::pi()};
+
+            Vector3 pos{
+                Math::cos(phi) * Math::sin(theta),
+                Math::sin(phi) * Math::sin(theta),
+                Math::cos(theta)
+            };
+
+            Containers::arrayAppend(m_lightDirections, -pos);
+            Containers::arrayAppend(m_lightColors, light.color);
+        };
+
+        // Load sun light (if available)
+        if(auto sunGroup = config.group("Sun"))
+        {
+            if(auto sun = LightSpec::load(*sunGroup, "SUN"))
+                addLight(*sun);
+        }
+
+        // Load multi-lights (if available)
+        if(auto lightGroup = config.group("Light1"))
+        {
+            if(auto light = LightSpec::load(*lightGroup, "LIGHT"))
+                addLight(*light);
+        }
+        if(auto lightGroup = config.group("Light2"))
+        {
+            if(auto light = LightSpec::load(*lightGroup, "LIGHT"))
+                addLight(*light);
         }
     }
     else
@@ -399,22 +492,22 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
 
             Image2D image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_xp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_xn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_xn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_yp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeY, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_yn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_yn.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::PositiveZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zp.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_zp.png");
 
             image = hdrIrradiance.image(GL::CubeMapCoordinate::NegativeZ, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/irradiance_zn.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/irradiance_zn.png");
         }
 
         hdrIrradiance.generateMipmap();
@@ -474,7 +567,7 @@ bool LightMap::load(const std::string& path, const std::shared_ptr<Context>& ctx
             Corrade::PluginManager::Manager<Magnum::Trade::AbstractImageConverter> manager(ctx->imageConverterPluginPath());
 
             Image2D image = hdrPrefilter.image(GL::CubeMapCoordinate::PositiveX, 0, {PixelFormat::RGBA8Unorm});
-            manager.loadAndInstantiate("PngImageConverter")->exportToFile(image, "/tmp/prefilter.png");
+            manager.loadAndInstantiate("PngImageConverter")->convertToFile(image, "/tmp/prefilter.png");
         }
     }
 

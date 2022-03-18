@@ -16,6 +16,7 @@
 #include <Magnum/SceneGraph/Drawable.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/Trade/Trade.h>
 
 #include <memory>
 
@@ -40,10 +41,11 @@ typedef std::function<void(const Magnum::Matrix4& transformationMatrix, Magnum::
 class Drawable : public Magnum::SceneGraph::Drawable3D
 {
 public:
-    Drawable(Object3D& object, Magnum::SceneGraph::DrawableGroup3D& group, const std::shared_ptr<Magnum::GL::Mesh>& mesh, DrawCallback* cb)
+    Drawable(Object3D& object, Magnum::SceneGraph::DrawableGroup3D& group, const std::shared_ptr<Magnum::GL::Mesh>& mesh, const Magnum::Trade::MaterialData& material, DrawCallback* cb)
      : Magnum::SceneGraph::Drawable3D{object, &group}
      , m_mesh{mesh}
      , m_cb(cb)
+     , m_material{material}
     {
     }
 
@@ -60,14 +62,8 @@ public:
     Magnum::GL::Mesh& mesh()
     { return *m_mesh; }
 
-    Magnum::Float metallic() const
-    { return m_metallic; }
-
-    Magnum::Float roughness() const
-    { return m_roughness; }
-
-    void setMetallicRoughness(Magnum::Float metallic, Magnum::Float roughness)
-    { m_metallic = metallic; m_roughness = roughness; }
+    const Magnum::Trade::MaterialData& material() const
+    { return m_material; }
 
     void setHasVertexColors(bool hasVertexColors)
     { m_hasVertexColors = hasVertexColors; }
@@ -82,8 +78,7 @@ private:
     Magnum::Color4 m_color{};
     DrawCallback* m_cb = nullptr;
     bool m_hasVertexColors = false;
-    Magnum::Float m_metallic = 0.5f;
-    Magnum::Float m_roughness = 0.04f;
+    const Magnum::Trade::MaterialData& m_material;
 };
 
 struct InstantiationOptions
@@ -187,6 +182,10 @@ public:
     void setMetallic(float metalness);
     constexpr float metallic() const
     { return m_metallic; }
+
+    void setCastsShadows(bool on);
+    constexpr bool castsShadows() const
+    { return m_castsShadows; }
 
     std::shared_ptr<Mesh> mesh()
     { return m_mesh; }
@@ -292,6 +291,8 @@ private:
 
     physx::PxMaterial* m_material = nullptr;
     PhysXHolder<physx::PxMaterial> m_customMaterial;
+
+    bool m_castsShadows = true;
 };
 
 }

@@ -4,9 +4,12 @@
 #ifndef STILLLEBEN_RENDER_PASS_H
 #define STILLLEBEN_RENDER_PASS_H
 
+#include <Corrade/Containers/Array.h>
+
 #include <Magnum/GL/MultisampleTexture.h>
 #include <Magnum/GL/Renderbuffer.h>
-#include <Magnum/GL/RectangleTexture.h>
+#include <Magnum/GL/Texture.h>
+#include <Magnum/GL/TextureArray.h>
 #include <Magnum/GL/Mesh.h>
 #include <Magnum/GL/Framebuffer.h>
 #include <Magnum/Shaders/MeshVisualizerGL.h>
@@ -25,6 +28,8 @@ class RenderShader;
 class Scene;
 class SSAOShader;
 class SSAOApplyShader;
+class ShadowShader;
+class ToneMapShader;
 class Object;
 
 class RenderPass
@@ -107,14 +112,15 @@ private:
     Magnum::GL::Renderbuffer m_depthbuffer;
 
     Magnum::GL::Framebuffer m_ssaoFramebuffer;
-    Magnum::GL::RectangleTexture m_ssaoTexture;
+    Magnum::GL::Texture2D m_ssaoTexture;
 
     Magnum::GL::Framebuffer m_ssaoApplyFramebuffer;
-    Magnum::GL::RectangleTexture m_ssaoRGBInputTexture;
+    Magnum::GL::Texture2D m_ssaoRGBInputTexture;
 
-    std::unique_ptr<RenderShader> m_shaderTextured;
-    std::unique_ptr<RenderShader> m_shaderVertexColors;
-    std::unique_ptr<RenderShader> m_shaderUniform;
+    Magnum::GL::Framebuffer m_postprocessFramebuffer;
+    Magnum::GL::Texture2D m_postprocessInput;
+
+    std::unique_ptr<RenderShader> m_renderShader;
 
     std::unique_ptr<BackgroundShader> m_backgroundShader;
     std::unique_ptr<BackgroundCubeShader> m_backgroundCubeShader;
@@ -122,7 +128,15 @@ private:
     std::unique_ptr<SSAOShader> m_ssaoShader;
     std::unique_ptr<SSAOApplyShader> m_ssaoApplyShader;
 
+    std::unique_ptr<ToneMapShader> m_toneMapShader;
+
     std::unique_ptr<Magnum::Shaders::MeshVisualizerGL3D> m_meshShader;
+
+    Magnum::GL::Texture2DArray m_shadowMaps;
+    Corrade::Containers::Array<Magnum::GL::Framebuffer> m_shadowFB;
+    Corrade::Containers::Array<Magnum::Matrix4> m_shadowMatrices;
+
+    std::unique_ptr<ShadowShader> m_shadowShader;
 
     Magnum::GL::Mesh m_quadMesh;
     Magnum::GL::Mesh m_cubeMesh;

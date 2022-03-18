@@ -10,6 +10,7 @@
 #include <stillleben/pose.h>
 
 #include <Corrade/Containers/Optional.h>
+#include <Corrade/Containers/StaticArray.h>
 #include <Magnum/SceneGraph/Camera.h>
 
 #include <memory>
@@ -170,19 +171,33 @@ public:
 
     //! @name Lighting
     //@{
-    void setLightPosition(const Magnum::Vector3& lightPosition);
-    Magnum::Vector3 lightPosition() const
-    { return m_lightPosition; }
+    void setLightMap(const std::shared_ptr<LightMap>& lightMap);
+    std::shared_ptr<LightMap> lightMap() const
+    { return m_lightMap; }
 
-    void chooseRandomLightPosition();
+    void setLightDirections(const Corrade::Containers::ArrayView<const Magnum::Vector3>& directions);
+    void setLightDirections(const std::initializer_list<Magnum::Vector3>& directions)
+    { setLightDirections(Corrade::Containers::arrayView(directions)); }
+    Corrade::Containers::StaticArrayView<NumLights, Magnum::Vector3> lightDirections();
+
+    void setLightColors(const Corrade::Containers::ArrayView<const Magnum::Color3>& colors);
+    void setLightColors(const std::initializer_list<Magnum::Color3>& colors)
+    { setLightColors(Corrade::Containers::arrayView(colors)); }
+    Corrade::Containers::StaticArrayView<NumLights, Magnum::Color3> lightColors();
+
+    [[deprecated("use chooseRandomLightDirection")]]
+    void chooseRandomLightPosition()
+    { chooseRandomLightDirection(); }
+
+    void chooseRandomLightDirection();
 
     void setAmbientLight(const Magnum::Color3& ambientLight);
     Magnum::Color3 ambientLight() const
     { return m_ambientLight; }
 
-    void setLightMap(const std::shared_ptr<LightMap>& lightMap);
-    std::shared_ptr<LightMap> lightMap() const
-    { return m_lightMap; }
+    void setManualExposure(Magnum::Float exposure);
+    Magnum::Float manualExposure() const
+    { return m_manualExposure; }
     //@}
 
 private:
@@ -207,7 +222,13 @@ private:
     PhysXUnique<physx::PxScene> m_physicsScene;
     std::unique_ptr<SimulationCallback> m_simCallback;
 
-    Magnum::Vector3 m_lightPosition;
+    Corrade::Containers::StaticArray<NumLights, Magnum::Vector3> m_lightDirections;
+    Corrade::Containers::StaticArray<NumLights, Magnum::Color3> m_lightColors{
+        Magnum::Color3{300.0f},
+        Magnum::Color3{},
+        Magnum::Color3{}
+    };
+
     Magnum::Color3 m_ambientLight;
 
     std::shared_ptr<LightMap> m_lightMap;
@@ -215,6 +236,8 @@ private:
     Magnum::Matrix4 m_backgroundPlanePose{Magnum::Math::IdentityInit};
     Magnum::Vector2 m_backgroundPlaneSize{};
     std::shared_ptr<Magnum::GL::Texture2D> m_backgroundPlaneTexture;
+
+    Magnum::Float m_manualExposure = -1.0f;
 };
 
 // IMPLEMENTATION

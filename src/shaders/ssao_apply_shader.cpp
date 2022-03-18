@@ -70,13 +70,13 @@ SSAOApplyShader::SSAOApplyShader()
     CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 }
 
-SSAOApplyShader& SSAOApplyShader::bindColor(GL::RectangleTexture& texture)
+SSAOApplyShader& SSAOApplyShader::bindColor(GL::Texture2D& texture)
 {
     texture.bind(NormalLayer);
     return *this;
 }
 
-SSAOApplyShader& SSAOApplyShader::bindAO(GL::RectangleTexture& texture)
+SSAOApplyShader& SSAOApplyShader::bindAO(GL::Texture2D& texture)
 {
     texture.bind(AOLayer);
     return *this;

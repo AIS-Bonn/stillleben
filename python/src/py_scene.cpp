@@ -259,11 +259,60 @@ void init(py::module& m)
         )EOS", py::arg("object"), py::arg("sampler") = "random", py::arg("max_iterations")=10)
 
         .def_property("light_position",
-            wrapShared(&sl::Scene::lightPosition),
-            wrapShared(&sl::Scene::setLightPosition),
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                PyErr_WarnEx(PyExc_DeprecationWarning, "light_position is deprecated, use light_directions instead.", 1);
+
+                return toTorch<Magnum::Vector3>::convert(-scene->lightDirections()[0]);
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor position){
+                PyErr_WarnEx(PyExc_DeprecationWarning, "light_position is deprecated, use light_directions instead.", 1);
+
+                scene->setLightDirections({
+                    -fromTorch<Magnum::Vector3>::convert(position)
+                });
+            },
         R"EOS(
             The light position in world coordinates. This is a float tensor
-            of size 3.
+            of size 3. This is a shortcut for the position of the first light
+            (see :ref:`light_directions`).
+
+            .. block-warning:: Deprecated
+
+                Please use :ref:`light_directions` instead.
+        )EOS")
+
+        .def_property("light_directions",
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                int n = scene->lightDirections().size();
+                return torch::from_blob(scene->lightDirections().data(), {n, 3}, at::kFloat);
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor positions){
+                int n = scene->lightDirections().size();
+                torch::Tensor a = torch::from_blob(scene->lightDirections().data(), {n, 3}, at::kFloat);
+                a.copy_(positions);
+            },
+        R"EOS(
+            Directions of all lights in world coordinates. This is a N x 3 float tensor. All lights are assumed
+            to be point lights at infinite distance, casting light in the specified direction.
+
+            All lights with direction set to (0,0,0) will be disabled.
+        )EOS")
+        .def_property("light_colors",
+            [&](const std::shared_ptr<sl::Scene>& scene){
+                int n = scene->lightColors().size();
+                return torch::from_blob(scene->lightColors().data(), {n, 3}, at::kFloat);
+            },
+            [&](const std::shared_ptr<sl::Scene>& scene, at::Tensor colors){
+                int n = scene->lightColors().size();
+                torch::Tensor a = torch::from_blob(scene->lightColors().data(), {n, 3}, at::kFloat);
+                a.copy_(colors);
+            },
+        R"EOS(
+            Colors of all lights in linear sRGB. Note that the color
+            directly determines radiance, so you might have to increase colors
+            beyond 1.0 or they might be too dark.
+
+            All lights with color set to (0,0,0) will be disabled.
         )EOS")
 
         .def_property("ambient_light",
@@ -271,8 +320,7 @@ void init(py::module& m)
             wrapShared(&sl::Scene::setAmbientLight),
         R"EOS(
             The color & intensity of the ambient light. This is a float
-            tensor of size 3 (RGB, range 0-1). This color is multiplied
-            with the object color / texture during rendering.
+            tensor of size 3 (linear sRGB), which determines general ambient radiance.
         )EOS")
 
         .def("simulate_tabletop_scene", &sl::Scene::simulateTableTopScene, R"EOS(
@@ -299,10 +347,25 @@ void init(py::module& m)
             that all objects in the scene should be within the camera frustum.
         )EOS")
 
-        .def("choose_random_light_position", &sl::Scene::chooseRandomLightPosition, R"EOS(
+        .def("choose_random_light_position", [](const std::shared_ptr<sl::Scene>& scene) {
+            PyErr_WarnEx(PyExc_DeprecationWarning, "choose_random_light_position is deprecated, use choose_random_light_direction instead.", 1);
+        }, R"EOS(
             Choose a random light position.
 
             The position obeys the following constraints:
+
+            * The light comes from above (negative Y direction)
+            * The light never comes from behind the objects.
+
+            .. block-warning:: Deprecated
+
+                Please use :ref:`choose_random_light_direction` instead.
+        )EOS")
+
+        .def("choose_random_light_direction", &sl::Scene::chooseRandomLightDirection, R"EOS(
+            Choose a random light direction.
+
+            The direction obeys the following constraints:
 
             * The light comes from above (negative Y direction)
             * The light never comes from behind the objects.
@@ -341,8 +404,8 @@ void init(py::module& m)
 
 
         .def_property("light_map", &sl::Scene::lightMap, &sl::Scene::setLightMap, R"EOS(
-                Light map used for image-based lighting.
-            )EOS")
+            Light map used for image-based lighting.
+        )EOS")
 
         .def_property("background_plane_pose", wrapShared(&sl::Scene::backgroundPlanePose), wrapShared(&sl::Scene::setBackgroundPlanePose),
             "Pose of the background plane (plane normal is in +Z direction)")
@@ -350,6 +413,15 @@ void init(py::module& m)
             "Size of the background plane in local X/Y directions")
         .def_property("background_plane_texture", &sl::Scene::backgroundPlaneTexture, &sl::Scene::setBackgroundPlaneTexture,
             "Texture of the background plane")
+
+        .def_property("manual_exposure", &sl::Scene::manualExposure, &sl::Scene::setManualExposure, R"EOS(
+            Manual exposure.
+
+            This can be used to override the default auto-exposure algorithm,
+            which can be especially useful in the case of video. The exposure
+            value is a simple coefficient that is multiplied with the linear
+            sRGB color.
+        )EOS")
     ;
 }
 
